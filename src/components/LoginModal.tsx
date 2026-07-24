@@ -1,40 +1,74 @@
-import React, { useState } from 'react';
-import { Lock, User, Building2, Sparkles, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
-import { apiService } from '../services/apiService';
-import { User as UserType, EmpresaCliente } from '../types';
+import React, { useState } from "react";
+import {
+  Lock,
+  User,
+  Building2,
+  Sparkles,
+  AlertCircle,
+  ArrowRight,
+  ShieldCheck,
+} from "lucide-react";
+import { apiService } from "../services/apiService";
+import { User as UserType, EmpresaCliente } from "../types";
 
 interface LoginModalProps {
-  onLoginSuccess: (user: UserType, clientPortalObj?: EmpresaCliente | null) => void;
-  showToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
+  onLoginSuccess: (
+    user: UserType,
+    clientPortalObj?: EmpresaCliente | null
+  ) => void;
+  showToast: (
+    type: "success" | "error" | "info",
+    title: string,
+    desc?: string
+  ) => void;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, showToast }) => {
-  const [activeTab, setActiveTab] = useState<'agencia' | 'cliente'>('agencia');
-  const [usuario, setUsuario] = useState('');
-  const [senha, setSenha] = useState('');
+export const LoginModal: React.FC<LoginModalProps> = ({
+  onLoginSuccess,
+  showToast,
+}) => {
+  const [activeTab, setActiveTab] = useState<"agencia" | "cliente">("agencia");
+  const [usuario, setUsuario] = useState("");
+  const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuario || !senha) {
-      setErrorMessage('Preencha usuário e senha');
+      setErrorMessage("Preencha usuário e senha");
       return;
     }
 
     setLoading(true);
-    setErrorMessage('');
+    setErrorMessage("");
 
     try {
-      const response = await apiService.login(usuario, senha);
-      if (response.success) {
-        showToast('success', 'Acesso Autorizado!', `Bem-vindo, ${response.user?.nome || 'Usuário'}`);
-        onLoginSuccess(response.user || ({ id: 'usr-guest', nome: usuario, email: '', role: 'cliente' } as any), response.clientPortalObj);
+      const form = new FormData();
+
+      form.append("usuario", usuario);
+      form.append("senha", senha);
+
+      const response = await fetch("https://sothink.com.br/app/api/login", {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast(
+          "success",
+          "Acesso Autorizado!",
+          `Bem-vindo, ${data.user.nome}`
+        );
+
+        onLoginSuccess(data.user, data.clientPortalObj);
       } else {
-        setErrorMessage(response.message || 'Usuário ou senha incorretos.');
+        setErrorMessage(data.message || "Usuário ou senha incorretos.");
       }
     } catch (err: any) {
-      setErrorMessage('Erro de conexão com a API PHP.');
+      setErrorMessage("Erro de conexão com a API PHP.");
     } finally {
       setLoading(false);
     }
@@ -61,15 +95,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, showToas
           <button
             type="button"
             onClick={() => {
-              setActiveTab('agencia');
-              setErrorMessage('');
-              setUsuario('admin');
-              setSenha('123456');
+              setActiveTab("agencia");
+              setErrorMessage("");
+              setUsuario("admin");
+              setSenha("123456");
             }}
             className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'agencia'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              activeTab === "agencia"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
@@ -78,15 +112,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, showToas
           <button
             type="button"
             onClick={() => {
-              setActiveTab('cliente');
-              setErrorMessage('');
-              setUsuario('techprime');
-              setSenha('sothink2026');
+              setActiveTab("cliente");
+              setErrorMessage("");
+              setUsuario("techprime");
+              setSenha("sothink2026");
             }}
             className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'cliente'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+              activeTab === "cliente"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             <Building2 className="w-4 h-4" />
@@ -115,7 +149,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, showToas
                 required
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
-                placeholder={activeTab === 'agencia' ? 'admin' : 'techprime'}
+                placeholder={activeTab === "agencia" ? "admin" : "techprime"}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40 text-slate-900 dark:text-slate-100 font-semibold"
               />
             </div>
@@ -140,14 +174,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, showToas
           </div>
 
           <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-900 dark:text-indigo-200">
-            {activeTab === 'agencia' ? (
+            {activeTab === "agencia" ? (
               <p>
-                💡 <strong>Demo Agência:</strong> Usuário: <code className="font-mono font-bold">admin</code> | Senha:{' '}
+                💡 <strong>Demo Agência:</strong> Usuário:{" "}
+                <code className="font-mono font-bold">admin</code> | Senha:{" "}
                 <code className="font-mono font-bold">123456</code>
               </p>
             ) : (
               <p>
-                💡 <strong>Demo Portal Cliente:</strong> Usuário: <code className="font-mono font-bold">techprime</code> | Senha:{' '}
+                💡 <strong>Demo Portal Cliente:</strong> Usuário:{" "}
+                <code className="font-mono font-bold">techprime</code> | Senha:{" "}
                 <code className="font-mono font-bold">sothink2026</code>
               </p>
             )}
@@ -159,7 +195,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess, showToas
             className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all active:scale-98"
           >
             {loading ? (
-              'Autenticando via API...'
+              "Autenticando via API..."
             ) : (
               <>
                 Acessar o Sistema <ArrowRight className="w-4 h-4" />

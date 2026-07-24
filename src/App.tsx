@@ -37,7 +37,7 @@ export function App() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   // Authentication State
-  const [user, setUser] = useState<User | null>(INITIAL_USERS[0]); // default logged in as Admin for instant preview
+  const [user, setUser] = useState<User | null>(null);
   const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(
     null
   );

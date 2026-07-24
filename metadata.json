@@ -1,0 +1,6 @@
+{
+  "name": "Sothink - Sistema de Gestão de Marketing",
+  "description": "Sistema web moderno de gestão para a agência Sothink com CRM de Clientes, Atas de Reunião, Controle de Jobs Kanban/Calendário e Portal do Cliente.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

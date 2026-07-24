@@ -1,0 +1,574 @@
+import React, { useState, useEffect } from 'react';
+import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
+import { Toast, ToastType } from './components/Toast';
+import { DashboardView } from './components/DashboardView';
+import { ClientsView } from './components/ClientsView';
+import { AtasView } from './components/AtasView';
+import { JobsKanbanView, KANBAN_COLUMNS } from './components/JobsKanbanView';
+import { RelatoriosView } from './components/RelatoriosView';
+import { ClientPortalView } from './components/ClientPortalView';
+import { LoginModal } from './components/LoginModal';
+
+import {
+  EmpresaCliente,
+  AtaReuniao,
+  Job,
+  ChecklistTemplate,
+  User,
+  JobStatus,
+  JobUrgencia,
+  Relatorio,
+  Anexo,
+} from './types';
+import {
+  INITIAL_CLIENTES,
+  INITIAL_ATAS,
+  INITIAL_JOBS,
+  INITIAL_CHECKLIST_TEMPLATES as INITIAL_TEMPLATES,
+  INITIAL_USERS,
+  INITIAL_RELATORIOS,
+} from './data/mockData';
+import { apiService } from './services/apiService';
+import { Plus, X, Paperclip, Upload, Trash2, FileText } from 'lucide-react';
+
+export function App() {
+  // Theme state
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  // Authentication State
+  const [user, setUser] = useState<User | null>(INITIAL_USERS[0]); // default logged in as Admin for instant preview
+  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(null);
+
+  // Active Tab State
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clientes' | 'atas' | 'jobs' | 'relatorios'>('dashboard');
+
+  // Toast Notification State
+  const [toast, setToast] = useState<{
+    show: boolean;
+    type: ToastType;
+    title: string;
+    desc?: string;
+  }>({
+    show: false,
+    type: 'success',
+    title: '',
+  });
+
+  const showToast = (type: ToastType, title: string, desc?: string) => {
+    setToast({ show: true, type, title, desc });
+  };
+
+  // Main Data States
+  const [clientes, setClientes] = useState<EmpresaCliente[]>(INITIAL_CLIENTES);
+  const [atas, setAtas] = useState<AtaReuniao[]>(INITIAL_ATAS);
+  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>(INITIAL_TEMPLATES);
+  const [relatorios, setRelatorios] = useState<Relatorio[]>(INITIAL_RELATORIOS);
+
+  // Navigation Deep Links / Pre-selections
+  const [preSelectedClientForAta, setPreSelectedClientForAta] = useState<EmpresaCliente | null>(null);
+  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] = useState<Job | null>(null);
+
+  // Quick Create Job Modal State
+  const [newJobModalOpen, setNewJobModalOpen] = useState(false);
+  const [newJobData, setNewJobData] = useState<Partial<Job>>({
+    cliente_id: '',
+    titulo_job: '',
+    urgencia: 'Médio',
+    responsavel: 'Mariana Costa',
+    data_inicio: new Date().toISOString().split('T')[0],
+    data_entrega: '',
+    briefing: '',
+    etiquetas: ['SOCIAL'],
+  });
+
+  // Apply Dark Mode Class to HTML
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Load Initial Data from API (with fallback to mock data)
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        const [cRes, aRes, jRes, tRes, rRes] = await Promise.all([
+          apiService.getClientes(),
+          apiService.getAtas(),
+          apiService.getJobs(),
+          apiService.getTemplates(),
+          apiService.getRelatorios(),
+        ]);
+
+        if (cRes.success && cRes.data) setClientes(cRes.data);
+        if (aRes.success && aRes.data) setAtas(aRes.data);
+        if (jRes.success && jRes.data) setJobs(jRes.data);
+        if (tRes.success && tRes.data) setTemplates(tRes.data);
+        if (rRes.success && rRes.data) setRelatorios(rRes.data);
+      } catch (e) {
+        console.warn('Usando dados mockados locais enquanto o servidor carrega.');
+      }
+    };
+    loadAllData();
+  }, []);
+
+  // CRUD Handlers for Relatorios
+  const handleSaveRelatorio = async (relatorioData: Partial<Relatorio>) => {
+    const res = await apiService.saveRelatorio(relatorioData);
+    if (res.success && res.data) {
+      if (relatorioData.id) {
+        setRelatorios((prev) => prev.map((r) => (r.id === res.data.id ? res.data : r)));
+      } else {
+        setRelatorios((prev) => [res.data, ...prev]);
+      }
+    }
+  };
+
+  const handleDeleteRelatorio = async (id: string) => {
+    const res = await apiService.deleteRelatorio(id);
+    if (res.success) {
+      setRelatorios((prev) => prev.filter((r) => r.id !== id));
+    }
+  };
+
+  // CRUD Handlers for Clients
+  const handleSaveCliente = async (clienteData: Partial<EmpresaCliente>) => {
+    const res = await apiService.saveCliente(clienteData);
+    if (res.success && res.data) {
+      if (clienteData.id) {
+        setClientes((prev) => prev.map((c) => (c.id === res.data.id ? res.data : c)));
+      } else {
+        setClientes((prev) => [res.data, ...prev]);
+      }
+    }
+  };
+
+  const handleDeleteCliente = async (id: string) => {
+    const res = await apiService.deleteCliente(id);
+    if (res.success) {
+      setClientes((prev) => prev.filter((c) => c.id !== id));
+    }
+  };
+
+  // CRUD Handlers for Atas
+  const handleSaveAta = async (ataData: Partial<AtaReuniao>) => {
+    const res = await apiService.saveAta(ataData);
+    if (res.success && res.data) {
+      if (ataData.id) {
+        setAtas((prev) => prev.map((a) => (a.id === res.data.id ? res.data : a)));
+      } else {
+        setAtas((prev) => [res.data, ...prev]);
+      }
+    }
+  };
+
+  const handleDeleteAta = async (id: string) => {
+    const res = await apiService.deleteAta(id);
+    if (res.success) {
+      setAtas((prev) => prev.filter((a) => a.id !== id));
+    }
+  };
+
+  // CRUD Handlers for Jobs
+  const handleSaveJob = async (jobData: Partial<Job>) => {
+    const res = await apiService.saveJob(jobData);
+    if (res.success && res.data) {
+      if (jobData.id) {
+        setJobs((prev) => prev.map((j) => (j.id === res.data.id ? res.data : j)));
+      } else {
+        setJobs((prev) => [res.data, ...prev]);
+      }
+    }
+  };
+
+  const handleDeleteJob = async (id: string) => {
+    const res = await apiService.deleteJob(id);
+    if (res.success) {
+      setJobs((prev) => prev.filter((j) => j.id !== id));
+    }
+  };
+
+  // File Upload Handlers for New Job Modal
+  const handleNewJobFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files) as File[];
+    const newAnexos: Anexo[] = [];
+
+    for (const file of files) {
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string) || '');
+        reader.readAsDataURL(file);
+      });
+
+      const sizeStr = file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+      newAnexos.push({
+        id: `anx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        nome: file.name,
+        tamanho: sizeStr,
+        tipo: file.type || 'application/octet-stream',
+        url: base64,
+        data_upload: new Date().toLocaleString('pt-BR'),
+      });
+    }
+
+    setNewJobData((prev) => ({
+      ...prev,
+      anexos: [...(prev.anexos || []), ...newAnexos],
+    }));
+    e.target.value = '';
+  };
+
+  const handleRemoveNewJobAnexo = (anexoId: string) => {
+    setNewJobData((prev) => ({
+      ...prev,
+      anexos: (prev.anexos || []).filter((a) => a.id !== anexoId),
+    }));
+  };
+
+  // Quick Create Job Submit
+  const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newJobData.cliente_id || !newJobData.titulo_job) {
+      showToast('error', 'Campos Obrigatórios', 'Selecione o cliente e informe o título do job.');
+      return;
+    }
+
+    const comp = clientes.find((c) => c.id === newJobData.cliente_id);
+    const payload: Partial<Job> = {
+      ...newJobData,
+      nome_job: newJobData.titulo_job,
+      cliente_nome: comp?.nome_fantasia || comp?.razao_social || 'Cliente Sothink',
+      status: 'Novos Jobs (Análise)',
+    };
+
+    await handleSaveJob(payload);
+    setNewJobModalOpen(false);
+    setNewJobData({
+      cliente_id: '',
+      titulo_job: '',
+      urgencia: 'Médio',
+      data_entrega: '',
+      briefing: '',
+      anexos: [],
+    });
+    showToast('success', 'Novo Job Criado!', 'Adicionado na coluna Novos Jobs (Análise).');
+    setActiveTab('jobs');
+  };
+
+  // Render Portal do Cliente view if logged in as a Client
+  if (clientPortalObj) {
+    return (
+      <ClientPortalView
+        client={clientPortalObj}
+        jobs={jobs}
+        relatorios={relatorios}
+        onLogoutClient={() => {
+          setClientPortalObj(null);
+          setUser(INITIAL_USERS[0]);
+          showToast('info', 'Sessão Encerrada');
+        }}
+        onSaveJob={handleSaveJob}
+        showToast={showToast}
+      />
+    );
+  }
+
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case 'dashboard': return 'Dashboard Geral';
+      case 'clientes': return 'CRM de Clientes';
+      case 'atas': return 'Atas de Reunião';
+      case 'jobs': return 'Controle de Jobs';
+      case 'relatorios': return 'Relatórios de Tráfego';
+      default: return 'Controle de Jobs';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 flex flex-col">
+      <Toast
+        show={toast.show}
+        type={toast.type}
+        title={toast.title}
+        description={toast.desc}
+        onClose={() => setToast((prev) => ({ ...prev, show: false }))}
+      />
+
+      {/* Main Header */}
+      <Header
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        currentUser={user}
+        onOpenLoginModal={() => setUser(null)}
+        showToast={showToast}
+        activeTabTitle={getTabTitle()}
+      />
+
+      {/* App Body Layout */}
+      <div className="flex flex-1 min-h-[calc(100vh-64px)]">
+        {/* Navigation Sidebar */}
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          clientesCount={clientes.length}
+          atasCount={atas.length}
+          jobsCount={jobs.length}
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              clientes={clientes}
+              atas={atas}
+              jobs={jobs}
+              onOpenNewCliente={() => setActiveTab('clientes')}
+              onOpenNewAta={() => {
+                setPreSelectedClientForAta(null);
+                setActiveTab('atas');
+              }}
+              onOpenNewJob={() => setNewJobModalOpen(true)}
+              onSelectJob={(j) => {
+                setSelectedJobForKanbanModal(j);
+                setActiveTab('jobs');
+              }}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === 'clientes' && (
+            <ClientsView
+              clientes={clientes}
+              atas={atas}
+              jobs={jobs}
+              onSaveCliente={handleSaveCliente}
+              onDeleteCliente={handleDeleteCliente}
+              onSelectJob={(j) => {
+                setSelectedJobForKanbanModal(j);
+                setActiveTab('jobs');
+              }}
+              onOpenNewAtaForClient={(comp) => {
+                setPreSelectedClientForAta(comp);
+                setActiveTab('atas');
+              }}
+              onOpenNewJobForClient={(comp) => {
+                setNewJobData((prev) => ({ ...prev, cliente_id: comp.id }));
+                setNewJobModalOpen(true);
+              }}
+              showToast={showToast}
+            />
+          )}
+
+          {activeTab === 'atas' && (
+            <AtasView
+              atas={atas}
+              clientes={clientes}
+              onSaveAta={handleSaveAta}
+              onDeleteAta={handleDeleteAta}
+              showToast={showToast}
+              preSelectedClient={preSelectedClientForAta}
+            />
+          )}
+
+          {activeTab === 'jobs' && (
+            <JobsKanbanView
+              jobs={jobs}
+              clientes={clientes}
+              templates={templates}
+              currentUser={user}
+              onSaveJob={handleSaveJob}
+              onDeleteJob={handleDeleteJob}
+              showToast={showToast}
+              selectedJobFromApp={selectedJobForKanbanModal}
+              onClearSelectedJob={() => setSelectedJobForKanbanModal(null)}
+              onOpenNewJobModal={() => setNewJobModalOpen(true)}
+            />
+          )}
+
+          {activeTab === 'relatorios' && (
+            <RelatoriosView
+              relatorios={relatorios}
+              clientes={clientes}
+              onSaveRelatorio={handleSaveRelatorio}
+              onDeleteRelatorio={handleDeleteRelatorio}
+              showToast={showToast}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* Login Modal */}
+      {!user && !clientPortalObj && (
+        <LoginModal
+          onLoginSuccess={(u, clientObj) => {
+            if (clientObj) {
+              setClientPortalObj(clientObj);
+            } else {
+              setUser(u);
+            }
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* Global Quick New Job Modal */}
+      {newJobModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-6 shadow-2xl space-y-5 my-8 animate-in zoom-in-95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                <Plus className="w-5 h-5 text-indigo-600" />
+                Criar Novo Job no Kanban
+              </h3>
+              <button onClick={() => setNewJobModalOpen(false)} className="p-1 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewJobSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Cliente Solicitante *
+                </label>
+                <select
+                  required
+                  value={newJobData.cliente_id}
+                  onChange={(e) => setNewJobData({ ...newJobData, cliente_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                >
+                  <option value="">Selecione a empresa cliente...</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome_fantasia || c.razao_social}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Título do Job *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Campanha Tráfego Reels Black Friday"
+                  value={newJobData.titulo_job}
+                  onChange={(e) => setNewJobData({ ...newJobData, titulo_job: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Grau de Urgência
+                  </label>
+                  <select
+                    value={newJobData.urgencia}
+                    onChange={(e) => setNewJobData({ ...newJobData, urgencia: e.target.value as JobUrgencia })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  >
+                    <option value="Baixo">Baixo</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Alto">Alto</option>
+                    <option value="Crítico">Crítico</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Data de Entrega
+                  </label>
+                  <input
+                    type="date"
+                    value={newJobData.data_entrega}
+                    onChange={(e) => setNewJobData({ ...newJobData, data_entrega: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Briefing Inicial
+                </label>
+                <textarea
+                  rows={3}
+                  value={newJobData.briefing}
+                  onChange={(e) => setNewJobData({ ...newJobData, briefing: e.target.value })}
+                  placeholder="Resumo das necessidades e especificações do cliente..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    Anexar Arquivos do Job ({newJobData.anexos?.length || 0})
+                  </label>
+                  <label className="cursor-pointer text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5" />
+                    + Adicionar Arquivos
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleNewJobFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {newJobData.anexos && newJobData.anexos.length > 0 && (
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {newJobData.anexos.map((anx) => (
+                      <div
+                        key={anx.id}
+                        className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]"
+                      >
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title={anx.nome}>
+                          📎 {anx.nome} <span className="text-slate-400 font-mono">({anx.tamanho})</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveNewJobAnexo(anx.id)}
+                          className="text-slate-400 hover:text-rose-500 p-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setNewJobModalOpen(false)}
+                  className="px-4 py-2 font-bold text-slate-500"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30"
+                >
+                  Criar Job no Kanban
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

@@ -1,0 +1,654 @@
+import React, { useState } from 'react';
+import {
+  FileText,
+  Plus,
+  Search,
+  Printer,
+  Edit,
+  Trash2,
+  Building2,
+  Calendar,
+  DollarSign,
+  Users,
+  MessageSquare,
+  TrendingUp,
+  X,
+  CheckCircle2,
+  Sparkles,
+  Download,
+  Eye,
+  Layers,
+} from 'lucide-react';
+import { Relatorio, EmpresaCliente } from '../types';
+
+interface RelatoriosViewProps {
+  relatorios: Relatorio[];
+  clientes: EmpresaCliente[];
+  onSaveRelatorio: (relatorio: Partial<Relatorio>) => Promise<void>;
+  onDeleteRelatorio: (id: string) => Promise<void>;
+  showToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
+  isClientView?: boolean;
+}
+
+export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
+  relatorios,
+  clientes,
+  onSaveRelatorio,
+  onDeleteRelatorio,
+  showToast,
+  isClientView = false,
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClienteFilter, setSelectedClienteFilter] = useState('');
+  const [activeReport, setActiveReport] = useState<Relatorio | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+
+  // Form state for creating/editing
+  const [formData, setFormData] = useState<Partial<Relatorio>>({
+    cliente_id: '',
+    cliente_nome: '',
+    titulo: 'Relatório Mensal de Performance - Tráfego Pago',
+    periodo: '5 jan a 4 fev',
+    campanhas: ['prolongadores', 'puxadores', 'roldanas', 'torre'],
+    investimento: '7.612,05',
+    alcance: '802.296',
+    total_conversas: '481',
+    custo_por_conversa: '15,80',
+    observacoes: 'Campanhas focadas em atração para atendimento via WhatsApp com alta conversão.',
+  });
+
+  const [campanhasText, setCampanhasText] = useState('prolongadores\npuxadores\nroldanas\ntorre');
+
+  const filteredRelatorios = relatorios.filter((r) => {
+    const matchesSearch =
+      r.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.periodo.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClient = selectedClienteFilter ? r.cliente_id === selectedClienteFilter : true;
+    return matchesSearch && matchesClient;
+  });
+
+  const openNewModal = () => {
+    setFormData({
+      cliente_id: clientes[0]?.id || '',
+      cliente_nome: clientes[0]?.nome_fantasia || clientes[0]?.razao_social || 'Cliente Sothink',
+      titulo: 'Relatório Mensal de Performance - Tráfego Pago',
+      periodo: '5 jan a 4 fev',
+      campanhas: ['prolongadores', 'puxadores', 'roldanas', 'torre'],
+      investimento: '7.612,05',
+      alcance: '802.296',
+      total_conversas: '481',
+      custo_por_conversa: '15,80',
+      observacoes: 'Campanhas ativas com foco em conversões e engajamento comercial.',
+    });
+    setCampanhasText('prolongadores\npuxadores\nroldanas\ntorre');
+    setEditModalOpen(true);
+  };
+
+  const openEditModal = (rel: Relatorio) => {
+    setFormData({ ...rel });
+    setCampanhasText(Array.isArray(rel.campanhas) ? rel.campanhas.join('\n') : rel.campanhas || '');
+    setEditModalOpen(true);
+  };
+
+  const openViewModal = (rel: Relatorio) => {
+    setActiveReport(rel);
+    setViewModalOpen(true);
+  };
+
+  const handleSelectClientChange = (clienteId: string) => {
+    const found = clientes.find((c) => c.id === clienteId);
+    setFormData((prev) => ({
+      ...prev,
+      cliente_id: clienteId,
+      cliente_nome: found ? found.nome_fantasia || found.razao_social : prev.cliente_nome,
+    }));
+  };
+
+  const handleSubmitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.cliente_nome || !formData.periodo) {
+      showToast('error', 'Campos Obrigatórios', 'Preencha o cliente e o período do relatório.');
+      return;
+    }
+
+    const campanhasArray = campanhasText
+      .split('\n')
+      .map((s) => s.trim().replace(/^-\s*/, ''))
+      .filter((s) => s.length > 0);
+
+    try {
+      await onSaveRelatorio({
+        ...formData,
+        campanhas: campanhasArray,
+      });
+      setEditModalOpen(false);
+      showToast('success', 'Relatório Salvo!', 'O relatório foi armazenado com sucesso.');
+    } catch (err: any) {
+      showToast('error', 'Erro ao salvar relatório', err.message);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Tem certeza que deseja excluir este relatório?')) {
+      try {
+        await onDeleteRelatorio(id);
+        showToast('info', 'Relatório Removido');
+      } catch (err: any) {
+        showToast('error', 'Erro ao excluir', err.message);
+      }
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800 no-print">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            Relatórios de Performance
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-200/50">
+              {filteredRelatorios.length}
+            </span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Métricas de tráfego pago, alcance, investimento e custo por conversa
+          </p>
+        </div>
+
+        {!isClientView && (
+          <button onClick={openNewModal} className="btn-primary flex items-center gap-2 shrink-0">
+            <Plus className="w-4 h-4" />
+            + Novo Relatório
+          </button>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs no-print">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por cliente, título ou período..."
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {!isClientView && clientes.length > 0 && (
+          <div className="w-full sm:w-64">
+            <select
+              value={selectedClienteFilter}
+              onChange={(e) => setSelectedClienteFilter(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos os Clientes</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome_fantasia || c.razao_social}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Reports Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 no-print">
+        {filteredRelatorios.length === 0 ? (
+          <div className="col-span-full p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 space-y-3">
+            <FileText className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-700" />
+            <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+              Nenhum relatório encontrado.
+            </p>
+            {!isClientView && (
+              <p className="text-xs">
+                Clique em <strong>"+ Novo Relatório"</strong> para gerar um relatório de tráfego.
+              </p>
+            )}
+          </div>
+        ) : (
+          filteredRelatorios.map((rel) => (
+            <div
+              key={rel.id}
+              onClick={() => openViewModal(rel)}
+              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:shadow-md hover:border-blue-500/60 transition-all cursor-pointer flex flex-col justify-between space-y-4 group"
+            >
+              <div className="space-y-3">
+                {/* Header info */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold text-[10px] border border-blue-200/40">
+                    {rel.cliente_nome}
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    {rel.periodo}
+                  </span>
+                </div>
+
+                {/* Title */}
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {rel.titulo}
+                </h3>
+
+                {/* Campaigns pills */}
+                {rel.campanhas && rel.campanhas.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      Campanhas:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {rel.campanhas.map((camp, idx) => (
+                        <span
+                          key={idx}
+                          className="tag tag-design"
+                        >
+                          {camp.startsWith('-') ? camp : `- ${camp}`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Metric Summary Grid */}
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <span className="text-[10px] text-slate-400 font-medium block">Investimento</span>
+                    <span className="font-extrabold text-slate-900 dark:text-slate-100">
+                      R$ {rel.investimento}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <span className="text-[10px] text-slate-400 font-medium block">Alcance</span>
+                    <span className="font-extrabold text-slate-900 dark:text-slate-100">
+                      {rel.alcance}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <span className="text-[10px] text-slate-400 font-medium block">Total Conversas</span>
+                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                      {rel.total_conversas}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <span className="text-[10px] text-slate-400 font-medium block">Custo/Conversa</span>
+                    <span className="font-extrabold text-blue-600 dark:text-blue-400">
+                      R$ {rel.custo_por_conversa}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span className="text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1">
+                  <Eye className="w-3.5 h-3.5" /> Visualizar & Imprimir
+                </span>
+
+                {!isClientView && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(rel);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      title="Editar Relatório"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(rel.id, e)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      title="Excluir Relatório"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Edit / Create Relatório Modal */}
+      {editModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto no-print">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95 text-xs text-slate-800 dark:text-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  {formData.id ? 'Editar Relatório de Performance' : 'Criar Novo Relatório'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitForm} className="space-y-4">
+              {/* Cliente & Período */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Cliente *
+                  </label>
+                  {clientes.length > 0 ? (
+                    <select
+                      value={formData.cliente_id || ''}
+                      onChange={(e) => handleSelectClientChange(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500"
+                    >
+                      {clientes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nome_fantasia || c.razao_social}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      value={formData.cliente_nome || ''}
+                      onChange={(e) => setFormData({ ...formData, cliente_nome: e.target.value })}
+                      placeholder="Nome do Cliente"
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Período *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 5 jan a 4 fev"
+                    value={formData.periodo || ''}
+                    onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Título do Relatório */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Título do Relatório *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Relatório de Desempenho - Tráfego Pago"
+                  value={formData.titulo || ''}
+                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Campanhas (uma por linha) */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Campanhas (uma por linha) *
+                </label>
+                <textarea
+                  rows={4}
+                  value={campanhasText}
+                  onChange={(e) => setCampanhasText(e.target.value)}
+                  placeholder={"- prolongadores\n- puxadores\n- roldanas\n- torre"}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Digite o nome de cada campanha que participou do investimento no período.
+                </p>
+              </div>
+
+              {/* Métricas: Investimento, Alcance, Total Conversas, Média Custo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Investimento (R$) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 7.612,05"
+                    value={formData.investimento || ''}
+                    onChange={(e) => setFormData({ ...formData, investimento: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Alcance *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 802.296"
+                    value={formData.alcance || ''}
+                    onChange={(e) => setFormData({ ...formData, alcance: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Total de Conversas *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 481"
+                    value={formData.total_conversas || ''}
+                    onChange={(e) => setFormData({ ...formData, total_conversas: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:ring-2 focus:ring-blue-500 text-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Média custo por conversa (R$) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 15,80"
+                    value={formData.custo_por_conversa || ''}
+                    onChange={(e) => setFormData({ ...formData, custo_por_conversa: e.target.value })}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-bold focus:ring-2 focus:ring-blue-500 text-blue-600"
+                  />
+                </div>
+              </div>
+
+              {/* Observações */}
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Análise / Observações da Agência
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.observacoes || ''}
+                  onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+                  placeholder="Anotações estratégicas sobre os resultados..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2 rounded-xl font-bold text-slate-600 dark:text-slate-400"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary">
+                  Salvar Relatório
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View & Print Modal */}
+      {viewModalOpen && activeReport && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95 text-slate-900 dark:text-slate-100 relative">
+            {/* Modal Controls Bar (hidden during browser print) */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 no-print">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-xs">
+                  S
+                </span>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    Visualização do Relatório
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Sothink Marketing OS — Pronto para Impressão e PDF
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrint}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-md shadow-blue-600/30 transition-all active:scale-95"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir / Baixar PDF
+                </button>
+                <button
+                  onClick={() => setViewModalOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Report Canvas */}
+            <div id="printable-report" className="space-y-6 p-4 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+              {/* Report Header Branding */}
+              <div className="flex items-start justify-between border-b-2 border-slate-800 dark:border-slate-200 pb-4">
+                <div>
+                  <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                    Agência Sothink
+                  </h1>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Relatório Executivo de Tráfego Pago & Performance
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 block">
+                    {activeReport.cliente_nome}
+                  </span>
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    Período: {activeReport.periodo}
+                  </span>
+                </div>
+              </div>
+
+              {/* Report Title */}
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                  {activeReport.titulo}
+                </h2>
+              </div>
+
+              {/* Campaigns section */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2">
+                <h3 className="font-extrabold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-500" />
+                  Campanhas Veiculadas
+                </h3>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  {activeReport.campanhas?.map((camp, idx) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+                      <span>{camp.startsWith('-') ? camp.substring(1).trim() : camp}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Key Metrics Dashboard */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 text-center space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 dark:text-blue-300 block">
+                    Investimento
+                  </span>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">
+                    R$ {activeReport.investimento}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-center space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                    Alcance
+                  </span>
+                  <p className="text-lg font-black text-slate-900 dark:text-white">
+                    {activeReport.alcance}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40 text-center space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 block">
+                    Total Conversas
+                  </span>
+                  <p className="text-lg font-black text-emerald-700 dark:text-emerald-300">
+                    {activeReport.total_conversas}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 text-center space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 dark:text-blue-300 block">
+                    Média Custo / Conversa
+                  </span>
+                  <p className="text-lg font-black text-blue-700 dark:text-blue-300">
+                    R$ {activeReport.custo_por_conversa}
+                  </p>
+                </div>
+              </div>
+
+              {/* Observations */}
+              {activeReport.observacoes && (
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1.5 text-xs">
+                  <h4 className="font-extrabold text-slate-900 dark:text-white">
+                    Análise Estratégica & Considerações da Agência
+                  </h4>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                    {activeReport.observacoes}
+                  </p>
+                </div>
+              )}
+
+              {/* Footer Stamp */}
+              <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-medium">
+                <span>Relatório Gerado por Agência Sothink OS</span>
+                <span>Data de Emissão: {new Date(activeReport.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

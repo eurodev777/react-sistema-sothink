@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Building2,
   Plus,
@@ -26,9 +26,9 @@ import {
   Sparkles,
   MapPin,
   Lock,
-} from 'lucide-react';
-import { EmpresaCliente, ResponsavelCliente, AtaReuniao, Job } from '../types';
-import { apiService } from '../services/apiService';
+} from "lucide-react";
+import { EmpresaCliente, ResponsavelCliente, AtaReuniao, Job } from "../types";
+import { apiService } from "../services/apiService";
 
 interface ClientsViewProps {
   clientes: EmpresaCliente[];
@@ -39,11 +39,14 @@ interface ClientsViewProps {
   onSelectJob: (job: Job) => void;
   onOpenNewAtaForClient: (cliente: EmpresaCliente) => void;
   onOpenNewJobForClient: (cliente: EmpresaCliente) => void;
-  showToast: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
+  showToast: (
+    type: "success" | "error" | "info",
+    title: string,
+    desc?: string
+  ) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
-  clientes,
   atas,
   jobs,
   onSaveCliente,
@@ -53,41 +56,70 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onOpenNewJobForClient,
   showToast,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClient, setSelectedClient] = useState<EmpresaCliente | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClient, setSelectedClient] = useState<EmpresaCliente | null>(
+    null
+  );
   const [clientDetailTab, setClientDetailTab] = useState<
-    'info' | 'atas' | 'jobs' | 'arquivos' | 'historico' | 'config'
-  >('info');
+    "info" | "atas" | "jobs" | "arquivos" | "historico" | "config"
+  >("info");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Partial<EmpresaCliente> | null>(null);
+  const [editingClient, setEditingClient] =
+    useState<Partial<EmpresaCliente> | null>(null);
   const [cnpjLoading, setCnpjLoading] = useState(false);
 
   // Form state for new/edit client
   const [formData, setFormData] = useState<Partial<EmpresaCliente>>({
-    razao_social: '',
-    nome_fantasia: '',
-    cnpj: '',
-    inscricao_estadual: 'ISENTA',
-    logradouro: '',
-    numero: '',
-    bairro: '',
-    cidade: '',
-    estado: '',
-    cep: '',
-    telefone: '',
-    whatsapp: '',
-    email: '',
-    site: '',
-    instagram: '',
-    facebook: '',
+    razao_social: "",
+    nome_fantasia: "",
+    cnpj: "",
+    inscricao_estadual: "ISENTA",
+    logradouro: "",
+    numero: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    cep: "",
+    telefone: "",
+    whatsapp: "",
+    email: "",
+    site: "",
+    instagram: "",
+    facebook: "",
     permitir_acesso: true,
-    login_cliente: '',
-    senha_cliente: '',
+    login_cliente: "",
+    senha_cliente: "",
     responsaveis: [],
   });
 
   const [responsaveis, setResponsaveis] = useState<ResponsavelCliente[]>([]);
+  const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
+  const [loadingClientes, setLoadingClientes] = useState(false);
+
+  useEffect(() => {
+    const carregarClientes = async () => {
+      try {
+        setLoadingClientes(true);
+
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=clientes"
+        );
+
+        const data = await response.json();
+
+        console.log(data);
+
+        setClientes(data);
+      } catch (error) {
+        console.error("Erro ao carregar clientes:", error);
+      } finally {
+        setLoadingClientes(false);
+      }
+    };
+
+    carregarClientes();
+  }, []);
 
   const filteredClients = clientes.filter(
     (c) =>
@@ -100,36 +132,36 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const openNewClientModal = () => {
     setEditingClient(null);
     setFormData({
-      razao_social: '',
-      nome_fantasia: '',
-      cnpj: '',
-      inscricao_estadual: 'ISENTA',
-      logradouro: '',
-      numero: '',
-      bairro: '',
-      cidade: '',
-      estado: '',
-      cep: '',
-      telefone: '',
-      whatsapp: '',
-      email: '',
-      site: '',
-      instagram: '',
-      facebook: '',
+      razao_social: "",
+      nome_fantasia: "",
+      cnpj: "",
+      inscricao_estadual: "ISENTA",
+      logradouro: "",
+      numero: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      cep: "",
+      telefone: "",
+      whatsapp: "",
+      email: "",
+      site: "",
+      instagram: "",
+      facebook: "",
       permitir_acesso: true,
-      login_cliente: '',
-      senha_cliente: 'sothink2026',
+      login_cliente: "",
+      senha_cliente: "sothink2026",
       responsaveis: [],
     });
     setResponsaveis([
       {
         id: `r-${Date.now()}`,
-        nome: '',
-        cargo: 'Gerente / Contato Principal',
-        email: '',
-        telefone: '',
-        whatsapp: '',
-        data_aniversario: '',
+        nome: "",
+        cargo: "Gerente / Contato Principal",
+        email: "",
+        telefone: "",
+        whatsapp: "",
+        data_aniversario: "",
       },
     ]);
     setModalOpen(true);
@@ -138,14 +170,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const openEditClientModal = (c: EmpresaCliente) => {
     setEditingClient(c);
     setFormData({ ...c });
-    setResponsaveis(c.responsaveis || []);
+    setResponsaveis(c.contatos || []);
     setModalOpen(true);
   };
 
   // CNPJ Consulta Automática
   const handleConsultarCNPJ = async () => {
     if (!formData.cnpj) {
-      showToast('error', 'CNPJ Obrigatório', 'Informe o CNPJ antes de consultar.');
+      showToast(
+        "error",
+        "CNPJ Obrigatório",
+        "Informe o CNPJ antes de consultar."
+      );
       return;
     }
 
@@ -157,7 +193,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         setFormData((prev) => ({
           ...prev,
           razao_social: d.razao_social || prev.razao_social,
-          nome_fantasia: d.nome_fantasia || d.razao_social || prev.nome_fantasia,
+          nome_fantasia:
+            d.nome_fantasia || d.razao_social || prev.nome_fantasia,
           logradouro: d.logradouro || prev.logradouro,
           numero: d.numero || prev.numero,
           bairro: d.bairro || prev.bairro,
@@ -170,12 +207,20 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           telefone: d.telefone || prev.telefone,
           email: d.email || prev.email,
         }));
-        showToast('success', 'CNPJ Consultado com Sucesso!', 'Dados preenchidos automaticamente.');
+        showToast(
+          "success",
+          "CNPJ Consultado com Sucesso!",
+          "Dados preenchidos automaticamente."
+        );
       } else {
-        showToast('error', 'Falha na Consulta CNPJ', res.message || 'CNPJ não encontrado.');
+        showToast(
+          "error",
+          "Falha na Consulta CNPJ",
+          res.message || "CNPJ não encontrado."
+        );
       }
     } catch (e: any) {
-      showToast('error', 'Erro na Consulta', e.message);
+      showToast("error", "Erro na Consulta", e.message);
     } finally {
       setCnpjLoading(false);
     }
@@ -187,17 +232,21 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       ...prev,
       {
         id: `r-${Date.now()}`,
-        nome: '',
-        cargo: '',
-        email: '',
-        telefone: '',
-        whatsapp: '',
-        data_aniversario: '',
+        nome: "",
+        cargo: "",
+        email: "",
+        telefone: "",
+        whatsapp: "",
+        data_aniversario: "",
       },
     ]);
   };
 
-  const handleUpdateResponsavel = (index: number, field: keyof ResponsavelCliente, value: string) => {
+  const handleUpdateResponsavel = (
+    index: number,
+    field: keyof ResponsavelCliente,
+    value: string
+  ) => {
     setResponsaveis((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -213,26 +262,75 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.razao_social) {
-      showToast('error', 'Razão Social é obrigatória');
+      showToast("error", "Razão Social é obrigatória");
       return;
     }
 
     try {
-      const payload: Partial<EmpresaCliente> = {
-        ...formData,
-        id: editingClient?.id,
-        responsaveis,
-      };
+      const form = new FormData();
+      form.append("tabela", "clientes");
+      form.append("razao_social", formData.razao_social || "");
+      form.append("nome_fantasia", formData.nome_fantasia || "");
+      form.append("cnpj", formData.cnpj || "");
+      form.append("inscricao_estadual", formData.inscricao_estadual || "");
 
-      await onSaveCliente(payload);
+      // sua API usa "endereco", não "logradouro"
+      form.append("endereco", formData.logradouro || "");
+
+      form.append("numero", formData.numero || "");
+      form.append("bairro", formData.bairro || "");
+      form.append("cidade", formData.cidade || "");
+      form.append("estado", formData.estado || "");
+      form.append("cep", formData.cep || "");
+      form.append("telefone", formData.telefone || "");
+      form.append("whatsapp", formData.whatsapp || "");
+      form.append("email", formData.email || "");
+      form.append("site", formData.site || "");
+      form.append("instagram", formData.instagram || "");
+      form.append("facebook", formData.facebook || "");
+
+      // sua API usa username/password
+      form.append("username", formData.login_cliente || "");
+      form.append("password", formData.senha_cliente || "");
+
+      form.append("permitir_acesso", formData.permitir_acesso ? "1" : "0");
+
+      // Array de contatos
+      form.append("contatos", JSON.stringify(responsaveis));
+
+      const url = editingClient
+        ? "https://sothink.com.br/app/api/editar"
+        : "https://sothink.com.br/app/api/inserir";
+
+      if (editingClient) {
+        form.append("id", editingClient.id);
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        body: form,
+      });
+
+      const texto = await response.text();
+
+      console.log(texto);
+
+      let result;
+
+      try {
+        result = JSON.parse(texto);
+      } catch {
+        throw new Error("Resposta da API:\n" + texto);
+      }
       setModalOpen(false);
+
       showToast(
-        'success',
-        editingClient ? 'Cliente Atualizado!' : 'Cliente Cadastrado!',
-        'Os dados foram salvos no sistema.'
+        "success",
+        editingClient ? "Cliente Atualizado!" : "Cliente Cadastrado!",
+        "Os dados foram salvos no sistema."
       );
     } catch (err: any) {
-      showToast('error', 'Erro ao salvar cliente', err.message);
+      showToast("error", "Erro ao salvar cliente", err.message);
     }
   };
 
@@ -274,15 +372,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {!selectedClient ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredClients.map((client) => {
-            const clientAtasCount = atas.filter((a) => a.cliente_id === client.id).length;
-            const clientJobsCount = jobs.filter((j) => j.cliente_id === client.id).length;
+            const clientAtasCount = atas.filter(
+              (a) => a.cliente_id === client.id
+            ).length;
+            const clientJobsCount = jobs.filter(
+              (j) => j.cliente_id === client.id
+            ).length;
 
             return (
               <div
                 key={client.id}
                 onClick={() => {
                   setSelectedClient(client);
-                  setClientDetailTab('info');
+                  setClientDetailTab("info");
                 }}
                 className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer group flex flex-col justify-between"
               >
@@ -290,12 +392,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {/* Top Badges */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base shrink-0 group-hover:scale-105 transition-transform">
-                      {client.nome_fantasia?.charAt(0) || client.razao_social?.charAt(0) || 'C'}
+                      {client.nome_fantasia?.charAt(0) ||
+                        client.razao_social?.charAt(0) ||
+                        "C"}
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-bold">
-                        {client.cidade || 'SP'} - {client.estado || 'SP'}
+                        {client.cidade || "SP"} - {client.estado || "SP"}
                       </span>
                       {client.permitir_acesso && (
                         <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-200/50">
@@ -314,7 +418,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       {client.razao_social}
                     </p>
                     <p className="text-[11px] font-mono text-slate-400 mt-0.5">
-                      CNPJ: {client.cnpj || 'Não informado'}
+                      CNPJ: {client.cnpj || "Não informado"}
                     </p>
                   </div>
 
@@ -323,7 +427,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-400 space-y-1">
                       <p className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                         <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
-                        {client.responsaveis[0].nome} ({client.responsaveis[0].cargo})
+                        {client.responsaveis[0].nome} (
+                        {client.responsaveis[0].cargo})
                       </p>
                       {client.responsaveis[0].whatsapp && (
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
@@ -371,20 +476,22 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               </button>
 
               <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-extrabold text-xl flex items-center justify-center shadow-md shadow-indigo-600/30">
-                {selectedClient.nome_fantasia?.charAt(0) || 'C'}
+                {selectedClient.nome_fantasia?.charAt(0) || "C"}
               </div>
 
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                    {selectedClient.nome_fantasia || selectedClient.razao_social}
+                    {selectedClient.nome_fantasia ||
+                      selectedClient.razao_social}
                   </h2>
                   <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-200/50">
                     CNPJ: {selectedClient.cnpj}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {selectedClient.razao_social} • {selectedClient.cidade}/{selectedClient.estado}
+                  {selectedClient.razao_social} • {selectedClient.cidade}/
+                  {selectedClient.estado}
                 </p>
               </div>
             </div>
@@ -413,10 +520,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               </button>
               <button
                 onClick={async () => {
-                  if (confirm('Tem certeza que deseja excluir este cliente?')) {
+                  if (confirm("Tem certeza que deseja excluir este cliente?")) {
                     await onDeleteCliente(selectedClient.id);
                     setSelectedClient(null);
-                    showToast('info', 'Cliente Excluído');
+                    showToast("info", "Cliente Excluído");
                   }
                 }}
                 className="p-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
@@ -430,66 +537,68 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           {/* Sub-menu Tabs for Selected Client */}
           <div className="flex overflow-x-auto gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 text-xs font-semibold">
             <button
-              onClick={() => setClientDetailTab('info')}
+              onClick={() => setClientDetailTab("info")}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                clientDetailTab === 'info'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                clientDetailTab === "info"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Building2 className="w-4 h-4" />
               Informações da Empresa
             </button>
             <button
-              onClick={() => setClientDetailTab('atas')}
+              onClick={() => setClientDetailTab("atas")}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                clientDetailTab === 'atas'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                clientDetailTab === "atas"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <FileText className="w-4 h-4" />
-              Ata de Reuniões ({atas.filter((a) => a.cliente_id === selectedClient.id).length})
+              Ata de Reuniões (
+              {atas.filter((a) => a.cliente_id === selectedClient.id).length})
             </button>
             <button
-              onClick={() => setClientDetailTab('jobs')}
+              onClick={() => setClientDetailTab("jobs")}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                clientDetailTab === 'jobs'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                clientDetailTab === "jobs"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Kanban className="w-4 h-4" />
-              Jobs ({jobs.filter((j) => j.cliente_id === selectedClient.id).length})
+              Jobs (
+              {jobs.filter((j) => j.cliente_id === selectedClient.id).length})
             </button>
             <button
-              onClick={() => setClientDetailTab('arquivos')}
+              onClick={() => setClientDetailTab("arquivos")}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                clientDetailTab === 'arquivos'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                clientDetailTab === "arquivos"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Folder className="w-4 h-4" />
               Arquivos & Mídia
             </button>
             <button
-              onClick={() => setClientDetailTab('historico')}
+              onClick={() => setClientDetailTab("historico")}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                clientDetailTab === 'historico'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                clientDetailTab === "historico"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <History className="w-4 h-4" />
               Histórico
             </button>
             <button
-              onClick={() => setClientDetailTab('config')}
+              onClick={() => setClientDetailTab("config")}
               className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                clientDetailTab === 'config'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                clientDetailTab === "config"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               <Settings className="w-4 h-4" />
@@ -498,7 +607,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </div>
 
           {/* Sub-menu Tab Content */}
-          {clientDetailTab === 'info' && (
+          {clientDetailTab === "info" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
               {/* Main Company Info */}
               <div className="lg:col-span-2 space-y-6">
@@ -510,40 +619,53 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-slate-400 block font-medium">Razão Social:</span>
+                      <span className="text-slate-400 block font-medium">
+                        Razão Social:
+                      </span>
                       <span className="font-bold text-slate-800 dark:text-slate-200">
                         {selectedClient.razao_social}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block font-medium">Nome Fantasia:</span>
+                      <span className="text-slate-400 block font-medium">
+                        Nome Fantasia:
+                      </span>
                       <span className="font-bold text-slate-800 dark:text-slate-200">
                         {selectedClient.nome_fantasia}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block font-medium">CNPJ:</span>
+                      <span className="text-slate-400 block font-medium">
+                        CNPJ:
+                      </span>
                       <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
                         {selectedClient.cnpj}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block font-medium">Inscrição Estadual:</span>
+                      <span className="text-slate-400 block font-medium">
+                        Inscrição Estadual:
+                      </span>
                       <span className="font-bold text-slate-800 dark:text-slate-200">
-                        {selectedClient.inscricao_estadual || 'ISENTA'}
+                        {selectedClient.inscricao_estadual || "ISENTA"}
                       </span>
                     </div>
                     <div className="sm:col-span-2">
-                      <span className="text-slate-400 block font-medium">Endereço Completo:</span>
+                      <span className="text-slate-400 block font-medium">
+                        Endereço Completo:
+                      </span>
                       <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3.5 h-3.5 text-indigo-500" />
-                        {selectedClient.logradouro}, {selectedClient.numero} - {selectedClient.bairro},{' '}
-                        {selectedClient.cidade}/{selectedClient.estado} - CEP: {selectedClient.cep}
+                        {selectedClient.logradouro}, {selectedClient.numero} -{" "}
+                        {selectedClient.bairro}, {selectedClient.cidade}/
+                        {selectedClient.estado} - CEP: {selectedClient.cep}
                       </span>
                     </div>
                     {selectedClient.cnae && (
                       <div className="sm:col-span-2">
-                        <span className="text-slate-400 block font-medium">CNAE Principal:</span>
+                        <span className="text-slate-400 block font-medium">
+                          CNAE Principal:
+                        </span>
                         <span className="font-medium text-slate-700 dark:text-slate-300">
                           {selectedClient.cnae}
                         </span>
@@ -561,7 +683,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     {selectedClient.site && (
                       <a
                         href={
-                          selectedClient.site.startsWith('http')
+                          selectedClient.site.startsWith("http")
                             ? selectedClient.site
                             : `https://${selectedClient.site}`
                         }
@@ -609,8 +731,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         key={resp.id}
                         className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1 text-xs"
                       >
-                        <div className="font-bold text-slate-900 dark:text-slate-100">{resp.nome}</div>
-                        <div className="text-slate-500 dark:text-slate-400 font-medium">{resp.cargo}</div>
+                        <div className="font-bold text-slate-900 dark:text-slate-100">
+                          {resp.nome}
+                        </div>
+                        <div className="text-slate-500 dark:text-slate-400 font-medium">
+                          {resp.cargo}
+                        </div>
                         {resp.email && (
                           <div className="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 pt-1">
                             <Mail className="w-3 h-3 text-indigo-500" />
@@ -631,7 +757,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
           )}
 
-          {clientDetailTab === 'atas' && (
+          {clientDetailTab === "atas" && (
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
@@ -645,7 +771,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 </button>
               </div>
 
-              {atas.filter((a) => a.cliente_id === selectedClient.id).length === 0 ? (
+              {atas.filter((a) => a.cliente_id === selectedClient.id).length ===
+              0 ? (
                 <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 text-xs">
                   Nenhuma ata de reunião cadastrada para este cliente ainda.
                 </div>
@@ -660,12 +787,22 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                            Reunião {ata.tipo_reuniao} • {new Date(ata.data_reuniao).toLocaleDateString('pt-BR')} às {ata.hora_reuniao}
+                            Reunião {ata.tipo_reuniao} •{" "}
+                            {new Date(ata.data_reuniao).toLocaleDateString(
+                              "pt-BR"
+                            )}{" "}
+                            às {ata.hora_reuniao}
                           </span>
-                          <span className="text-slate-400 font-mono">Resp: {ata.responsavel}</span>
+                          <span className="text-slate-400 font-mono">
+                            Resp: {ata.responsavel}
+                          </span>
                         </div>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{ata.objetivo}</p>
-                        <p className="text-slate-600 dark:text-slate-400 line-clamp-2">{ata.decisoes}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">
+                          {ata.objetivo}
+                        </p>
+                        <p className="text-slate-600 dark:text-slate-400 line-clamp-2">
+                          {ata.decisoes}
+                        </p>
                       </div>
                     ))}
                 </div>
@@ -673,7 +810,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
           )}
 
-          {clientDetailTab === 'jobs' && (
+          {clientDetailTab === "jobs" && (
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm">
@@ -701,7 +838,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           {job.status}
                         </span>
                         <span className="text-slate-400 font-mono text-[10px]">
-                          Entrega: {job.data_entrega || '-'}
+                          Entrega: {job.data_entrega || "-"}
                         </span>
                       </div>
                       <h5 className="font-bold text-slate-900 dark:text-white text-sm">
@@ -716,14 +853,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
           )}
 
-          {clientDetailTab === 'config' && (
+          {clientDetailTab === "config" && (
             <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 space-y-4 max-w-xl text-xs">
               <h4 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
                 <Lock className="w-4 h-4 text-indigo-500" />
                 Configurações de Acesso do Cliente ao Portal
               </h4>
               <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                Permita que este cliente acesse exclusivamente os seus próprios Jobs para acompanhar o andamento, aprovar entregas, baixar arquivos e comentar.
+                Permita que este cliente acesse exclusivamente os seus próprios
+                Jobs para acompanhar o andamento, aprovar entregas, baixar
+                arquivos e comentar.
               </p>
 
               <div className="space-y-3 pt-2">
@@ -733,7 +872,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={selectedClient.login_cliente || ''}
+                    value={selectedClient.login_cliente || ""}
                     disabled
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-slate-700 dark:text-slate-300"
                   />
@@ -745,7 +884,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={selectedClient.senha_cliente || ''}
+                    value={selectedClient.senha_cliente || ""}
                     disabled
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-slate-700 dark:text-slate-300"
                   />
@@ -763,7 +902,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-indigo-600" />
-                {editingClient ? 'Editar Empresa Cliente' : 'Cadastrar Nova Empresa Cliente'}
+                {editingClient
+                  ? "Editar Empresa Cliente"
+                  : "Cadastrar Nova Empresa Cliente"}
               </h3>
               <button
                 onClick={() => setModalOpen(false)}
@@ -789,8 +930,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="cnpj"
-                    value={formData.cnpj || ''}
-                    onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                    value={formData.cnpj || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cnpj: e.target.value })
+                    }
                     placeholder="00.000.000/0000-00"
                     className="flex-1 px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-xs focus:ring-2 focus:ring-indigo-500/40"
                   />
@@ -800,7 +943,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     disabled={cnpjLoading}
                     className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl flex items-center gap-2 shadow-md shadow-indigo-600/20 shrink-0"
                   >
-                    {cnpjLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-300" />}
+                    {cnpjLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                    )}
                     Consultar CNPJ
                   </button>
                 </div>
@@ -816,8 +963,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     type="text"
                     name="razao_social"
                     required
-                    value={formData.razao_social || ''}
-                    onChange={(e) => setFormData({ ...formData, razao_social: e.target.value })}
+                    value={formData.razao_social || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, razao_social: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -829,8 +978,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="nome_fantasia"
-                    value={formData.nome_fantasia || ''}
-                    onChange={(e) => setFormData({ ...formData, nome_fantasia: e.target.value })}
+                    value={formData.nome_fantasia || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        nome_fantasia: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -842,8 +996,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="inscricao_estadual"
-                    value={formData.inscricao_estadual || ''}
-                    onChange={(e) => setFormData({ ...formData, inscricao_estadual: e.target.value })}
+                    value={formData.inscricao_estadual || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        inscricao_estadual: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -855,8 +1014,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="cep"
-                    value={formData.cep || ''}
-                    onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                    value={formData.cep || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cep: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -869,8 +1030,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       name="logradouro"
-                      value={formData.logradouro || ''}
-                      onChange={(e) => setFormData({ ...formData, logradouro: e.target.value })}
+                      value={formData.logradouro || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, logradouro: e.target.value })
+                      }
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                     />
                   </div>
@@ -881,8 +1044,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       name="numero"
-                      value={formData.numero || ''}
-                      onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                      value={formData.numero || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, numero: e.target.value })
+                      }
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                     />
                   </div>
@@ -895,8 +1060,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="bairro"
-                    value={formData.bairro || ''}
-                    onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                    value={formData.bairro || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bairro: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -909,8 +1076,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       name="cidade"
-                      value={formData.cidade || ''}
-                      onChange={(e) => setFormData({ ...formData, cidade: e.target.value })}
+                      value={formData.cidade || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, cidade: e.target.value })
+                      }
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                     />
                   </div>
@@ -921,8 +1090,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       name="estado"
-                      value={formData.estado || ''}
-                      onChange={(e) => setFormData({ ...formData, estado: e.target.value })}
+                      value={formData.estado || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, estado: e.target.value })
+                      }
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                     />
                   </div>
@@ -935,8 +1106,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="telefone"
-                    value={formData.telefone || ''}
-                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                    value={formData.telefone || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, telefone: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -948,8 +1121,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="whatsapp"
-                    value={formData.whatsapp || ''}
-                    onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
+                    value={formData.whatsapp || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, whatsapp: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -961,8 +1136,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="email"
                     name="email"
-                    value={formData.email || ''}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    value={formData.email || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -974,8 +1151,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <input
                     type="text"
                     name="site"
-                    value={formData.site || ''}
-                    onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+                    value={formData.site || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, site: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500/40"
                   />
                 </div>
@@ -992,7 +1171,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="checkbox"
                       checked={formData.permitir_acesso ?? true}
-                      onChange={(e) => setFormData({ ...formData, permitir_acesso: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          permitir_acesso: e.target.checked,
+                        })
+                      }
                       className="rounded text-blue-600 focus:ring-blue-500"
                     />
                     Permitir acesso ao portal
@@ -1007,8 +1191,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       placeholder="Ex: bellavista ou email@cliente.com"
-                      value={formData.login_cliente || ''}
-                      onChange={(e) => setFormData({ ...formData, login_cliente: e.target.value })}
+                      value={formData.login_cliente || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          login_cliente: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -1020,14 +1209,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       placeholder="Ex: sothink2026"
-                      value={formData.senha_cliente || ''}
-                      onChange={(e) => setFormData({ ...formData, senha_cliente: e.target.value })}
+                      value={formData.senha_cliente || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          senha_cliente: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <p className="sm:col-span-2 text-[10px] text-slate-500 dark:text-slate-400">
-                    Com este login e senha, o cliente terá acesso restrito exclusivamente para <strong>criar novos jobs e visualizar relatórios de desempenho criados para a empresa dele</strong>.
+                    Com este login e senha, o cliente terá acesso restrito
+                    exclusivamente para{" "}
+                    <strong>
+                      criar novos jobs e visualizar relatórios de desempenho
+                      criados para a empresa dele
+                    </strong>
+                    .
                   </p>
                 </div>
               </div>
@@ -1076,7 +1276,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         <input
                           type="text"
                           value={resp.nome}
-                          onChange={(e) => handleUpdateResponsavel(idx, 'nome', e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateResponsavel(idx, "nome", e.target.value)
+                          }
                           className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
                         />
                       </div>
@@ -1087,7 +1289,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         <input
                           type="text"
                           value={resp.cargo}
-                          onChange={(e) => handleUpdateResponsavel(idx, 'cargo', e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateResponsavel(
+                              idx,
+                              "cargo",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
                         />
                       </div>
@@ -1098,7 +1306,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         <input
                           type="email"
                           value={resp.email}
-                          onChange={(e) => handleUpdateResponsavel(idx, 'email', e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateResponsavel(
+                              idx,
+                              "email",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
                         />
                       </div>
@@ -1109,7 +1323,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         <input
                           type="text"
                           value={resp.whatsapp}
-                          onChange={(e) => handleUpdateResponsavel(idx, 'whatsapp', e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateResponsavel(
+                              idx,
+                              "whatsapp",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
                         />
                       </div>
@@ -1120,7 +1340,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         <input
                           type="date"
                           value={resp.data_aniversario}
-                          onChange={(e) => handleUpdateResponsavel(idx, 'data_aniversario', e.target.value)}
+                          onChange={(e) =>
+                            handleUpdateResponsavel(
+                              idx,
+                              "data_aniversario",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs"
                         />
                       </div>

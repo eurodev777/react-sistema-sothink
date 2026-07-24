@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
-import { Toast, ToastType } from './components/Toast';
-import { DashboardView } from './components/DashboardView';
-import { ClientsView } from './components/ClientsView';
-import { AtasView } from './components/AtasView';
-import { JobsKanbanView, KANBAN_COLUMNS } from './components/JobsKanbanView';
-import { RelatoriosView } from './components/RelatoriosView';
-import { ClientPortalView } from './components/ClientPortalView';
-import { LoginModal } from './components/LoginModal';
+import React, { useState, useEffect } from "react";
+import { Header } from "./components/Header";
+import { Sidebar } from "./components/Sidebar";
+import { Toast, ToastType } from "./components/Toast";
+import { DashboardView } from "./components/DashboardView";
+import { ClientsView } from "./components/ClientsView";
+import { AtasView } from "./components/AtasView";
+import { JobsKanbanView, KANBAN_COLUMNS } from "./components/JobsKanbanView";
+import { RelatoriosView } from "./components/RelatoriosView";
+import { ClientPortalView } from "./components/ClientPortalView";
+import { LoginModal } from "./components/LoginModal";
 
 import {
   EmpresaCliente,
@@ -20,7 +20,7 @@ import {
   JobUrgencia,
   Relatorio,
   Anexo,
-} from './types';
+} from "./types";
 import {
   INITIAL_CLIENTES,
   INITIAL_ATAS,
@@ -28,20 +28,24 @@ import {
   INITIAL_CHECKLIST_TEMPLATES as INITIAL_TEMPLATES,
   INITIAL_USERS,
   INITIAL_RELATORIOS,
-} from './data/mockData';
-import { apiService } from './services/apiService';
-import { Plus, X, Paperclip, Upload, Trash2, FileText } from 'lucide-react';
+} from "./data/mockData";
+import { apiService } from "./services/apiService";
+import { Plus, X, Paperclip, Upload, Trash2, FileText } from "lucide-react";
 
 export function App() {
   // Theme state
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   // Authentication State
   const [user, setUser] = useState<User | null>(INITIAL_USERS[0]); // default logged in as Admin for instant preview
-  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(null);
+  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(
+    null
+  );
 
   // Active Tab State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'clientes' | 'atas' | 'jobs' | 'relatorios'>('dashboard');
+  const [activeTab, setActiveTab] = useState<
+    "dashboard" | "clientes" | "atas" | "jobs" | "relatorios"
+  >("dashboard");
 
   // Toast Notification State
   const [toast, setToast] = useState<{
@@ -51,8 +55,8 @@ export function App() {
     desc?: string;
   }>({
     show: false,
-    type: 'success',
-    title: '',
+    type: "success",
+    title: "",
   });
 
   const showToast = (type: ToastType, title: string, desc?: string) => {
@@ -60,35 +64,56 @@ export function App() {
   };
 
   // Main Data States
-  const [clientes, setClientes] = useState<EmpresaCliente[]>(INITIAL_CLIENTES);
   const [atas, setAtas] = useState<AtaReuniao[]>(INITIAL_ATAS);
   const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
-  const [templates, setTemplates] = useState<ChecklistTemplate[]>(INITIAL_TEMPLATES);
+  const [templates, setTemplates] =
+    useState<ChecklistTemplate[]>(INITIAL_TEMPLATES);
   const [relatorios, setRelatorios] = useState<Relatorio[]>(INITIAL_RELATORIOS);
 
   // Navigation Deep Links / Pre-selections
-  const [preSelectedClientForAta, setPreSelectedClientForAta] = useState<EmpresaCliente | null>(null);
-  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] = useState<Job | null>(null);
+  const [preSelectedClientForAta, setPreSelectedClientForAta] =
+    useState<EmpresaCliente | null>(null);
+  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] =
+    useState<Job | null>(null);
 
   // Quick Create Job Modal State
   const [newJobModalOpen, setNewJobModalOpen] = useState(false);
   const [newJobData, setNewJobData] = useState<Partial<Job>>({
-    cliente_id: '',
-    titulo_job: '',
-    urgencia: 'Médio',
-    responsavel: 'Mariana Costa',
-    data_inicio: new Date().toISOString().split('T')[0],
-    data_entrega: '',
-    briefing: '',
-    etiquetas: ['SOCIAL'],
+    cliente_id: "",
+    titulo_job: "",
+    urgencia: "Médio",
+    responsavel: "Mariana Costa",
+    data_inicio: new Date().toISOString().split("T")[0],
+    data_entrega: "",
+    briefing: "",
+    etiquetas: ["SOCIAL"],
   });
+  const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
+
+  React.useEffect(() => {
+    const carregarClientes = async () => {
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=clientes"
+        );
+
+        const data = await response.json();
+
+        setClientes(data);
+      } catch (error) {
+        console.error("Erro ao carregar clientes:", error);
+      }
+    };
+
+    carregarClientes();
+  }, []);
 
   // Apply Dark Mode Class to HTML
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
   }, [theme]);
 
@@ -110,7 +135,9 @@ export function App() {
         if (tRes.success && tRes.data) setTemplates(tRes.data);
         if (rRes.success && rRes.data) setRelatorios(rRes.data);
       } catch (e) {
-        console.warn('Usando dados mockados locais enquanto o servidor carrega.');
+        console.warn(
+          "Usando dados mockados locais enquanto o servidor carrega."
+        );
       }
     };
     loadAllData();
@@ -121,7 +148,9 @@ export function App() {
     const res = await apiService.saveRelatorio(relatorioData);
     if (res.success && res.data) {
       if (relatorioData.id) {
-        setRelatorios((prev) => prev.map((r) => (r.id === res.data.id ? res.data : r)));
+        setRelatorios((prev) =>
+          prev.map((r) => (r.id === res.data.id ? res.data : r))
+        );
       } else {
         setRelatorios((prev) => [res.data, ...prev]);
       }
@@ -140,7 +169,9 @@ export function App() {
     const res = await apiService.saveCliente(clienteData);
     if (res.success && res.data) {
       if (clienteData.id) {
-        setClientes((prev) => prev.map((c) => (c.id === res.data.id ? res.data : c)));
+        setClientes((prev) =>
+          prev.map((c) => (c.id === res.data.id ? res.data : c))
+        );
       } else {
         setClientes((prev) => [res.data, ...prev]);
       }
@@ -159,7 +190,9 @@ export function App() {
     const res = await apiService.saveAta(ataData);
     if (res.success && res.data) {
       if (ataData.id) {
-        setAtas((prev) => prev.map((a) => (a.id === res.data.id ? res.data : a)));
+        setAtas((prev) =>
+          prev.map((a) => (a.id === res.data.id ? res.data : a))
+        );
       } else {
         setAtas((prev) => [res.data, ...prev]);
       }
@@ -178,7 +211,9 @@ export function App() {
     const res = await apiService.saveJob(jobData);
     if (res.success && res.data) {
       if (jobData.id) {
-        setJobs((prev) => prev.map((j) => (j.id === res.data.id ? res.data : j)));
+        setJobs((prev) =>
+          prev.map((j) => (j.id === res.data.id ? res.data : j))
+        );
       } else {
         setJobs((prev) => [res.data, ...prev]);
       }
@@ -193,7 +228,9 @@ export function App() {
   };
 
   // File Upload Handlers for New Job Modal
-  const handleNewJobFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewJobFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const files = Array.from(e.target.files) as File[];
     const newAnexos: Anexo[] = [];
@@ -201,19 +238,22 @@ export function App() {
     for (const file of files) {
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve((reader.result as string) || '');
+        reader.onloadend = () => resolve((reader.result as string) || "");
         reader.readAsDataURL(file);
       });
 
-      const sizeStr = file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      const sizeStr =
+        file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 
       newAnexos.push({
         id: `anx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         nome: file.name,
         tamanho: sizeStr,
-        tipo: file.type || 'application/octet-stream',
+        tipo: file.type || "application/octet-stream",
         url: base64,
-        data_upload: new Date().toLocaleString('pt-BR'),
+        data_upload: new Date().toLocaleString("pt-BR"),
       });
     }
 
@@ -221,7 +261,7 @@ export function App() {
       ...prev,
       anexos: [...(prev.anexos || []), ...newAnexos],
     }));
-    e.target.value = '';
+    e.target.value = "";
   };
 
   const handleRemoveNewJobAnexo = (anexoId: string) => {
@@ -234,31 +274,92 @@ export function App() {
   // Quick Create Job Submit
   const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!newJobData.cliente_id || !newJobData.titulo_job) {
-      showToast('error', 'Campos Obrigatórios', 'Selecione o cliente e informe o título do job.');
+      showToast(
+        "error",
+        "Campos Obrigatórios",
+        "Selecione o cliente e informe o título do job."
+      );
       return;
     }
 
-    const comp = clientes.find((c) => c.id === newJobData.cliente_id);
-    const payload: Partial<Job> = {
-      ...newJobData,
-      nome_job: newJobData.titulo_job,
-      cliente_nome: comp?.nome_fantasia || comp?.razao_social || 'Cliente Sothink',
-      status: 'Novos Jobs (Análise)',
-    };
+    try {
+      const cliente = clientes.find((c) => c.id === newJobData.cliente_id);
 
-    await handleSaveJob(payload);
-    setNewJobModalOpen(false);
-    setNewJobData({
-      cliente_id: '',
-      titulo_job: '',
-      urgencia: 'Médio',
-      data_entrega: '',
-      briefing: '',
-      anexos: [],
-    });
-    showToast('success', 'Novo Job Criado!', 'Adicionado na coluna Novos Jobs (Análise).');
-    setActiveTab('jobs');
+      const form = new FormData();
+
+      form.append("tabela", "jobs");
+
+      // Banco usa cliente_id
+      form.append("cliente_id", newJobData.cliente_id);
+
+      // Banco usa titulo
+      form.append("titulo", newJobData.titulo_job || "");
+
+      form.append("briefing", newJobData.briefing || "");
+
+      form.append("descricao", "");
+
+      // Banco usa prioridade
+      form.append("prioridade", newJobData.urgencia || "Médio");
+
+      form.append("status", "Novos Jobs (Análise)");
+
+      form.append("data_criacao", new Date().toISOString().slice(0, 10));
+
+      form.append("data_entrega", newJobData.data_entrega || "");
+
+      form.append("responsavel", "Carlos Eduardo (Sothink)");
+
+      form.append("etiquetas", JSON.stringify([]));
+
+      form.append("permitir_acesso_cliente", "0");
+
+      const response = await fetch("https://sothink.com.br/app/api/inserir?tabela=jobs", {
+        method: "POST",
+        body: form,
+      });
+
+      const texto = await response.text();
+
+      console.log(texto);
+
+      let result;
+
+      try {
+        result = JSON.parse(texto);
+      } catch {
+        throw new Error("Resposta da API:\n" + texto);
+      }
+
+      if (result.erro) {
+        throw new Error(result.erro);
+      }
+
+      setNewJobModalOpen(false);
+
+      setNewJobData({
+        cliente_id: "",
+        titulo_job: "",
+        urgencia: "Médio",
+        data_entrega: "",
+        briefing: "",
+        anexos: [],
+      });
+
+      showToast(
+        "success",
+        "Novo Job Criado!",
+        `${
+          cliente?.nome_fantasia || cliente?.razao_social
+        } adicionado no Kanban.`
+      );
+
+      setActiveTab("jobs");
+    } catch (err: any) {
+      showToast("error", "Erro ao criar Job", err.message);
+    }
   };
 
   // Render Portal do Cliente view if logged in as a Client
@@ -271,7 +372,7 @@ export function App() {
         onLogoutClient={() => {
           setClientPortalObj(null);
           setUser(INITIAL_USERS[0]);
-          showToast('info', 'Sessão Encerrada');
+          showToast("info", "Sessão Encerrada");
         }}
         onSaveJob={handleSaveJob}
         showToast={showToast}
@@ -281,12 +382,18 @@ export function App() {
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case 'dashboard': return 'Dashboard Geral';
-      case 'clientes': return 'CRM de Clientes';
-      case 'atas': return 'Atas de Reunião';
-      case 'jobs': return 'Controle de Jobs';
-      case 'relatorios': return 'Relatórios de Tráfego';
-      default: return 'Controle de Jobs';
+      case "dashboard":
+        return "Dashboard Geral";
+      case "clientes":
+        return "CRM de Clientes";
+      case "atas":
+        return "Atas de Reunião";
+      case "jobs":
+        return "Controle de Jobs";
+      case "relatorios":
+        return "Relatórios de Tráfego";
+      default:
+        return "Controle de Jobs";
     }
   };
 
@@ -303,7 +410,7 @@ export function App() {
       {/* Main Header */}
       <Header
         theme={theme}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         currentUser={user}
         onOpenLoginModal={() => setUser(null)}
         showToast={showToast}
@@ -323,26 +430,26 @@ export function App() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
-          {activeTab === 'dashboard' && (
+          {activeTab === "dashboard" && (
             <DashboardView
               clientes={clientes}
               atas={atas}
               jobs={jobs}
-              onOpenNewCliente={() => setActiveTab('clientes')}
+              onOpenNewCliente={() => setActiveTab("clientes")}
               onOpenNewAta={() => {
                 setPreSelectedClientForAta(null);
-                setActiveTab('atas');
+                setActiveTab("atas");
               }}
               onOpenNewJob={() => setNewJobModalOpen(true)}
               onSelectJob={(j) => {
                 setSelectedJobForKanbanModal(j);
-                setActiveTab('jobs');
+                setActiveTab("jobs");
               }}
               onNavigateTab={setActiveTab}
             />
           )}
 
-          {activeTab === 'clientes' && (
+          {activeTab === "clientes" && (
             <ClientsView
               clientes={clientes}
               atas={atas}
@@ -351,11 +458,11 @@ export function App() {
               onDeleteCliente={handleDeleteCliente}
               onSelectJob={(j) => {
                 setSelectedJobForKanbanModal(j);
-                setActiveTab('jobs');
+                setActiveTab("jobs");
               }}
               onOpenNewAtaForClient={(comp) => {
                 setPreSelectedClientForAta(comp);
-                setActiveTab('atas');
+                setActiveTab("atas");
               }}
               onOpenNewJobForClient={(comp) => {
                 setNewJobData((prev) => ({ ...prev, cliente_id: comp.id }));
@@ -365,7 +472,7 @@ export function App() {
             />
           )}
 
-          {activeTab === 'atas' && (
+          {activeTab === "atas" && (
             <AtasView
               atas={atas}
               clientes={clientes}
@@ -376,7 +483,7 @@ export function App() {
             />
           )}
 
-          {activeTab === 'jobs' && (
+          {activeTab === "jobs" && (
             <JobsKanbanView
               jobs={jobs}
               clientes={clientes}
@@ -391,7 +498,7 @@ export function App() {
             />
           )}
 
-          {activeTab === 'relatorios' && (
+          {activeTab === "relatorios" && (
             <RelatoriosView
               relatorios={relatorios}
               clientes={clientes}
@@ -426,12 +533,18 @@ export function App() {
                 <Plus className="w-5 h-5 text-indigo-600" />
                 Criar Novo Job no Kanban
               </h3>
-              <button onClick={() => setNewJobModalOpen(false)} className="p-1 text-slate-400">
+              <button
+                onClick={() => setNewJobModalOpen(false)}
+                className="p-1 text-slate-400"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateNewJobSubmit} className="space-y-4 text-xs">
+            <form
+              onSubmit={handleCreateNewJobSubmit}
+              className="space-y-4 text-xs"
+            >
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Cliente Solicitante *
@@ -439,7 +552,9 @@ export function App() {
                 <select
                   required
                   value={newJobData.cliente_id}
-                  onChange={(e) => setNewJobData({ ...newJobData, cliente_id: e.target.value })}
+                  onChange={(e) =>
+                    setNewJobData({ ...newJobData, cliente_id: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
                 >
                   <option value="">Selecione a empresa cliente...</option>
@@ -460,7 +575,9 @@ export function App() {
                   required
                   placeholder="Ex: Campanha Tráfego Reels Black Friday"
                   value={newJobData.titulo_job}
-                  onChange={(e) => setNewJobData({ ...newJobData, titulo_job: e.target.value })}
+                  onChange={(e) =>
+                    setNewJobData({ ...newJobData, titulo_job: e.target.value })
+                  }
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
                 />
               </div>
@@ -472,7 +589,12 @@ export function App() {
                   </label>
                   <select
                     value={newJobData.urgencia}
-                    onChange={(e) => setNewJobData({ ...newJobData, urgencia: e.target.value as JobUrgencia })}
+                    onChange={(e) =>
+                      setNewJobData({
+                        ...newJobData,
+                        urgencia: e.target.value as JobUrgencia,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                   >
                     <option value="Baixo">Baixo</option>
@@ -489,7 +611,12 @@ export function App() {
                   <input
                     type="date"
                     value={newJobData.data_entrega}
-                    onChange={(e) => setNewJobData({ ...newJobData, data_entrega: e.target.value })}
+                    onChange={(e) =>
+                      setNewJobData({
+                        ...newJobData,
+                        data_entrega: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
                   />
                 </div>
@@ -502,7 +629,9 @@ export function App() {
                 <textarea
                   rows={3}
                   value={newJobData.briefing}
-                  onChange={(e) => setNewJobData({ ...newJobData, briefing: e.target.value })}
+                  onChange={(e) =>
+                    setNewJobData({ ...newJobData, briefing: e.target.value })
+                  }
                   placeholder="Resumo das necessidades e especificações do cliente..."
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                 />
@@ -532,8 +661,14 @@ export function App() {
                         key={anx.id}
                         className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]"
                       >
-                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title={anx.nome}>
-                          📎 {anx.nome} <span className="text-slate-400 font-mono">({anx.tamanho})</span>
+                        <span
+                          className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]"
+                          title={anx.nome}
+                        >
+                          📎 {anx.nome}{" "}
+                          <span className="text-slate-400 font-mono">
+                            ({anx.tamanho})
+                          </span>
                         </span>
                         <button
                           type="button"

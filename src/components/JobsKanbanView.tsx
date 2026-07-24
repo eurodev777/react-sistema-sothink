@@ -66,8 +66,6 @@ interface JobsKanbanViewProps {
 }
 
 export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
-  jobs,
-  clientes,
   templates,
   currentUser,
   onSaveJob,
@@ -103,6 +101,47 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
   // Drag state
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
+  const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
+  const [jobs, setJobs] = useState([]);
+
+  React.useEffect(() => {
+    const carregarJobs = async () => {
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=jobs"
+        );
+
+        const data = await response.json();
+
+        console.log(data)
+
+        setJobs(data);
+      } catch (error) {
+        console.error("Erro ao carregar clientes:", error);
+      }
+    };
+
+    carregarJobs();
+  }, []);
+
+  React.useEffect(() => {
+    const carregarClientes = async () => {
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=clientes"
+        );
+
+        const data = await response.json();
+
+        setClientes(data);
+      } catch (error) {
+        console.error("Erro ao carregar clientes:", error);
+      }
+    };
+
+    carregarClientes();
+  }, []);
+
 
   // Sync selected job from prop
   React.useEffect(() => {
@@ -111,16 +150,16 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     }
   }, [selectedJobFromApp]);
 
-  const filteredJobs = jobs.filter((j) => {
+  const filteredJobs = jobs?.filter((j) => {
     const matchesSearch =
-      j.titulo_job.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      j.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.nome_job.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesClient = filterClientId === 'all' || j.cliente_id === filterClientId;
     const matchesResponsavel = filterResponsavel === 'all' || j.responsavel === filterResponsavel;
-    const matchesUrgencia = filterUrgencia === 'all' || j.urgencia === filterUrgencia;
-    const matchesTag = filterTag === 'all' || j.etiquetas?.includes(filterTag);
+    const matchesUrgencia = filterUrgencia === 'all' || j.prioridade === filterUrgencia;
+    const matchesTag = filterTag === 'all' || j?.etiquetas?.includes(filterTag);
 
     return matchesSearch && matchesClient && matchesResponsavel && matchesUrgencia && matchesTag;
   });
@@ -147,7 +186,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
       if (targetStatus === 'Finalizado') {
         confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-        showToast('success', 'Job Finalizado! 🎉', targetJob.titulo_job);
+        showToast('success', 'Job Finalizado! 🎉', targetJob.titulo);
       } else {
         showToast('info', 'Status Atualizado', `Movido para: ${targetStatus}`);
       }
@@ -444,7 +483,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
       {viewMode === 'kanban' && (
         <div className="flex gap-4 overflow-x-auto pb-6 pt-1 snap-x min-h-[600px]">
           {KANBAN_COLUMNS.map((col) => {
-            const columnJobs = filteredJobs.filter((j) => j.status === col.id);
+            const columnJobs = filteredJobs?.filter((j) => j.status === col.id);
 
             return (
               <div
@@ -484,9 +523,9 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                         >
                           {/* Tags Pills */}
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            {job.etiquetas && job.etiquetas.length > 0 ? (
+                            {job?.etiquetas && job?.etiquetas.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
-                                {job.etiquetas.map((t) => {
+                                {Array.isArray(job?.etiquetas) && job.etiquetas.map((t) => {
                                   const lower = t.toLowerCase();
                                   let tagClass = 'tag-design';
                                   if (lower.includes('social')) tagClass = 'tag-social';
@@ -510,7 +549,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
                           {/* Title */}
                           <div className="font-semibold text-sm leading-snug text-slate-800 dark:text-slate-100 line-clamp-2">
-                            {job.titulo_job || job.nome_job}
+                            {job.titulo || job.nome_job}
                           </div>
 
                           {/* Footer Meta & Priority Dot */}
@@ -538,14 +577,14 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                             <div className="flex items-center gap-1.5 font-medium text-[11px]">
                               <span
                                 className={`priority-dot ${
-                                  job.urgencia === 'Crítico' || job.urgencia === 'Alto'
+                                  job.prioridade === 'Crítico' || job.prioridade === 'Alto'
                                     ? 'priority-high'
-                                    : job.urgencia === 'Médio'
+                                    : job.prioridade === 'Médio'
                                     ? 'priority-med'
                                     : 'priority-low'
                                 }`}
                               />
-                              <span>{job.urgencia}</span>
+                              <span>{job.prioridade}</span>
                             </div>
                           </div>
                         </div>
@@ -571,7 +610,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredJobs.map((job) => (
+            {filteredJobs?.map((job) => (
               <div
                 key={job.id}
                 onClick={() => setActiveJob(job)}
@@ -583,7 +622,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     {job.status}
                   </span>
                 </div>
-                <h4 className="font-bold text-slate-900 dark:text-white text-sm">{job.titulo_job}</h4>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">{job.titulo}</h4>
                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-1">
                   <span>Início: {job.data_inicio || '-'}</span>
                   <span className="font-bold text-rose-600">Entrega: {job.data_entrega || '-'}</span>
@@ -609,20 +648,20 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredJobs.map((job) => (
+              {filteredJobs?.map((job) => (
                 <tr
                   key={job.id}
                   onClick={() => setActiveJob(job)}
                   className="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer"
                 >
-                  <td className="py-3 font-bold text-slate-900 dark:text-slate-100">{job.titulo_job}</td>
+                  <td className="py-3 font-bold text-slate-900 dark:text-slate-100">{job.titulo}</td>
                   <td className="py-3 text-slate-600 dark:text-slate-300">{job.cliente_nome}</td>
                   <td className="py-3">
                     <span className="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 font-bold text-[10px] text-indigo-600">
                       {job.status}
                     </span>
                   </td>
-                  <td className="py-3 font-bold">{job.urgencia}</td>
+                  <td className="py-3 font-bold">{job.prioridade}</td>
                   <td className="py-3">{job.responsavel}</td>
                   <td className="py-3 text-right font-mono">{job.data_entrega || '-'}</td>
                 </tr>
@@ -660,8 +699,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                 {/* Editable Job Title */}
                 <input
                   type="text"
-                  value={activeJob.titulo_job}
-                  onChange={(e) => handleUpdateActiveJobField('titulo_job', e.target.value)}
+                  value={activeJob.titulo}
+                  onChange={(e) => handleUpdateActiveJobField('titulo', e.target.value)}
                   className="w-full text-xl font-extrabold text-slate-900 dark:text-white bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50 px-2 py-1 rounded-xl border border-transparent focus:border-indigo-500 focus:outline-none"
                 />
               </div>
@@ -994,7 +1033,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     Grau de Urgência
                   </label>
                   <select
-                    value={activeJob.urgencia}
+                    value={activeJob.prioridade}
                     onChange={(e) => handleUpdateActiveJobField('urgencia', e.target.value as JobUrgencia)}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
                   >

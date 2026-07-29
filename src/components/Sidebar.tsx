@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'portal' as ActiveTab,
           label: 'Área do Cliente',
-          icon: <ShieldCheck className="w-4 h-4 text-blue-400" />,
+          icon: <ShieldCheck className="w-4 h-4 text-blue-500" />,
           badge: jCount,
         },
       ]
@@ -83,40 +83,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Atas de Reunião',
           icon: <FileText className="w-4 h-4" />,
           badge: aCount,
-        },
-        {
-          id: 'templates' as ActiveTab,
-          label: 'Listas de Checklist',
-          icon: <CheckSquare className="w-4 h-4" />,
-        },
-        {
-          id: 'portal' as ActiveTab,
-          label: 'Visão Portal Cliente',
-          icon: <ShieldCheck className="w-4 h-4" />,
-          tag: 'Preview',
-        },
-        {
-          id: 'api-docs' as ActiveTab,
-          label: 'Integração API PHP',
-          icon: <Code2 className="w-4 h-4" />,
-        },
+        }
       ];
 
   return (
     <aside
-      className={`bg-[#0f172a] text-white transition-all duration-200 shrink-0 flex flex-col justify-between border-r border-slate-800/80 ${
+      className={`bg-white text-slate-800 transition-all duration-200 shrink-0 flex flex-col justify-between border-r border-slate-200 ${
         collapsed ? 'w-20' : 'w-60'
       }`}
     >
       <div className="flex flex-col">
         {/* Sidebar Brand Logo */}
-        <div className="h-16 px-6 flex items-center border-b border-slate-800/80">
+        <div className="h-16 px-6 flex items-center border-b border-slate-200">
           {!collapsed ? (
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-white">SOTHINK</span>
+              <span className="font-extrabold text-xl tracking-tight text-slate-900">SOTHINK</span>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-sm mx-auto">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-sm mx-auto shadow-sm">
               S
             </div>
           )}
@@ -125,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Items */}
         <nav className="p-3 space-y-1">
           {!collapsed && (
-            <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+            <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
               {isClient ? 'Portal Exclusivo' : 'Menu Principal'}
             </div>
           )}
@@ -139,12 +123,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onTabChange(item.id)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all group relative ${
                   isActive
-                    ? 'bg-[#2563eb] text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
                 title={collapsed ? item.label : undefined}
               >
-                <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>
+                <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`}>
                   {item.icon}
                 </span>
 
@@ -155,16 +139,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {item.badge !== undefined && item.badge > 0 && (
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300'
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                         }`}
                       >
                         {item.badge}
                       </span>
                     )}
 
-                    {item.tag && (
-                      <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 ml-2">
-                        {item.tag}
+                    {(item as any).tag && (
+                      <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 ml-2">
+                        {(item as any).tag}
                       </span>
                     )}
                   </div>
@@ -174,19 +158,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
       </div>
-
-      {/* Footer info in sidebar */}
-      {!collapsed && (
-        <div className="p-4 m-3 rounded-xl bg-slate-800/50 border border-slate-700/50 text-xs space-y-1.5">
-          <div className="flex items-center gap-1.5 text-blue-400 font-bold text-[11px]">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Agência Sothink OS</span>
-          </div>
-          <p className="text-[11px] text-slate-400 leading-snug">
-            Gestão operacional em tempo real com Kanban, CRM e Atas.
-          </p>
-        </div>
-      )}
     </aside>
   );
 };

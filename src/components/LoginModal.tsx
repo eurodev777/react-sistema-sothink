@@ -75,7 +75,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-6">
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-8 shadow-2xl space-y-6 animate-in zoom-in-95">
         {/* Logo Branding */}
         <div className="text-center space-y-2">

@@ -316,10 +316,13 @@ export function App() {
 
       form.append("permitir_acesso_cliente", "0");
 
-      const response = await fetch("https://sothink.com.br/app/api/inserir?tabela=jobs", {
-        method: "POST",
-        body: form,
-      });
+      const response = await fetch(
+        "https://sothink.com.br/app/api/inserir?tabela=jobs",
+        {
+          method: "POST",
+          body: form,
+        }
+      );
 
       const texto = await response.text();
 
@@ -371,10 +374,26 @@ export function App() {
         relatorios={relatorios}
         onLogoutClient={() => {
           setClientPortalObj(null);
-          setUser(INITIAL_USERS[0]);
+          setUser(null);
           showToast("info", "Sessão Encerrada");
         }}
         onSaveJob={handleSaveJob}
+        showToast={showToast}
+      />
+    );
+  }
+
+  // Não logado -> mostra apenas a tela de login
+  if (!user && !clientPortalObj) {
+    return (
+      <LoginModal
+        onLoginSuccess={(u, clientObj) => {
+          if (clientObj) {
+            setClientPortalObj(clientObj);
+          } else {
+            setUser(u);
+          }
+        }}
         showToast={showToast}
       />
     );
@@ -412,9 +431,14 @@ export function App() {
         theme={theme}
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         currentUser={user}
-        onOpenLoginModal={() => setUser(null)}
+        onLogout={() => {
+          setUser(null);
+          setClientPortalObj(null);
+        }}
         showToast={showToast}
         activeTabTitle={getTabTitle()}
+        isDashboard={activeTab === "dashboard"}
+        onBackToDashboard={() => setActiveTab("dashboard")}
       />
 
       {/* App Body Layout */}
@@ -509,20 +533,6 @@ export function App() {
           )}
         </main>
       </div>
-
-      {/* Login Modal */}
-      {!user && !clientPortalObj && (
-        <LoginModal
-          onLoginSuccess={(u, clientObj) => {
-            if (clientObj) {
-              setClientPortalObj(clientObj);
-            } else {
-              setUser(u);
-            }
-          }}
-          showToast={showToast}
-        />
-      )}
 
       {/* Global Quick New Job Modal */}
       {newJobModalOpen && (

@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   ChevronDown,
   Lock,
+  LayoutDashboard,
 } from 'lucide-react';
 import { User, ApiConfig } from '../types';
 
@@ -30,6 +31,10 @@ interface HeaderProps {
   onSwitchRole?: (role: 'admin' | 'cliente') => void;
   activeTabTitle?: string;
   showToast?: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
+  
+  // Novas propriedades para o botão Voltar ao Dashboard
+  isDashboard?: boolean;
+  onBackToDashboard?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -47,12 +52,17 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchChange,
   onSwitchRole,
   activeTabTitle = 'Controle de Jobs',
+  isDashboard,
+  onBackToDashboard,
 }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const isDark = theme ? theme === 'dark' : Boolean(darkMode);
   const handleToggleTheme = onToggleTheme || onToggleDarkMode || (() => {});
   const handleLogout = onLogout || onOpenLoginModal || (() => {});
+
+  // Identifica se está no dashboard pela prop isDashboard ou pelo título da aba
+  const currentlyOnDashboard = isDashboard ?? (activeTabTitle === 'Dashboard' || activeTabTitle === 'Painel Administrativo');
 
   const getInitials = (name?: string) => {
     if (!name) return 'AD';
@@ -66,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-colors shadow-xs">
       {/* Left section: Breadcrumb & Sidebar Toggle */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 w-1/3">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
@@ -77,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
             S
           </div>
@@ -89,10 +99,21 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Sleek Search Bar */}
-      {onSearchChange && (
-        <div className="hidden md:flex items-center flex-1 max-w-sm mx-6">
-          <div className="relative w-full">
+      {/* Center section: Back to Dashboard & Search Bar */}
+      <div className="flex-1 flex items-center justify-center gap-4">
+        {!currentlyOnDashboard && onBackToDashboard && (
+          <button
+            onClick={onBackToDashboard}
+            className="flex items-center gap-2 px-4 py-1.5 bg-slate-800 dark:bg-slate-100 hover:bg-slate-700 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span className="hidden sm:inline">Voltar ao Dashboard</span>
+            <span className="sm:hidden">Dashboard</span>
+          </button>
+        )}
+
+        {onSearchChange && (
+          <div className="hidden md:flex relative w-full max-w-sm">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -102,11 +123,11 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 dark:text-slate-100 placeholder:text-slate-400 transition-all"
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Right Section: Actions & User Profile */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center justify-end gap-2 sm:gap-3 w-1/3">
         {/* PHP API Status indicator */}
         {onOpenApiConfig && (
           <button
@@ -151,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             )}
 
-            <div className="hidden sm:block text-left pr-1">
+            <div className="hidden lg:block text-left pr-1">
               <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[120px]">
                 {currentUser?.nome || 'Agência Sothink'}
               </div>

@@ -55,8 +55,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
+        // Salva os dados do usuário no localStorage para manter a sessão
+        localStorage.setItem("@d2r:user", JSON.stringify(data.user));
+        localStorage.setItem(
+          "@d2r:clientPortal",
+          JSON.stringify(data.clientPortalObj)
+        );
+
         showToast(
           "success",
           "Acesso Autorizado!",

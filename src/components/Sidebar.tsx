@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="flex-1 text-left flex items-center justify-between min-w-0">
                     <span className="truncate">{item.label}</span>
 
-                    {item.badge !== undefined && item.badge > 0 && (
+                    {/* {item.badge !== undefined && item.badge > 0 && (
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 ${
                           isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
@@ -144,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       >
                         {item.badge}
                       </span>
-                    )}
+                    )} */}
 
                     {(item as any).tag && (
                       <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 ml-2">

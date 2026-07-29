@@ -108,6 +108,26 @@ export function App() {
     carregarClientes();
   }, []);
 
+  // Verificar se já existe uma sessão salva no localStorage ao iniciar
+  useEffect(() => {
+    const savedUser = localStorage.getItem("@d2r:user");
+    const savedClientPortal = localStorage.getItem("@d2r:clientPortal");
+
+    if (savedClientPortal) {
+      try {
+        setClientPortalObj(JSON.parse(savedClientPortal));
+      } catch (e) {
+        localStorage.removeItem("@d2r:clientPortal");
+      }
+    } else if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        localStorage.removeItem("@d2r:user");
+      }
+    }
+  }, []);
+
   // Apply Dark Mode Class to HTML
   useEffect(() => {
     if (theme === "dark") {
@@ -373,6 +393,8 @@ export function App() {
         jobs={jobs}
         relatorios={relatorios}
         onLogoutClient={() => {
+          localStorage.removeItem("@d2r:user");
+          localStorage.removeItem("@d2r:clientPortal");
           setClientPortalObj(null);
           setUser(null);
           showToast("info", "Sessão Encerrada");
@@ -432,6 +454,8 @@ export function App() {
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         currentUser={user}
         onLogout={() => {
+          localStorage.removeItem("@d2r:user");
+          localStorage.removeItem("@d2r:clientPortal");
           setUser(null);
           setClientPortalObj(null);
         }}

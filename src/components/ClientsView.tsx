@@ -313,8 +313,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       const texto = await response.text();
 
-      console.log(texto);
-
       let result;
 
       try {
@@ -329,6 +327,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         editingClient ? "Cliente Atualizado!" : "Cliente Cadastrado!",
         "Os dados foram salvos no sistema."
       );
+      window.location.reload()
     } catch (err: any) {
       showToast("error", "Erro ao salvar cliente", err.message);
     }
@@ -350,6 +349,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           }
           setSelectedClient(null);
           showToast("info", "Cliente Excluído");
+          window.location.reload()
         } else {
           showToast("error", data.erro || "Erro ao excluir cliente");
         }

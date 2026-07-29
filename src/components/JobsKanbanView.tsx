@@ -262,7 +262,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const filteredJobs = jobs?.filter((j) => {
     const matchesSearch =
       j.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      j.nome_fantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.nome_job.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesClient =
@@ -698,7 +698,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                             )}
 
                             <span className="text-[10px] font-semibold text-slate-400 truncate max-w-[100px]">
-                              {job.cliente_nome}
+                              {job.nome_fantasia}
                             </span>
                           </div>
 
@@ -790,7 +790,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                    {job.cliente_nome}
+                    {job.nome_fantasia}
                   </span>
                   <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 font-bold text-[10px]">
                     {job.status}
@@ -836,7 +836,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     {job.titulo}
                   </td>
                   <td className="py-3 text-slate-600 dark:text-slate-300">
-                    {job.cliente_nome}
+                    {job.nome_fantasia}
                   </td>
                   <td className="py-3">
                     <span className="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 font-bold text-[10px] text-indigo-600">
@@ -875,7 +875,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
               <div className="space-y-1 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-200/50">
-                    {activeJob.cliente_nome}
+                    {activeJob.nome_fantasia}
                   </span>
                   <span className="text-xs font-mono text-slate-400">
                     ID: {activeJob.id}

@@ -334,6 +334,31 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedClient?.id) return;
+    
+    if (confirm("Tem certeza que deseja excluir este cliente?")) {
+      try {
+        const response = await fetch(
+          `https://sothink.com.br/app/api/deletar?id=${selectedClient.id}&tabela=clientes`
+        );
+        const data = await response.json();
+  
+        if (data.sucesso) {
+          if (onDeleteCliente) {
+            await onDeleteCliente(selectedClient.id);
+          }
+          setSelectedClient(null);
+          showToast("info", "Cliente Excluído");
+        } else {
+          showToast("error", data.erro || "Erro ao excluir cliente");
+        }
+      } catch (error) {
+        showToast("error", "Erro de conexão com a API");
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
       {/* Top Controls Bar */}
@@ -519,13 +544,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <Edit2 className="w-4 h-4" />
               </button>
               <button
-                onClick={async () => {
-                  if (confirm("Tem certeza que deseja excluir este cliente?")) {
-                    await onDeleteCliente(selectedClient.id);
-                    setSelectedClient(null);
-                    showToast("info", "Cliente Excluído");
-                  }
-                }}
+                onClick={handleDelete}
                 className="p-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                 title="Excluir Cliente"
               >

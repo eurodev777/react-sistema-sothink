@@ -175,6 +175,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
   const [jobs, setJobs] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
 
   React.useEffect(() => {
     const carregarJobs = async () => {
@@ -212,6 +213,23 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     };
 
     carregarClientes();
+  }, []);
+
+  React.useEffect(() => {
+    const carregarUsuarios = async () => {
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=usuarios"
+        );
+
+        const data = await response.json();
+        setUsuarios(data);
+      } catch (error) {
+        console.error("Erro ao carregar usuários:", error);
+      }
+    };
+
+    carregarUsuarios();
   }, []);
 
   // Função para deletar o job ativo
@@ -590,12 +608,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
         >
           <option value="all">Todos os Colaboradores</option>
-          <option value="Mariana Costa">Mariana Costa (Social)</option>
-          <option value="Lucas Silva">Lucas Silva (Tráfego)</option>
-          <option value="André Mendonça">André Mendonça (Design)</option>
-          <option value="Carlos Eduardo (Sothink)">
-            Carlos Eduardo (Diretor)
-          </option>
+          {usuarios.map((u) => (
+            <option key={u.id} value={u.nome}>
+              {u.nome} {u.cargo ? `(${u.cargo})` : ""}
+            </option>
+          ))}
         </select>
 
         <select
@@ -1276,14 +1293,20 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Assessor Responsável
                   </label>
-                  <input
-                    type="text"
-                    value={activeJob.responsavel}
+                  <select
+                    value={activeJob.responsavel || ""}
                     onChange={(e) =>
                       handleUpdateActiveJobField("responsavel", e.target.value)
                     }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
-                  />
+                  >
+                    <option value="">Selecione um responsável</option>
+                    {usuarios.map((u) => (
+                      <option key={u.id} value={u.nome}>
+                        {u.nome}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

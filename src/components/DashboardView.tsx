@@ -57,7 +57,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             
             <div className="space-y-3 flex-1">
               <h2 className="text-2xl font-bold text-slate-900">
-                Cadastro de Cliente (CRM)
+              Clientes 
               </h2>
             </div>
 
@@ -86,7 +86,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             
             <div className="space-y-3 flex-1">
               <h2 className="text-2xl font-bold text-slate-900">
-                Ata de Reunião
+              Atendimento 
               </h2>
             </div>
 
@@ -115,7 +115,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             
             <div className="space-y-3 flex-1">
               <h2 className="text-2xl font-bold text-slate-900">
-                Controle de Jobs (Kanban)
+                Jobs
               </h2>
             </div>
 
@@ -144,7 +144,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             
             <div className="space-y-3 flex-1">
               <h2 className="text-2xl font-bold text-slate-900">
-                Indicativos e Relatórios
+              Relatórios
               </h2>
             </div>
 

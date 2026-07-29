@@ -104,8 +104,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             onClick={() => {
               setActiveTab("agencia");
               setErrorMessage("");
-              setUsuario("admin");
-              setSenha("123456");
+              setUsuario("");
+              setSenha("");
             }}
             className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === "agencia"
@@ -121,8 +121,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             onClick={() => {
               setActiveTab("cliente");
               setErrorMessage("");
-              setUsuario("techprime");
-              setSenha("sothink2026");
+              setUsuario("");
+              setSenha("");
             }}
             className={`py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
               activeTab === "cliente"
@@ -180,7 +180,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           </div>
 
-          <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-900 dark:text-indigo-200">
+          {/* <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-900 dark:text-indigo-200">
             {activeTab === "agencia" ? (
               <p>
                 💡 <strong>Demo Agência:</strong> Usuário:{" "}
@@ -194,7 +194,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <code className="font-mono font-bold">sothink2026</code>
               </p>
             )}
-          </div>
+          </div> */}
 
           <button
             type="submit"

@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { User } from '../types';
+import logo from '../assets/logo.jpeg';
 
 export type ActiveTab = 'dashboard' | 'clientes' | 'atas' | 'jobs' | 'templates' | 'relatorios' | 'portal' | 'api-docs';
 
@@ -63,24 +64,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
         },
         {
           id: 'clientes' as ActiveTab,
-          label: 'CRM Clientes',
+          label: 'Clientes',
           icon: <Building2 className="w-4 h-4" />,
           badge: cCount,
         },
         {
           id: 'jobs' as ActiveTab,
-          label: 'Controle de Jobs',
+          label: 'Jobs',
           icon: <Kanban className="w-4 h-4" />,
           badge: jCount,
         },
         {
           id: 'relatorios' as ActiveTab,
-          label: 'Relatórios de Tráfego',
+          label: 'Relatórios',
           icon: <TrendingUp className="w-4 h-4" />,
         },
         {
           id: 'atas' as ActiveTab,
-          label: 'Atas de Reunião',
+          label: 'Atendimento',
           icon: <FileText className="w-4 h-4" />,
           badge: aCount,
         }
@@ -95,7 +96,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex flex-col">
         {/* Sidebar Brand Logo */}
         <div className="h-16 px-6 flex items-center border-b border-slate-200">
-          {!collapsed ? (
+          <img src={logo} width={100} />
+          {/* {!collapsed ? (
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-xl tracking-tight text-slate-900">SOTHINK</span>
             </div>
@@ -103,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-sm mx-auto shadow-sm">
               S
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Navigation Items */}

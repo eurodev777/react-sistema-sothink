@@ -88,11 +88,11 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <div className="hidden sm:flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
+          {/* <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
             S
-          </div>
+          </div> */}
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <span className="font-bold text-slate-800 dark:text-slate-200">Sothink</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">STK</span>
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300 font-semibold">{activeTabTitle}</span>
           </div>

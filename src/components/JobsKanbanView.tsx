@@ -42,7 +42,7 @@ import {
 } from "../types";
 import { apiService } from "../services/apiService";
 
-// The 12 exact Kanban Columns required
+// As 11 colunas do Kanban
 export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
   [
     {
@@ -66,23 +66,23 @@ export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
       color: "border-amber-500 bg-amber-50/50 dark:bg-amber-950/20",
     },
     {
+      id: "Aprovação Interna",
+      title: "5. Aprovação Interna",
+      color: "border-teal-500 bg-teal-50/50 dark:bg-teal-950/20",
+    },
+    {
       id: "Alterações",
-      title: "5. Alterações",
+      title: "6. Alterações",
       color: "border-orange-500 bg-orange-50/50 dark:bg-orange-950/20",
     },
     {
       id: "Revisão",
-      title: "6. Revisão",
+      title: "7. Revisão",
       color: "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20",
     },
     {
-      id: "Aprovação Interna",
-      title: "7. Aprovação Interna",
-      color: "border-teal-500 bg-teal-50/50 dark:bg-teal-950/20",
-    },
-    {
-      id: "Aprovação Clientes",
-      title: "8. Aprovação Clientes",
+      id: "Aprovação Cliente",
+      title: "8. Aprovação Cliente",
       color: "border-violet-500 bg-violet-50/50 dark:bg-violet-950/20",
     },
     {
@@ -91,18 +91,13 @@ export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
       color: "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
     },
     {
-      id: "Publicar Campanha",
-      title: "10. Publicar Campanha",
+      id: "Publicar / Enviar para Produção",
+      title: "10. Publicar / Enviar para Produção",
       color: "border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20",
     },
     {
-      id: "Enviar para Produção",
-      title: "11. Enviar para Produção",
-      color: "border-fuchsia-500 bg-fuchsia-50/50 dark:bg-fuchsia-950/20",
-    },
-    {
       id: "Pausado / Cancelado",
-      title: "12. Pausado / Cancelado",
+      title: "11. Pausado / Cancelado",
       color: "border-slate-500 bg-slate-100/50 dark:bg-slate-800/20",
     },
   ];
@@ -679,7 +674,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         </select>
       </div>
 
-      {/* 1. KANBAN VIEW (12 COLUMNS) */}
+      {/* 1. KANBAN VIEW (11 COLUMNS) */}
       {viewMode === "kanban" && (
         <div className="flex gap-4 overflow-x-auto pb-6 pt-1 snap-x min-h-[600px]">
           {KANBAN_COLUMNS.map((col) => {

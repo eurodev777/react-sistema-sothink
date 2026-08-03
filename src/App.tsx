@@ -31,6 +31,7 @@ import {
 } from "./data/mockData";
 import { apiService } from "./services/apiService";
 import { Plus, X, Paperclip, Upload, Trash2, FileText } from "lucide-react";
+import { TrafegoView } from "./components/TrafegoView";
 
 export function App() {
   // Theme state
@@ -555,6 +556,8 @@ export function App() {
               showToast={showToast}
             />
           )}
+
+          {activeTab === "trafego" && <TrafegoView />}
         </main>
       </div>
 

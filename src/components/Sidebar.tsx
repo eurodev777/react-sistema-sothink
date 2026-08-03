@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Sparkles,
   TrendingUp,
+  Megaphone,
 } from 'lucide-react';
 import { User } from '../types';
 import logo from '../assets/logo.jpeg';
@@ -83,6 +84,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'atas' as ActiveTab,
           label: 'Atendimento',
           icon: <FileText className="w-4 h-4" />,
+          badge: aCount,
+        },
+        {
+          id: 'trafego' as ActiveTab,
+          label: 'Trafego',
+          icon: <Megaphone className="w-4 h-4" />,
           badge: aCount,
         }
       ];

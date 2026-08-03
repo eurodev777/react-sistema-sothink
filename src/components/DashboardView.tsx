@@ -4,7 +4,8 @@ import {
   FileText,
   ClipboardList,
   BarChart2,
-  ArrowRight
+  ArrowRight,
+  Megaphone // <-- Ícone novo importado
 } from 'lucide-react';
 import { EmpresaCliente, AtaReuniao, Job } from '../types';
 
@@ -16,7 +17,8 @@ interface DashboardViewProps {
   onOpenNewAta: () => void;
   onOpenNewJob: () => void;
   onSelectJob: (job: Job) => void;
-  onNavigateTab: (tab: 'clientes' | 'atas' | 'jobs' | 'relatorios') => void;
+  // Adicionado 'trafego' na tipagem abaixo:
+  onNavigateTab: (tab: 'clientes' | 'atas' | 'jobs' | 'relatorios' | 'trafego') => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -37,7 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           
           {/* Card 1: CRM */}
           <div 
@@ -145,6 +147,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-3 flex-1">
               <h2 className="text-2xl font-bold text-slate-900">
               Relatórios
+              </h2>
+            </div>
+
+            <div className="pt-2">
+              <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                Acessar Módulo <ArrowRight className="w-4 h-4" />
+              </span>
+            </div>
+          </div>
+
+          {/* NOVO: Card 5: Tráfego Pago */}
+          <div 
+            onClick={() => onNavigateTab('trafego')}
+            className="flex flex-col bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group space-y-6"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-14 h-14 rounded-xl bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Megaphone className="w-7 h-7 text-white" />
+              </div>
+              <div className="px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200">
+                <span className="text-xs font-medium text-slate-600">
+                  Google & Meta Ads
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-3 flex-1">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Tráfego Pago
               </h2>
             </div>
 

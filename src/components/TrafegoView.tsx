@@ -11,9 +11,38 @@ export interface CampanhaTrafego {
   verba_total: string;
   verba_disponivel: string;
   orcamento_diario: string;
+  gasto_diario: string;
   objetivo: string;
   data_termino: string;
 }
+
+// Converte DD/MM/AAAA para AAAA-MM-DD (para o input type="date" conseguir ler)
+const formatDateForInput = (dateStr?: string) => {
+  if (!dateStr) return "";
+  if (dateStr.includes("/")) {
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    } else if (parts.length === 2) {
+      // Se estiver salvo apenas como "03/08", assume o ano atual
+      const currentYear = new Date().getFullYear();
+      return `${currentYear}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    }
+  }
+  return dateStr;
+};
+
+// Converte AAAA-MM-DD para DD/MM/AAAA (para salvar bonitinho no banco)
+const formatDateForDB = (dateStr?: string) => {
+  if (!dateStr) return "";
+  if (dateStr.includes("-")) {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+  return dateStr;
+};
 
 export const TrafegoView: React.FC = () => {
   const [campanhas, setCampanhas] = useState<CampanhaTrafego[]>([]);
@@ -28,9 +57,10 @@ export const TrafegoView: React.FC = () => {
     try {
       const res = await fetch(`${API_URL}?action=read`);
       const data = await res.json();
-      setCampanhas(data || []);
+      setCampanhas(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Erro ao buscar tráfego:", err);
+      setCampanhas([]);
     } finally {
       setLoading(false);
     }
@@ -50,7 +80,6 @@ export const TrafegoView: React.FC = () => {
       const res = await fetch(API_URL, { method: "POST", body: formData });
       const data = await res.json();
       if (data.sucesso) {
-        // Recarrega pra pegar a linha vazia com o ID gerado pelo banco
         fetchCampanhas();
       }
     } catch (err) {
@@ -80,7 +109,6 @@ export const TrafegoView: React.FC = () => {
 
     try {
       await fetch(API_URL, { method: "POST", body: formData });
-      // Atualização invisível, não recarrega a página pra não atrapalhar quem digita
     } catch (err) {
       console.error("Erro ao salvar:", err);
     }
@@ -102,11 +130,9 @@ export const TrafegoView: React.FC = () => {
   };
 
   const renderTable = (plataforma: "Google" | "Meta") => {
-    // 1. Garante que 'campanhas' é sempre um array antes de tentar filtrar
     const listaCampanhas = Array.isArray(campanhas) ? campanhas : [];
 
     const dados = listaCampanhas.filter((c) => {
-      // 2. Se a empresa for null/undefined, transforma em string vazia ""
       const nomeEmpresa = c.empresa_campanha || "";
       const busca = searchTerm || "";
 
@@ -134,27 +160,27 @@ export const TrafegoView: React.FC = () => {
           <table className="w-full text-xs text-left whitespace-nowrap">
             <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-[10px]">
               <tr>
-                <th className="px-3 py-3 w-32">Obs (Status)</th>
-                <th className="px-3 py-3 w-20">Atualização</th>
+                <th className="px-3 py-3 w-40">Obs (Status)</th>
+                <th className="px-3 py-3 w-32">Atualização</th>
                 <th className="px-3 py-3 w-64">Empresa / Campanha</th>
-                <th className="px-3 py-3 w-28">Último Pag.</th>
-                <th className="px-3 py-3 w-28">
+                <th className="px-3 py-3 w-32">Último Pag.</th>
+                <th className="px-3 py-3 w-32">
                   {plataforma === "Meta" ? "Pagamento" : "Verba"}
                 </th>
-                <th className="px-3 py-3 w-28">Disponível</th>
-                <th className="px-3 py-3 w-32">Orçamento Diário</th>
+                <th className="px-3 py-3 w-32">Disponível</th>
+                <th className="px-3 py-3 w-32">Orçamento</th>
                 <th className="px-3 py-3 w-32">Gasto Diário</th>
                 {plataforma === "Meta" && (
                   <th className="px-3 py-3 w-28">Objetivo</th>
                 )}
-                <th className="px-3 py-3 w-28">Término</th>
+                <th className="px-3 py-3 w-32">Término</th>
                 <th className="px-3 py-3 w-10 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 !text-black">
               {dados.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-6 text-slate-400">
+                  <td colSpan={11} className="text-center py-6 text-slate-400">
                     Nenhuma campanha cadastrada.
                   </td>
                 </tr>
@@ -165,8 +191,7 @@ export const TrafegoView: React.FC = () => {
                     className="hover:bg-slate-50 transition-colors group"
                   >
                     <td className="p-1">
-                      <input
-                        type="text"
+                      <select
                         value={c.status_obs || ""}
                         onChange={(e) =>
                           handleChange(c.id!, "status_obs", e.target.value)
@@ -177,20 +202,27 @@ export const TrafegoView: React.FC = () => {
                             ? "text-emerald-600"
                             : c.status_obs === "PAUSADA"
                             ? "text-rose-500"
-                            : "text-amber-500"
+                            : c.status_obs === "AGUARDANDO PUBLICAÇÃO"
+                            ? "text-amber-500"
+                            : "text-slate-700"
                         }`}
-                      />
+                      >
+                        <option value="" className="text-slate-700">Selecione...</option>
+                        <option value="OK" className="text-emerald-600">OK</option>
+                        <option value="AGUARDANDO PUBLICAÇÃO" className="text-amber-500">AGUARDANDO PUBLICAÇÃO</option>
+                        <option value="PAUSADA" className="text-rose-500">PAUSADA</option>
+                      </select>
                     </td>
                     <td className="p-1">
+                      {/* Convertendo a data para YYYY-MM-DD para exibir no input date e convertendo de volta ao digitar */}
                       <input
-                        type="text"
-                        value={c.data_atualizacao || ""}
-                        placeholder="ex: 03/08"
+                        type="date"
+                        value={formatDateForInput(c.data_atualizacao)}
                         onChange={(e) =>
                           handleChange(
                             c.id!,
                             "data_atualizacao",
-                            e.target.value
+                            formatDateForDB(e.target.value)
                           )
                         }
                         onBlur={() => handleBlur(c)}
@@ -214,63 +246,71 @@ export const TrafegoView: React.FC = () => {
                     </td>
                     <td className="p-1">
                       <input
-                        type="text"
-                        value={c.ultimo_pagamento || ""}
-                        placeholder="dd/mm/aaaa"
+                        type="date"
+                        value={formatDateForInput(c.ultimo_pagamento)}
                         onChange={(e) =>
                           handleChange(
                             c.id!,
                             "ultimo_pagamento",
-                            e.target.value
+                            formatDateForDB(e.target.value)
                           )
                         }
                         onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none"
+                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black"
                       />
                     </td>
                     <td className="p-1">
-                      <input
-                        type="text"
-                        value={c.verba_total || ""}
-                        placeholder="R$ 0,00"
-                        onChange={(e) =>
-                          handleChange(c.id!, "verba_total", e.target.value)
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
-                      />
+                      <div className="flex items-center">
+                        <span className="text-slate-400 font-semibold pl-2">R$</span>
+                        <input
+                          type="text"
+                          value={c.verba_total || ""}
+                          placeholder="0,00"
+                          onChange={(e) =>
+                            handleChange(c.id!, "verba_total", e.target.value)
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-1 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
+                        />
+                      </div>
                     </td>
                     <td className="p-1">
-                      <input
-                        type="text"
-                        value={c.verba_disponivel || ""}
-                        placeholder="R$ 0,00"
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "verba_disponivel",
-                            e.target.value
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
-                      />
+                      <div className="flex items-center">
+                        <span className="text-slate-400 font-semibold pl-2">R$</span>
+                        <input
+                          type="text"
+                          value={c.verba_disponivel || ""}
+                          placeholder="0,00"
+                          onChange={(e) =>
+                            handleChange(
+                              c.id!,
+                              "verba_disponivel",
+                              e.target.value
+                            )
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-1 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
+                        />
+                      </div>
                     </td>
                     <td className="p-1">
-                      <input
-                        type="text"
-                        value={c.orcamento_diario || ""}
-                        placeholder="ex: 30(S) 15(S)"
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "orcamento_diario",
-                            e.target.value
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
-                      />
+                      <div className="flex items-center">
+                        <span className="text-slate-400 font-semibold pl-2">R$</span>
+                        <input
+                          type="text"
+                          value={c.orcamento_diario || ""}
+                          placeholder="0,00"
+                          onChange={(e) =>
+                            handleChange(
+                              c.id!,
+                              "orcamento_diario",
+                              e.target.value
+                            )
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-1 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
+                        />
+                      </div>
                     </td>
                     <td className="p-1">
                       <input
@@ -285,7 +325,7 @@ export const TrafegoView: React.FC = () => {
                           )
                         }
                         onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
+                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 font-medium"
                       />
                     </td>
                     {plataforma === "Meta" && (
@@ -304,14 +344,17 @@ export const TrafegoView: React.FC = () => {
                     )}
                     <td className="p-1">
                       <input
-                        type="text"
-                        value={c.data_termino || ""}
-                        placeholder="dd/mm/aaaa"
+                        type="date"
+                        value={formatDateForInput(c.data_termino)}
                         onChange={(e) =>
-                          handleChange(c.id!, "data_termino", e.target.value)
+                          handleChange(
+                            c.id!, 
+                            "data_termino", 
+                            formatDateForDB(e.target.value)
+                          )
                         }
                         onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700"
+                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black"
                       />
                     </td>
                     <td className="p-1 text-center">

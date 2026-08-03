@@ -360,7 +360,7 @@ export const TrafegoView: React.FC = () => {
                     <td className="p-1 text-center">
                       <button
                         onClick={() => handleDelete(c.id!)}
-                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-1.5 text-red-600 hover:text-rose-500 hover:bg-rose-50 rounded opacity-100 group-hover:opacity-100 transition-all"
                         title="Deletar Linha"
                       >
                         <Trash2 className="w-4 h-4" />

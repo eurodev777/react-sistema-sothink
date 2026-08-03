@@ -32,7 +32,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Header Section */}
         <div className="space-y-4">
           <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-            Sothink App
+            STK App
           </h1>
         </div>
 

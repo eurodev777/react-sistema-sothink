@@ -317,19 +317,57 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     const targetJob = jobs.find((j) => j.id === jobId);
     if (!targetJob || targetJob.status === targetStatus) return;
 
+    // 1. Atualização visual instantânea (Optimistic UI)
+    setJobs((prev) =>
+      prev.map((j) => (j.id === jobId ? { ...j, status: targetStatus } : j))
+    );
+
     try {
-      await onSaveJob({
-        id: targetJob.id,
-        status: targetStatus,
+      // 2. Prepara os dados EXATAMENTE como seu PHP espera (via $_POST)
+      const formData = new FormData();
+      formData.append("tabela", "jobs");
+      formData.append("id", jobId);
+      formData.append("status", targetStatus);
+
+      // 3. Faz a requisição enviando o FormData (não precisa de Content-Type, o navegador ajusta sozinho)
+      const response = await fetch("https://sothink.com.br/app/api/editar", {
+        method: "POST",
+        body: formData,
       });
 
-      if (targetStatus === "Finalizado") {
-        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-        showToast("success", "Job Finalizado! 🎉", targetJob.titulo);
+      const data = await response.json();
+
+      if (data.sucesso) {
+        if (onSaveJob) {
+          await onSaveJob({ id: targetJob.id, status: targetStatus });
+        }
+
+        if (targetStatus === "Finalizado") {
+          confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+          showToast("success", "Job Finalizado! 🎉", targetJob.titulo);
+        } else {
+          showToast(
+            "info",
+            "Status Atualizado",
+            `Movido para: ${targetStatus}`
+          );
+        }
       } else {
-        showToast("info", "Status Atualizado", `Movido para: ${targetStatus}`);
+        // Se o PHP retornar o erro (ex: "ID inválido"), revertemos o card pra coluna original
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === jobId ? { ...j, status: targetJob.status } : j
+          )
+        );
+        showToast("error", data.erro || "Erro ao atualizar status no banco.");
       }
     } catch (e: any) {
+      // Se der erro de conexão (net::ERR_CONNECTION_REFUSED), reverte também
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId ? { ...j, status: targetJob.status } : j
+        )
+      );
       showToast("error", "Erro ao mover job", e.message);
     } finally {
       setDraggedJobId(null);

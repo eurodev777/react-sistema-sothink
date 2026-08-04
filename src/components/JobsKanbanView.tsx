@@ -667,7 +667,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
       {/* DETAILED JOB MODAL */}
       {activeJob && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => { setActiveJob(null); if (onClearSelectedJob) onClearSelectedJob(); }}>
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-4 pt-10 overflow-y-auto" onClick={() => { setActiveJob(null); if (onClearSelectedJob) onClearSelectedJob(); }}>
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-4xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-4">

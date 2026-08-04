@@ -158,7 +158,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const [usuarios, setUsuarios] = useState<User[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [arquivosRemovidos, setArquivosRemovidos] = useState<string[]>([]);
 
   const fetchAllJobs = async () => {
     try {
@@ -258,7 +257,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
       formData.append("descricao", JSON.stringify(activeJob.comentarios || []));
       formData.append("checklists", JSON.stringify(activeJob.checklists || []));
-      formData.append("arquivos_removidos", JSON.stringify(arquivosRemovidos));
 
       if (activeJob.anexos && activeJob.anexos.length > 0) {
         activeJob.anexos.forEach((anx: any) => {
@@ -281,7 +279,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           "Alterações salvas!",
           "Job atualizado no banco com sucesso."
         );
-        setArquivosRemovidos([]);
 
         const freshJobs = await fetchAllJobs();
         if (freshJobs) {
@@ -309,7 +306,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     const files = Array.from(e.target.files) as File[];
 
     const newAnexos = files.map((file) => ({
-      id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: `new-arq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       nome: file.name,
       tamanho: formatFileSize(file.size),
       tipo: file.type || "application/octet-stream",
@@ -323,19 +320,30 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     e.target.value = "";
   };
 
-  const handleDeleteAnexo = (anexoId: string | number) => {
+  // AGORA DELETA INSTANTANEAMENTE USANDO SUA ROTA DELETAR
+  const handleDeleteAnexo = async (anexoId: string | number) => {
     if (!activeJob) return;
 
     const idStr = String(anexoId);
 
-    if (!idStr.startsWith("new-")) {
-      setArquivosRemovidos((prev) => [...prev, idStr]);
-    }
-
+    // Some com o arquivo da tela
     const updatedAnexos = (activeJob.anexos || []).filter(
       (a) => String(a.id) !== idStr
     );
     handleUpdateActiveJobField("anexos", updatedAnexos);
+
+    // Se já estava no banco de dados, bate na rota deletar
+    if (!idStr.startsWith("new-")) {
+      try {
+        const response = await fetch(
+          `https://sothink.com.br/app/api/deletar?id=${idStr}&tabela=jobs_arquivos`
+        );
+        const data = await response.json();
+        if (data.sucesso) showToast("info", "Arquivo apagado com sucesso.");
+      } catch (e) {
+        console.error("Erro ao deletar arquivo", e);
+      }
+    }
   };
 
   const handleDeleteJob = async () => {
@@ -424,7 +432,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         method: "POST",
         body: formData,
       });
-
       const data = await response.json();
 
       if (data.sucesso) {
@@ -706,7 +713,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                     })
                                   : "A definir"}
                               </span>
-
                               {job.anexos && job.anexos.length > 0 && (
                                 <span
                                   className="flex items-center gap-0.5 font-bold text-blue-600 dark:text-blue-400"
@@ -716,7 +722,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                   {job.anexos.length}
                                 </span>
                               )}
-
                               {totalItems > 0 && (
                                 <span
                                   className="flex items-center gap-0.5 font-semibold text-emerald-600 dark:text-emerald-400"
@@ -903,15 +908,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
                 <div className="flex gap-2">
                   <button
-                    type="button"
-                    onClick={() => setShowAuditModal(true)}
-                    className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5"
-                    title="Histórico de alterações"
-                  >
-                    <History className="w-4 h-4 text-indigo-500" />
-                    Histórico
-                  </button>
-                  <button
                     onClick={() => {
                       setActiveJob(null);
                       if (onClearSelectedJob) onClearSelectedJob();
@@ -945,7 +941,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   />
                 </div>
 
-                {/* Checklist (Novo formato de Card) */}
+                {/* Checklist */}
                 <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <h4 className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-2">
@@ -956,6 +952,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       /{activeJob.checklists?.length || 0})
                     </h4>
                   </div>
+
                   <div className="space-y-3">
                     {activeJob.checklists?.map((item, idx) => (
                       <div
@@ -972,10 +969,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                 ...updated[idx],
                                 concluido: e.target.checked,
                               };
-                              handleUpdateActiveJobField(
-                                "checklists",
-                                updated
-                              );
+                              handleUpdateActiveJobField("checklists", updated);
                             }}
                             className="mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                           />
@@ -989,10 +983,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                 ...updated[idx],
                                 texto: e.target.value,
                               };
-                              handleUpdateActiveJobField(
-                                "checklists",
-                                updated
-                              );
+                              handleUpdateActiveJobField("checklists", updated);
                             }}
                             className={`flex-1 bg-transparent border-none text-xs focus:outline-none ${
                               item.concluido
@@ -1002,50 +993,70 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                           />
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
+                              const itemToRemove = activeJob.checklists?.[idx];
+                              // Tira da tela
                               const updated = activeJob.checklists?.filter(
                                 (_, i) => i !== idx
                               );
-                              handleUpdateActiveJobField(
-                                "checklists",
-                                updated
-                              );
+                              handleUpdateActiveJobField("checklists", updated);
+
+                              // Bate na rota na mesma hora!
+                              if (
+                                itemToRemove &&
+                                !String(itemToRemove.id).startsWith("new-")
+                              ) {
+                                try {
+                                  await fetch(
+                                    `https://sothink.com.br/app/api/deletar?id=${itemToRemove.id}&tabela=jobs_checklists`
+                                  );
+                                } catch (e) {
+                                  console.error("Erro ao deletar checklist", e);
+                                }
+                              }
                             }}
                             className="text-slate-400 hover:text-rose-500 p-1 shrink-0"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 pl-6 pt-1 border-t border-slate-100 dark:border-slate-800/50">
-                          {/* Data do Checklist */}
                           <div className="flex-1">
                             <input
                               type="date"
                               value={item.data || ""}
                               onChange={(e) => {
-                                const updated = [...(activeJob.checklists || [])];
+                                const updated = [
+                                  ...(activeJob.checklists || []),
+                                ];
                                 updated[idx] = {
                                   ...updated[idx],
                                   data: e.target.value,
                                 };
-                                handleUpdateActiveJobField("checklists", updated);
+                                handleUpdateActiveJobField(
+                                  "checklists",
+                                  updated
+                                );
                               }}
                               className="w-full text-[10px] bg-transparent text-slate-500 border-none outline-none focus:ring-0 p-0"
                             />
                           </div>
-
-                          {/* Responsável do Checklist */}
                           <div className="flex-1">
                             <select
                               value={item.responsavel || ""}
                               onChange={(e) => {
-                                const updated = [...(activeJob.checklists || [])];
+                                const updated = [
+                                  ...(activeJob.checklists || []),
+                                ];
                                 updated[idx] = {
                                   ...updated[idx],
                                   responsavel: e.target.value,
                                 };
-                                handleUpdateActiveJobField("checklists", updated);
+                                handleUpdateActiveJobField(
+                                  "checklists",
+                                  updated
+                                );
                               }}
                               className="w-full text-[10px] bg-transparent text-slate-500 border-none outline-none focus:ring-0 p-0"
                             >
@@ -1060,11 +1071,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                         </div>
                       </div>
                     ))}
+
                     <button
                       type="button"
                       onClick={() => {
                         const newItem = {
-                          id: `chk-${Date.now()}-${Math.random()
+                          id: `new-chk-${Date.now()}-${Math.random()
                             .toString(36)
                             .substring(2, 6)}`,
                           texto: "",
@@ -1370,55 +1382,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAuditModal && activeJob && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full p-6 shadow-2xl space-y-4 my-8 animate-in zoom-in-95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <History className="w-5 h-5 text-indigo-600" /> Histórico de
-                Últimos Ajustes
-              </h3>
-              <button
-                onClick={() => setShowAuditModal(false)}
-                className="p-1.5 text-slate-400"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-2 max-h-96 overflow-y-auto text-xs">
-              {activeJob.historico && activeJob.historico.length > 0 ? (
-                activeJob.historico.map((h) => (
-                  <div
-                    key={h.id}
-                    className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1"
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                      <span>👤 {h.usuario}</span>
-                      <span className="font-mono text-slate-400">
-                        {h.data_hora}
-                      </span>
-                    </div>
-                    <div className="text-slate-800 dark:text-slate-200">
-                      Campo modificado:{" "}
-                      <strong className="text-indigo-500">
-                        {h.campo_alterado}
-                      </strong>
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-mono">
-                      De: "{h.valor_anterior}" ➔ Para: "{h.valor_novo}"
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 text-center text-slate-400">
-                  Nenhum ajuste registrado.
-                </div>
-              )}
             </div>
           </div>
         </div>

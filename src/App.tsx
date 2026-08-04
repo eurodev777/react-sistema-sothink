@@ -45,7 +45,7 @@ export function App() {
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "clientes" | "atas" | "jobs" | "relatorios"
+    "dashboard" | "clientes" | "atas" | "jobs" | "relatorios" | "trafego"
   >("dashboard");
 
   // Toast Notification State
@@ -83,7 +83,7 @@ export function App() {
     cliente_id: "",
     titulo_job: "",
     urgencia: "Médio",
-    responsavel: "Mariana Costa",
+    responsavel: "",
     data_inicio: new Date().toISOString().split("T")[0],
     data_entrega: "",
     briefing: "",
@@ -97,15 +97,12 @@ export function App() {
         const response = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=clientes"
         );
-
         const data = await response.json();
-
         setClientes(data);
       } catch (error) {
         console.error("Erro ao carregar clientes:", error);
       }
     };
-
     carregarClientes();
   }, []);
 
@@ -248,50 +245,6 @@ export function App() {
     }
   };
 
-  // File Upload Handlers for New Job Modal
-  const handleNewJobFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!e.target.files || e.target.files.length === 0) return;
-    const files = Array.from(e.target.files) as File[];
-    const newAnexos: Anexo[] = [];
-
-    for (const file of files) {
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve((reader.result as string) || "");
-        reader.readAsDataURL(file);
-      });
-
-      const sizeStr =
-        file.size < 1024 * 1024
-          ? `${(file.size / 1024).toFixed(1)} KB`
-          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-
-      newAnexos.push({
-        id: `anx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        nome: file.name,
-        tamanho: sizeStr,
-        tipo: file.type || "application/octet-stream",
-        url: base64,
-        data_upload: new Date().toLocaleString("pt-BR"),
-      });
-    }
-
-    setNewJobData((prev) => ({
-      ...prev,
-      anexos: [...(prev.anexos || []), ...newAnexos],
-    }));
-    e.target.value = "";
-  };
-
-  const handleRemoveNewJobAnexo = (anexoId: string) => {
-    setNewJobData((prev) => ({
-      ...prev,
-      anexos: (prev.anexos || []).filter((a) => a.id !== anexoId),
-    }));
-  };
-
   // Quick Create Job Submit
   const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,34 +260,24 @@ export function App() {
 
     try {
       const cliente = clientes.find((c) => c.id === newJobData.cliente_id);
-
       const form = new FormData();
 
       form.append("tabela", "jobs");
-
-      // Banco usa cliente_id
       form.append("cliente_id", newJobData.cliente_id);
-
-      // Banco usa titulo
       form.append("titulo", newJobData.titulo_job || "");
-
       form.append("briefing", newJobData.briefing || "");
-
       form.append("descricao", "");
-
-      // Banco usa prioridade
       form.append("prioridade", newJobData.urgencia || "Médio");
-
       form.append("status", "Novos Jobs (Análise)");
-
       form.append("data_criacao", new Date().toISOString().slice(0, 10));
-
       form.append("data_entrega", newJobData.data_entrega || "");
-
-      form.append("responsavel", "Carlos Eduardo (Sothink)");
+      
+      // A MÁGICA DO USUÁRIO LOGADO AQUI:
+      // Se não escolheu nenhum responsável, pega o nome do User logado, ou deixa vazio.
+      const responsavelParaSalvar = newJobData.responsavel ? newJobData.responsavel : (user?.nome || "");
+      form.append("responsavel", responsavelParaSalvar);
 
       form.append("etiquetas", JSON.stringify([]));
-
       form.append("permitir_acesso_cliente", "0");
 
       const response = await fetch(
@@ -346,9 +289,6 @@ export function App() {
       );
 
       const texto = await response.text();
-
-      console.log(texto);
-
       let result;
 
       try {
@@ -381,6 +321,8 @@ export function App() {
       );
 
       setActiveTab("jobs");
+
+      window.location.reload()
     } catch (err: any) {
       showToast("error", "Erro ao criar Job", err.message);
     }
@@ -434,6 +376,8 @@ export function App() {
         return "Controle de Jobs";
       case "relatorios":
         return "Relatórios de Tráfego";
+      case "trafego":
+        return "Gestão de Tráfego Pago";
       default:
         return "Controle de Jobs";
     }
@@ -672,52 +616,6 @@ export function App() {
                   placeholder="Resumo das necessidades e especificações do cliente..."
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                 />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300">
-                    Anexar Arquivos do Job ({newJobData.anexos?.length || 0})
-                  </label>
-                  <label className="cursor-pointer text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
-                    <Upload className="w-3.5 h-3.5" />
-                    + Adicionar Arquivos
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleNewJobFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-
-                {newJobData.anexos && newJobData.anexos.length > 0 && (
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                    {newJobData.anexos.map((anx) => (
-                      <div
-                        key={anx.id}
-                        className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]"
-                      >
-                        <span
-                          className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]"
-                          title={anx.nome}
-                        >
-                          📎 {anx.nome}{" "}
-                          <span className="text-slate-400 font-mono">
-                            ({anx.tamanho})
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveNewJobAnexo(anx.id)}
-                          className="text-slate-400 hover:text-rose-500 p-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">

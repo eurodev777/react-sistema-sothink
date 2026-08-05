@@ -269,11 +269,13 @@ export function App() {
       form.append("descricao", "");
       form.append("prioridade", newJobData.urgencia || "Médio");
       form.append("status", "Novos Jobs (Análise)");
+      
+      // Enviando data_criacao e data_inicio para API
       form.append("data_criacao", new Date().toISOString().slice(0, 10));
+      form.append("data_inicio", newJobData.data_inicio || "");
       form.append("data_entrega", newJobData.data_entrega || "");
       
       // A MÁGICA DO USUÁRIO LOGADO AQUI:
-      // Se não escolheu nenhum responsável, pega o nome do User logado, ou deixa vazio.
       const responsavelParaSalvar = newJobData.responsavel ? newJobData.responsavel : (user?.nome || "");
       form.append("responsavel", responsavelParaSalvar);
 
@@ -303,10 +305,12 @@ export function App() {
 
       setNewJobModalOpen(false);
 
+      // Resetando os dados após criar e restaurando data_inicio pro dia atual
       setNewJobData({
         cliente_id: "",
         titulo_job: "",
         urgencia: "Médio",
+        data_inicio: new Date().toISOString().split("T")[0],
         data_entrega: "",
         briefing: "",
         anexos: [],
@@ -315,14 +319,11 @@ export function App() {
       showToast(
         "success",
         "Novo Job Criado!",
-        `${
-          cliente?.nome_fantasia || cliente?.razao_social
-        } adicionado no Kanban.`
+        `${cliente?.nome_fantasia || cliente?.razao_social} adicionado no Kanban.`
       );
 
       setActiveTab("jobs");
-
-      window.location.reload()
+      window.location.reload();
     } catch (err: any) {
       showToast("error", "Erro ao criar Job", err.message);
     }
@@ -563,7 +564,8 @@ export function App() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Trocado grid-cols-2 por grid-cols-3 para incluir Data Início */}
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Grau de Urgência
@@ -583,6 +585,23 @@ export function App() {
                     <option value="Alto">Alto</option>
                     <option value="Crítico">Crítico</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Data de Início
+                  </label>
+                  <input
+                    type="date"
+                    value={newJobData.data_inicio}
+                    onChange={(e) =>
+                      setNewJobData({
+                        ...newJobData,
+                        data_inicio: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                  />
                 </div>
 
                 <div>

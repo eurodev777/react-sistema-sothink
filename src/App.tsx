@@ -30,7 +30,15 @@ import {
   INITIAL_RELATORIOS,
 } from "./data/mockData";
 import { apiService } from "./services/apiService";
-import { Plus, X, Paperclip, Upload, Trash2, FileText } from "lucide-react";
+import {
+  Plus,
+  X,
+  Paperclip,
+  Upload,
+  Trash2,
+  FileText,
+  Menu,
+} from "lucide-react";
 import { TrafegoView } from "./components/TrafegoView";
 import { DashboardTrafego } from "./components/DashboardTrafego";
 
@@ -91,6 +99,8 @@ export function App() {
     etiquetas: ["SOCIAL"],
   });
   const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
+  // NOVO: Estado para controlar a Sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   React.useEffect(() => {
     const carregarClientes = async () => {
@@ -270,14 +280,16 @@ export function App() {
       form.append("descricao", "");
       form.append("prioridade", newJobData.urgencia || "Médio");
       form.append("status", "Novos Jobs (Análise)");
-      
+
       // Enviando data_criacao e data_inicio para API
       form.append("data_criacao", new Date().toISOString().slice(0, 10));
       form.append("data_inicio", newJobData.data_inicio || "");
       form.append("data_entrega", newJobData.data_entrega || "");
-      
+
       // A MÁGICA DO USUÁRIO LOGADO AQUI:
-      const responsavelParaSalvar = newJobData.responsavel ? newJobData.responsavel : (user?.nome || "");
+      const responsavelParaSalvar = newJobData.responsavel
+        ? newJobData.responsavel
+        : user?.nome || "";
       form.append("responsavel", responsavelParaSalvar);
 
       form.append("etiquetas", JSON.stringify([]));
@@ -320,7 +332,9 @@ export function App() {
       showToast(
         "success",
         "Novo Job Criado!",
-        `${cliente?.nome_fantasia || cliente?.razao_social} adicionado no Kanban.`
+        `${
+          cliente?.nome_fantasia || cliente?.razao_social
+        } adicionado no Kanban.`
       );
 
       setActiveTab("jobs");
@@ -413,18 +427,35 @@ export function App() {
       />
 
       {/* App Body Layout */}
-      <div className="flex flex-1 min-h-[calc(100vh-64px)]">
-        {/* Navigation Sidebar */}
-        <Sidebar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          clientesCount={clientes.length}
-          atasCount={atas.length}
-          jobsCount={jobs.length}
-        />
+      <div className="flex flex-1 min-h-[calc(100vh-64px)] overflow-hidden relative">
+        {/* Container da Sidebar com animação de largura */}
+        <div
+          className={`${
+            isSidebarOpen ? "w-64" : "w-0 md:w-20"
+          } transition-all duration-300 ease-in-out flex-shrink-0 z-10 bg-white dark:bg-slate-900`}
+        >
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            clientesCount={clientes.length}
+            atasCount={atas.length}
+            jobsCount={jobs.length}
+            collapsed={!isSidebarOpen}
+          />
+        </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-x-hidden">
+        <main className="flex-1 p-6 lg:p-8 w-full overflow-x-hidden overflow-y-auto">
+          {/* NOVO: Botão rápido para abrir/fechar o menu caso não queira colocar no Header */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="mb-4 flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+            <span className="text-sm font-bold">
+              {isSidebarOpen ? "Ocultar Menu" : "Mostrar Menu"}
+            </span>
+          </button>
           {activeTab === "dashboard" && (
             <DashboardView
               clientes={clientes}

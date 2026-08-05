@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'portal' as ActiveTab,
           label: 'Área do Cliente',
-          icon: <ShieldCheck className="w-4 h-4 text-blue-500" />,
+          icon: <ShieldCheck className="w-5 h-5" />,
           badge: jCount,
         },
       ]
@@ -61,64 +61,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           id: 'dashboard' as ActiveTab,
           label: 'Dashboard',
-          icon: <LayoutDashboard className="w-4 h-4" />,
+          icon: <LayoutDashboard className="w-5 h-5" />,
         },
         {
           id: 'clientes' as ActiveTab,
           label: 'Clientes',
-          icon: <Building2 className="w-4 h-4" />,
+          icon: <Building2 className="w-5 h-5" />,
           badge: cCount,
         },
         {
           id: 'jobs' as ActiveTab,
           label: 'Jobs',
-          icon: <Kanban className="w-4 h-4" />,
+          icon: <Kanban className="w-5 h-5" />,
           badge: jCount,
         },
         {
           id: 'relatorios' as ActiveTab,
           label: 'Relatórios',
-          icon: <TrendingUp className="w-4 h-4" />,
+          icon: <TrendingUp className="w-5 h-5" />,
         },
         {
           id: 'atas' as ActiveTab,
           label: 'Atendimento',
-          icon: <FileText className="w-4 h-4" />,
+          icon: <FileText className="w-5 h-5" />,
           badge: aCount,
         },
         {
           id: 'trafego' as ActiveTab,
-          label: 'Trafego',
-          icon: <Megaphone className="w-4 h-4" />,
+          label: 'Tráfego',
+          icon: <Megaphone className="w-5 h-5" />,
           badge: aCount,
         }
       ];
 
   return (
     <aside
-      className={`bg-white text-slate-800 transition-all duration-200 shrink-0 flex flex-col justify-between border-r border-slate-200 ${
-        collapsed ? 'w-20' : 'w-60'
+      className={`bg-white text-slate-800 transition-all duration-300 shrink-0 flex flex-col border-r border-slate-200 h-full ${
+        collapsed ? 'w-20' : 'w-64'
       }`}
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col h-full">
         {/* Sidebar Brand Logo */}
-        <div className="h-16 px-6 flex items-center border-b border-slate-200">
-          <img src={logo} width={100} />
-          {/* {!collapsed ? (
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-slate-900">SOTHINK</span>
-            </div>
+        <div className={`h-16 flex items-center border-b border-slate-200 transition-all duration-300 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
+          {!collapsed ? (
+            <img src={logo} alt="Sothink Logo" className="h-8 w-auto object-contain" />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-black text-white text-sm mx-auto shadow-sm">
+            // Quando fechado, mostra uma versão reduzida do logo (ou uma letra/ícone para não quebrar o visual)
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-sm">
               S
             </div>
-          )} */}
+          )}
         </div>
 
         {/* Navigation Items */}
-        <nav className="p-3 space-y-1">
+        <nav className="p-3 space-y-1.5 flex-1 overflow-y-auto">
           {!collapsed && (
-            <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+            <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
               {isClient ? 'Portal Exclusivo' : 'Menu Principal'}
             </div>
           )}
@@ -130,14 +128,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all group relative ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
                 title={collapsed ? item.label : undefined}
+                className={`w-full flex items-center py-3 rounded-xl text-sm font-semibold transition-all group relative ${
+                  collapsed ? 'justify-center px-0' : 'justify-start px-3 gap-3'
+                } ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                }`}
               >
-                <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                <span className={`shrink-0 transition-transform duration-200 ${
+                  collapsed ? 'group-hover:scale-110' : ''
+                } ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'}`}>
                   {item.icon}
                 </span>
 
@@ -145,19 +147,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="flex-1 text-left flex items-center justify-between min-w-0">
                     <span className="truncate">{item.label}</span>
 
-                    {/* {item.badge !== undefined && item.badge > 0 && (
+                    {/* Mostra a Badge apenas se não estiver minimizado */}
+                    {item.badge !== undefined && item.badge > 0 && (
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
                         }`}
                       >
                         {item.badge}
-                      </span>
-                    )} */}
-
-                    {(item as any).tag && (
-                      <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 ml-2">
-                        {(item as any).tag}
                       </span>
                     )}
                   </div>

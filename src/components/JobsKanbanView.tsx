@@ -236,6 +236,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         "briefing",
         "prioridade",
         "status",
+        "data_inicio", // <-- CAMPO DE INÍCIO ADICIONADO AQUI
         "data_entrega",
         "responsavel",
       ];
@@ -248,12 +249,13 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         }
       });
 
-      if (activeJob.permitir_acesso_cliente !== undefined) {
-        formData.append(
-          "permitir_acesso_cliente",
-          activeJob.permitir_acesso_cliente ? "1" : "0"
-        );
-      }
+      // <-- CORREÇÃO DO PERMITIR ACESSO (lida corretamente com booleano, string "1"/"0" ou int 1/0)
+      const hasAcesso =
+        activeJob.permitir_acesso_cliente === true ||
+        activeJob.permitir_acesso_cliente === "1" ||
+        activeJob.permitir_acesso_cliente === 1;
+      
+      formData.append("permitir_acesso_cliente", hasAcesso ? "1" : "0");
 
       formData.append("descricao", JSON.stringify(activeJob.comentarios || []));
       formData.append("checklists", JSON.stringify(activeJob.checklists || []));
@@ -320,19 +322,16 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     e.target.value = "";
   };
 
-  // AGORA DELETA INSTANTANEAMENTE USANDO SUA ROTA DELETAR
   const handleDeleteAnexo = async (anexoId: string | number) => {
     if (!activeJob) return;
 
     const idStr = String(anexoId);
 
-    // Some com o arquivo da tela
     const updatedAnexos = (activeJob.anexos || []).filter(
       (a) => String(a.id) !== idStr
     );
     handleUpdateActiveJobField("anexos", updatedAnexos);
 
-    // Se já estava no banco de dados, bate na rota deletar
     if (!idStr.startsWith("new-")) {
       try {
         const response = await fetch(
@@ -995,13 +994,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                             type="button"
                             onClick={async () => {
                               const itemToRemove = activeJob.checklists?.[idx];
-                              // Tira da tela
                               const updated = activeJob.checklists?.filter(
                                 (_, i) => i !== idx
                               );
                               handleUpdateActiveJobField("checklists", updated);
 
-                              // Bate na rota na mesma hora!
                               if (
                                 itemToRemove &&
                                 !String(itemToRemove.id).startsWith("new-")
@@ -1103,7 +1100,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       <Paperclip className="w-4 h-4 text-blue-500" /> Anexos &
                       Arquivos do Job ({activeJob.anexos?.length || 0})
                     </h4>
-                    <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95">
+                    <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95">
                       <Upload className="w-3.5 h-3.5" /> + Anexar
                       <input
                         type="file"
@@ -1338,6 +1335,21 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </select>
                 </div>
 
+                {/* CAMPO DE DATA DE INÍCIO ADICIONADO AQUI */}
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Data de Início
+                  </label>
+                  <input
+                    type="date"
+                    value={activeJob.data_inicio || ""}
+                    onChange={(e) =>
+                      handleUpdateActiveJobField("data_inicio", e.target.value)
+                    }
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-indigo-600 mb-3"
+                  />
+                </div>
+
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Data de Entrega / Prazo
@@ -1352,11 +1364,16 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   />
                 </div>
 
+                {/* CORREÇÃO NO ATRIBUTO CHECKED ABAIXO */}
                 <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 dark:text-slate-200">
                     <input
                       type="checkbox"
-                      checked={activeJob.permitir_acesso_cliente}
+                      checked={
+                        activeJob.permitir_acesso_cliente === true ||
+                        activeJob.permitir_acesso_cliente === "1" ||
+                        activeJob.permitir_acesso_cliente === 1
+                      }
                       onChange={(e) =>
                         handleUpdateActiveJobField(
                           "permitir_acesso_cliente",

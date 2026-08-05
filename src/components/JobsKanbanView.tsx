@@ -719,8 +719,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                               {/* CORREÇÃO AQUI - Usando a nova função para evitar cair um dia */}
                               <span className="font-medium">
                                 📅{" "}
-                                {job.data_entrega
-                                  ? formatDateSafe(job.data_entrega, "short")
+                                {job.data_inicio
+                                  ? formatDateSafe(job.data_inicio, "short")
                                   : "A definir"}
                               </span>
                               {job.anexos && job.anexos.length > 0 && (
@@ -835,7 +835,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                 <th className="pb-3">Status</th>
                 <th className="pb-3">Urgência</th>
                 <th className="pb-3">Assessor Responsável</th>
-                <th className="pb-3 text-right">Prazo Entrega</th>
+                <th className="pb-3 text-right">Prazo Inicio</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -860,7 +860,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   <td className="py-3">{job.responsavel}</td>
                   {/* CORREÇÃO AQUI - Mostra a data limpa */}
                   <td className="py-3 text-right font-mono">
-                    {formatDateSafe(job.data_entrega)}
+                    {formatDateSafe(job.data_inicio)}
                   </td>
                 </tr>
               ))}

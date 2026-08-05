@@ -107,6 +107,22 @@ const getInitials = (name: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
+// --- FUNÇÃO PARA CORRIGIR O BUG DE 1 DIA A MENOS ---
+const formatDateSafe = (dateStr?: string, formatType: "short" | "full" = "full") => {
+  if (!dateStr) return "-";
+  try {
+    // Adiciona "T12:00:00" para forçar o meio-dia (evita o fuso horário subtrair horas e cair no dia anterior)
+    const safeString = dateStr.includes("T") ? dateStr : `${dateStr}T12:00:00`;
+    const dateObj = new Date(safeString);
+    if (formatType === "short") {
+      return dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    }
+    return dateObj.toLocaleDateString("pt-BR"); // Retorna padrão dd/mm/yyyy
+  } catch (e) {
+    return dateStr;
+  }
+};
+
 interface JobsKanbanViewProps {
   jobs: Job[];
   clientes: EmpresaCliente[];
@@ -236,7 +252,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         "briefing",
         "prioridade",
         "status",
-        "data_inicio", // <-- CAMPO DE INÍCIO ADICIONADO AQUI
+        "data_inicio", 
         "data_entrega",
         "responsavel",
       ];
@@ -249,7 +265,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         }
       });
 
-      // <-- CORREÇÃO DO PERMITIR ACESSO (lida corretamente com booleano, string "1"/"0" ou int 1/0)
       const hasAcesso =
         activeJob.permitir_acesso_cliente === true ||
         activeJob.permitir_acesso_cliente === "1" ||
@@ -701,15 +716,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
                           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
                             <div className="flex items-center gap-2 text-[11px]">
+                              {/* CORREÇÃO AQUI - Usando a nova função para evitar cair um dia */}
                               <span className="font-medium">
                                 📅{" "}
                                 {job.data_entrega
-                                  ? new Date(
-                                      job.data_entrega
-                                    ).toLocaleDateString("pt-BR", {
-                                      day: "2-digit",
-                                      month: "short",
-                                    })
+                                  ? formatDateSafe(job.data_entrega, "short")
                                   : "A definir"}
                               </span>
                               {job.anexos && job.anexos.length > 0 && (
@@ -801,9 +812,10 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   {job.titulo}
                 </h4>
                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-1">
-                  <span>Início: {job.data_inicio || "-"}</span>
+                  {/* CORREÇÃO AQUI - Mostra a data limpa */}
+                  <span>Início: {formatDateSafe(job.data_inicio)}</span>
                   <span className="font-bold text-rose-600">
-                    Entrega: {job.data_entrega || "-"}
+                    Entrega: {formatDateSafe(job.data_entrega)}
                   </span>
                 </div>
               </div>
@@ -846,8 +858,9 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </td>
                   <td className="py-3 font-bold">{job.prioridade}</td>
                   <td className="py-3">{job.responsavel}</td>
+                  {/* CORREÇÃO AQUI - Mostra a data limpa */}
                   <td className="py-3 text-right font-mono">
-                    {job.data_entrega || "-"}
+                    {formatDateSafe(job.data_entrega)}
                   </td>
                 </tr>
               ))}
@@ -1335,7 +1348,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </select>
                 </div>
 
-                {/* CAMPO DE DATA DE INÍCIO ADICIONADO AQUI */}
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Data de Início
@@ -1364,7 +1376,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   />
                 </div>
 
-                {/* CORREÇÃO NO ATRIBUTO CHECKED ABAIXO */}
                 <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
                   <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 dark:text-slate-200">
                     <input

@@ -6,7 +6,8 @@ export interface CampanhaTrafego {
   plataforma: "Google" | "Meta";
   status_obs: string;
   data_atualizacao: string;
-  empresa_campanha: string;
+  empresa: string;
+  campanha: string;
   ultimo_pagamento: string;
   verba_total: string;
   verba_disponivel: string;
@@ -133,7 +134,7 @@ export const TrafegoView: React.FC = () => {
     const listaCampanhas = Array.isArray(campanhas) ? campanhas : [];
 
     const dados = listaCampanhas.filter((c) => {
-      const nomeEmpresa = c.empresa_campanha || "";
+      const nomeEmpresa = c.empresa || "";
       const busca = searchTerm || "";
 
       return (
@@ -162,7 +163,8 @@ export const TrafegoView: React.FC = () => {
               <tr>
                 <th className="px-3 py-3 w-40">Obs (Status)</th>
                 <th className="px-3 py-3 w-32">Atualização</th>
-                <th className="px-3 py-3 w-64">Empresa / Campanha</th>
+                <th className="px-3 py-3 w-64">Cliente</th>
+                <th className="px-3 py-3 w-64">Nome Campanha</th>
                 <th className="px-3 py-3 w-32">Último Pag.</th>
                 <th className="px-3 py-3 w-32">
                   {plataforma === "Meta" ? "Pagamento" : "Verba"}
@@ -232,11 +234,26 @@ export const TrafegoView: React.FC = () => {
                     <td className="p-1">
                       <input
                         type="text"
-                        value={c.empresa_campanha || ""}
+                        value={c?.empresa || ""}
                         onChange={(e) =>
                           handleChange(
                             c.id!,
-                            "empresa_campanha",
+                            "empresa",
+                            e.target.value
+                          )
+                        }
+                        onBlur={() => handleBlur(c)}
+                        className="w-full px-2 py-1.5 bg-transparent focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-semibold text-slate-800"
+                      />
+                    </td>
+                    <td className="p-1">
+                      <input
+                        type="text"
+                        value={c?.campanha || ""}
+                        onChange={(e) =>
+                          handleChange(
+                            c.id!,
+                            "campanha",
                             e.target.value
                           )
                         }
@@ -388,10 +405,10 @@ export const TrafegoView: React.FC = () => {
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Gestão de Tráfego Pago
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-900 dark:text-white mt-1">
             Planilha de controle de Google e Meta Ads (Salva automaticamente ao
             digitar)
           </p>
@@ -403,7 +420,7 @@ export const TrafegoView: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar campanha..."
-            className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none"
+            className="w-full pl-8 pr-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none"
           />
         </div>
       </div>

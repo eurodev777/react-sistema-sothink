@@ -32,6 +32,7 @@ import {
 import { apiService } from "./services/apiService";
 import { Plus, X, Paperclip, Upload, Trash2, FileText } from "lucide-react";
 import { TrafegoView } from "./components/TrafegoView";
+import { DashboardTrafego } from "./components/DashboardTrafego";
 
 export function App() {
   // Theme state
@@ -502,7 +503,7 @@ export function App() {
             />
           )}
 
-          {activeTab === "trafego" && <TrafegoView />}
+          {activeTab === "trafego" && <DashboardTrafego />}
         </main>
       </div>
 

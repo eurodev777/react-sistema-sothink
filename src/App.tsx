@@ -431,7 +431,7 @@ export function App() {
         {/* Container da Sidebar com animação de largura */}
         <div
           className={`${
-            isSidebarOpen ? "w-64" : "w-0 md:w-20"
+            isSidebarOpen ? "w-64" : "w-0 md:w-12"
           } transition-all duration-300 ease-in-out flex-shrink-0 z-10 bg-white dark:bg-slate-900`}
         >
           <Sidebar

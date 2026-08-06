@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Loader2, Search, LayoutGrid, DollarSign, Users } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, LayoutGrid, DollarSign, Users, ArrowUp, ArrowDown } from "lucide-react";
 import { TrafegoView } from "./TrafegoView";
 
 // ==========================================
@@ -58,6 +58,9 @@ const PlanilhaMensalView = ({ tipo, titulo }: { tipo: "custos" | "leads", titulo
   const API_URL = `https://sothink.com.br/app/api/api_diario?tipo=${tipo}`;
   const diasDoMes = Array.from({ length: 31 }, (_, i) => i + 1); 
 
+  // Booleano para saber se tem filtro ativo (se tiver, bloqueia mudar ordem)
+  const isFiltered = filtroEmpresa.trim() !== "" || filtroCampanha.trim() !== "";
+
   const fetchDados = async () => {
     setLoading(true);
     try {
@@ -113,6 +116,35 @@ const PlanilhaMensalView = ({ tipo, titulo }: { tipo: "custos" | "leads", titulo
     setDados((prev) => prev.filter((item) => item.id !== id));
   };
 
+  // ==========================================
+  // NOVA FUNÇÃO DE MUDANÇA DE ORDEM
+  // ==========================================
+  const handleMoveOrder = async (index: number, direction: number, plataforma: string, listaFiltrada: any[]) => {
+    if (
+      (direction === -1 && index === 0) || 
+      (direction === 1 && index === listaFiltrada.length - 1)
+    ) return;
+
+    // Faz a troca na lista filtrada para refletir na tela imediatamente
+    const novaLista = [...listaFiltrada];
+    const itemMovido = novaLista[index];
+    novaLista.splice(index, 1);
+    novaLista.splice(index + direction, 0, itemMovido);
+
+    const idsOrdenados = novaLista.map(item => item.id);
+
+    // Atualiza os dados locais misturando a plataforma alterada com as demais
+    setDados(prev => {
+      const outros = prev.filter(p => p.plataforma !== plataforma);
+      return [...outros, ...novaLista];
+    });
+
+    const formData = new FormData();
+    formData.append("action", "update_order");
+    formData.append("ids", JSON.stringify(idsOrdenados));
+    await fetch(API_URL, { method: "POST", body: formData });
+  };
+
   const calcularTotal = (item: any) => {
     let total = 0;
     for (let i = 1; i <= 31; i++) {
@@ -144,6 +176,7 @@ const PlanilhaMensalView = ({ tipo, titulo }: { tipo: "custos" | "leads", titulo
           <table className="w-full text-xs text-left whitespace-nowrap">
             <thead className="bg-slate-100 text-black uppercase font-bold text-[10px]">
               <tr>
+                <th className="px-3 py-3 w-16 text-center">Ordem</th>
                 <th className="px-3 py-3 w-40 min-w-[150px]">Empresa</th>
                 <th className="px-3 py-3 w-48 min-w-[200px]">Campanha</th>
                 <th className="px-3 py-3 w-32 min-w-[120px]">Status</th>
@@ -157,11 +190,36 @@ const PlanilhaMensalView = ({ tipo, titulo }: { tipo: "custos" | "leads", titulo
             <tbody className="divide-y divide-slate-100 text-black">
               {lista.length === 0 ? (
                 <tr>
-                  <td colSpan={35} className="text-center py-6 text-slate-400">Nenhuma campanha encontrada com estes filtros.</td>
+                  <td colSpan={36} className="text-center py-6 text-slate-400">Nenhuma campanha encontrada com estes filtros.</td>
                 </tr>
               ) : (
-                lista.map((c) => (
+                lista.map((c, index) => (
                   <tr key={c.id} className="hover:bg-slate-50">
+                    
+                    {/* COLUNA DE ORDENAÇÃO */}
+                    <td className="p-1 text-center">
+                      {!isFiltered ? (
+                        <div className="flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
+                           <button 
+                             onClick={() => handleMoveOrder(index, -1, plataforma, lista)}
+                             disabled={index === 0}
+                             className="disabled:opacity-20 hover:text-indigo-600"
+                           >
+                             <ArrowUp className="w-4 h-4" />
+                           </button>
+                           <button 
+                             onClick={() => handleMoveOrder(index, 1, plataforma, lista)}
+                             disabled={index === lista.length - 1}
+                             className="disabled:opacity-20 hover:text-indigo-600"
+                           >
+                             <ArrowDown className="w-4 h-4" />
+                           </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-300" title="Remova os filtros para ordenar">-</span>
+                      )}
+                    </td>
+
                     <td className="p-1">
                       <input type="text" value={c.empresa || ""} onChange={(e) => handleChange(c.id, "empresa", e.target.value)} onBlur={() => handleBlur(c)} className="w-full px-2 py-1 bg-transparent border-transparent focus:bg-white focus:border-indigo-500 rounded outline-none font-bold" placeholder="Empresa"/>
                     </td>

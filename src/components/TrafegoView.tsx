@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Loader2, Search } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, ArrowUp, ArrowDown } from "lucide-react";
 
 export interface CampanhaTrafego {
   id?: string;
@@ -17,7 +17,6 @@ export interface CampanhaTrafego {
   data_termino: string;
 }
 
-// Converte DD/MM/AAAA para AAAA-MM-DD (para o input type="date" conseguir ler)
 const formatDateForInput = (dateStr?: string) => {
   if (!dateStr) return "";
   if (dateStr.includes("/")) {
@@ -25,7 +24,6 @@ const formatDateForInput = (dateStr?: string) => {
     if (parts.length === 3) {
       return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
     } else if (parts.length === 2) {
-      // Se estiver salvo apenas como "03/08", assume o ano atual
       const currentYear = new Date().getFullYear();
       return `${currentYear}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
     }
@@ -33,7 +31,6 @@ const formatDateForInput = (dateStr?: string) => {
   return dateStr;
 };
 
-// Converte AAAA-MM-DD para DD/MM/AAAA (para salvar bonitinho no banco)
 const formatDateForDB = (dateStr?: string) => {
   if (!dateStr) return "";
   if (dateStr.includes("-")) {
@@ -50,9 +47,8 @@ export const TrafegoView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const API_URL = "https://sothink.com.br/app/api/trafego";
+  const API_URL = "https://sothink.com.br/app/api/trafego"; // Aponta para o seu trafego.php
 
-  // Carregar dados (READ)
   const fetchCampanhas = async () => {
     setLoading(true);
     try {
@@ -71,7 +67,6 @@ export const TrafegoView: React.FC = () => {
     fetchCampanhas();
   }, []);
 
-  // Criar nova linha (CREATE)
   const handleAddRow = async (plataforma: "Google" | "Meta") => {
     const formData = new FormData();
     formData.append("action", "create");
@@ -88,7 +83,6 @@ export const TrafegoView: React.FC = () => {
     }
   };
 
-  // Atualizar célula localmente enquanto digita
   const handleChange = (
     id: string,
     field: keyof CampanhaTrafego,
@@ -99,7 +93,6 @@ export const TrafegoView: React.FC = () => {
     );
   };
 
-  // Salvar no banco ao sair do campo (UPDATE via onBlur)
   const handleBlur = async (campanha: CampanhaTrafego) => {
     if (!campanha.id) return;
     const formData = new FormData();
@@ -115,7 +108,6 @@ export const TrafegoView: React.FC = () => {
     }
   };
 
-  // Deletar linha (DELETE)
   const handleDelete = async (id: string) => {
     if (!window.confirm("Remover esta campanha?")) return;
     const formData = new FormData();
@@ -130,13 +122,45 @@ export const TrafegoView: React.FC = () => {
     }
   };
 
+  // ==========================================
+  // NOVA FUNÇÃO DE MUDANÇA DE ORDEM
+  // ==========================================
+  const handleMoveOrder = async (index: number, direction: number, plataforma: string, listaRenderizada: CampanhaTrafego[]) => {
+    if (
+      (direction === -1 && index === 0) || 
+      (direction === 1 && index === listaRenderizada.length - 1)
+    ) return;
+
+    // Faz a troca apenas visual (UX instantâneo)
+    const novaLista = [...listaRenderizada];
+    const itemMovido = novaLista[index];
+    novaLista.splice(index, 1);
+    novaLista.splice(index + direction, 0, itemMovido);
+
+    const idsOrdenados = novaLista.map(item => item.id);
+
+    // Atualiza o estado misturando a plataforma alterada com a outra plataforma
+    setCampanhas(prev => {
+      const outrasPlataformas = prev.filter(p => p.plataforma !== plataforma);
+      return [...outrasPlataformas, ...novaLista];
+    });
+
+    // Envia a nova ordem pro PHP
+    const formData = new FormData();
+    formData.append("action", "update_order");
+    formData.append("ids", JSON.stringify(idsOrdenados));
+    await fetch(API_URL, { method: "POST", body: formData });
+  };
+
+
   const renderTable = (plataforma: "Google" | "Meta") => {
     const listaCampanhas = Array.isArray(campanhas) ? campanhas : [];
+
+    const isFiltered = searchTerm.trim() !== "";
 
     const dados = listaCampanhas.filter((c) => {
       const nomeEmpresa = c.empresa || "";
       const busca = searchTerm || "";
-
       return (
         c.plataforma === plataforma &&
         nomeEmpresa.toLowerCase().includes(busca.toLowerCase())
@@ -161,6 +185,7 @@ export const TrafegoView: React.FC = () => {
           <table className="w-full text-xs text-left whitespace-nowrap">
             <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-[10px]">
               <tr>
+                <th className="px-3 py-3 w-16 text-center">Ordem</th>
                 <th className="px-3 py-3 w-40">Obs (Status)</th>
                 <th className="px-3 py-3 w-32">Atualização</th>
                 <th className="px-3 py-3 w-64">Cliente</th>
@@ -182,16 +207,40 @@ export const TrafegoView: React.FC = () => {
             <tbody className="divide-y divide-slate-100 !text-black">
               {dados.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-6 text-slate-400">
+                  <td colSpan={13} className="text-center py-6 text-slate-400">
                     Nenhuma campanha cadastrada.
                   </td>
                 </tr>
               ) : (
-                dados.map((c) => (
+                dados.map((c, index) => (
                   <tr
                     key={c.id}
                     className="hover:bg-slate-50 transition-colors group"
                   >
+                    {/* Botões de Ordem */}
+                    <td className="p-1 text-center">
+                      {!isFiltered ? (
+                        <div className="flex flex-col items-center justify-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
+                           <button 
+                             onClick={() => handleMoveOrder(index, -1, plataforma, dados)}
+                             disabled={index === 0}
+                             className="disabled:opacity-20 hover:text-indigo-600"
+                           >
+                             <ArrowUp className="w-4 h-4" />
+                           </button>
+                           <button 
+                             onClick={() => handleMoveOrder(index, 1, plataforma, dados)}
+                             disabled={index === dados.length - 1}
+                             className="disabled:opacity-20 hover:text-indigo-600"
+                           >
+                             <ArrowDown className="w-4 h-4" />
+                           </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-300" title="Remova o filtro para ordenar">-</span>
+                      )}
+                    </td>
+
                     <td className="p-1">
                       <select
                         value={c.status_obs || ""}
@@ -216,7 +265,6 @@ export const TrafegoView: React.FC = () => {
                       </select>
                     </td>
                     <td className="p-1">
-                      {/* Convertendo a data para YYYY-MM-DD para exibir no input date e convertendo de volta ao digitar */}
                       <input
                         type="date"
                         value={formatDateForInput(c.data_atualizacao)}

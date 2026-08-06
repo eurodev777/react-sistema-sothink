@@ -451,8 +451,8 @@ export function App() {
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="mb-4 flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
           >
-            <Menu className="w-5 h-5" />
-            <span className="text-sm font-bold">
+            <Menu className="w-5 h-5 text-slate-900 dark:text-white" />
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
               {isSidebarOpen ? "Ocultar Menu" : "Mostrar Menu"}
             </span>
           </button>

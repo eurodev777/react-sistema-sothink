@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Kanban,
   Calendar as CalendarIcon,
@@ -139,6 +139,8 @@ interface JobsKanbanViewProps {
 }
 
 export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
+  jobs: propJobs,
+  clientes: propClientes,
   templates,
   currentUser,
   onSaveJob,
@@ -167,12 +169,26 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const [newCommentText, setNewCommentText] = useState("");
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
 
-  const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [clientes, setClientes] = useState<EmpresaCliente[]>(propClientes || []);
+  const [jobs, setJobs] = useState<Job[]>(propJobs || []);
   const [usuarios, setUsuarios] = useState<User[]>([]);
 
   const [isSaving, setIsSaving] = useState(false);
 
+  // SINCRONIZADORES DE ESTADO COM O APP.TSX
+  useEffect(() => {
+    if (propJobs) {
+      setJobs(propJobs);
+    }
+  }, [propJobs]);
+
+  useEffect(() => {
+    if (propClientes) {
+      setClientes(propClientes);
+    }
+  }, [propClientes]);
+
+  // Mantemos para atualizações internas forçadas (como ao salvar anexos)
   const fetchAllJobs = async () => {
     try {
       const response = await fetch(
@@ -201,26 +217,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
   const loggedUser = getLoggedUser();
 
-  React.useEffect(() => {
-    fetchAllJobs();
-  }, []);
-
-  React.useEffect(() => {
-    const carregarClientes = async () => {
-      try {
-        const response = await fetch(
-          "https://sothink.com.br/app/api/listar?tabela=clientes"
-        );
-        const data = await response.json();
-        setClientes(data);
-      } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
-      }
-    };
-    carregarClientes();
-  }, []);
-
-  React.useEffect(() => {
+  // Carrega apenas os usuários (pois eles não vêm via prop do App.tsx)
+  useEffect(() => {
     const carregarUsuarios = async () => {
       try {
         const response = await fetch(
@@ -385,7 +383,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedJobFromApp) {
       setActiveJob(selectedJobFromApp);
     }

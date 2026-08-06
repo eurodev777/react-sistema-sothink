@@ -21,24 +21,8 @@ import {
   Relatorio,
   Anexo,
 } from "./types";
-import {
-  INITIAL_CLIENTES,
-  INITIAL_ATAS,
-  INITIAL_JOBS,
-  INITIAL_CHECKLIST_TEMPLATES as INITIAL_TEMPLATES,
-  INITIAL_USERS,
-  INITIAL_RELATORIOS,
-} from "./data/mockData";
 import { apiService } from "./services/apiService";
-import {
-  Plus,
-  X,
-  Paperclip,
-  Upload,
-  Trash2,
-  FileText,
-  Menu,
-} from "lucide-react";
+import { Menu, Plus, X } from "lucide-react";
 import { TrafegoView } from "./components/TrafegoView";
 import { DashboardTrafego } from "./components/DashboardTrafego";
 
@@ -48,9 +32,7 @@ export function App() {
 
   // Authentication State
   const [user, setUser] = useState<User | null>(null);
-  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(
-    null
-  );
+  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(null);
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<
@@ -73,18 +55,16 @@ export function App() {
     setToast({ show: true, type, title, desc });
   };
 
-  // Main Data States
-  const [atas, setAtas] = useState<AtaReuniao[]>(INITIAL_ATAS);
-  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
-  const [templates, setTemplates] =
-    useState<ChecklistTemplate[]>(INITIAL_TEMPLATES);
-  const [relatorios, setRelatorios] = useState<Relatorio[]>(INITIAL_RELATORIOS);
+  // Main Data States - INICIANDO 100% VAZIOS (SEM MOCK)
+  const [atas, setAtas] = useState<AtaReuniao[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
+  const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
+  const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
 
   // Navigation Deep Links / Pre-selections
-  const [preSelectedClientForAta, setPreSelectedClientForAta] =
-    useState<EmpresaCliente | null>(null);
-  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] =
-    useState<Job | null>(null);
+  const [preSelectedClientForAta, setPreSelectedClientForAta] = useState<EmpresaCliente | null>(null);
+  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] = useState<Job | null>(null);
 
   // Quick Create Job Modal State
   const [newJobModalOpen, setNewJobModalOpen] = useState(false);
@@ -98,36 +78,8 @@ export function App() {
     briefing: "",
     etiquetas: ["SOCIAL"],
   });
-  const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Função auxiliar para buscar todos os jobs atualizados sem refresh
-  const fetchAllJobsApp = async () => {
-    try {
-      const response = await fetch(
-        "https://sothink.com.br/app/api/listar?tabela=jobs"
-      );
-      const data = await response.json();
-      setJobs(data);
-    } catch (error) {
-      console.error("Erro ao atualizar jobs:", error);
-    }
-  };
-
-  React.useEffect(() => {
-    const carregarClientes = async () => {
-      try {
-        const response = await fetch(
-          "https://sothink.com.br/app/api/listar?tabela=clientes"
-        );
-        const data = await response.json();
-        setClientes(data);
-      } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
-      }
-    };
-    carregarClientes();
-  }, []);
 
   // Verificar se já existe uma sessão salva no localStorage ao iniciar
   useEffect(() => {
@@ -158,40 +110,65 @@ export function App() {
     }
   }, [theme]);
 
-  // Load Initial Data from API (with fallback to mock data)
+  // CARREGAMENTO ÚNICO DE DADOS DIRETAMENTE DO BANCO DE DADOS (SEM API MOCKADA)
   useEffect(() => {
-    const loadAllData = async () => {
+    const carregarTudoDoBanco = async () => {
       try {
-        const [cRes, aRes, jRes, tRes, rRes] = await Promise.all([
-          apiService.getClientes(),
-          apiService.getAtas(),
-          apiService.getJobs(),
-          apiService.getTemplates(),
-          apiService.getRelatorios(),
-        ]);
+        // Clientes
+        const resClientes = await fetch("https://sothink.com.br/app/api/listar?tabela=clientes");
+        const dataClientes = await resClientes.json();
+        if (Array.isArray(dataClientes)) setClientes(dataClientes);
 
-        if (cRes.success && cRes.data) setClientes(cRes.data);
-        if (aRes.success && aRes.data) setAtas(aRes.data);
-        if (jRes.success && jRes.data) setJobs(jRes.data);
-        if (tRes.success && tRes.data) setTemplates(tRes.data);
-        if (rRes.success && rRes.data) setRelatorios(rRes.data);
-      } catch (e) {
-        console.warn(
-          "Usando dados mockados locais enquanto o servidor carrega."
-        );
+        // Jobs
+        const resJobs = await fetch("https://sothink.com.br/app/api/listar?tabela=jobs");
+        const dataJobs = await resJobs.json();
+        if (Array.isArray(dataJobs)) setJobs(dataJobs);
+
+        // Atas
+        const resAtas = await fetch("https://sothink.com.br/app/api/listar?tabela=atas");
+        const dataAtas = await resAtas.json();
+        if (Array.isArray(dataAtas)) setAtas(dataAtas);
+
+        // Relatorios
+        const resRelat = await fetch("https://sothink.com.br/app/api/listar?tabela=relatorios");
+        const dataRelat = await resRelat.json();
+        if (Array.isArray(dataRelat)) setRelatorios(dataRelat);
+
+        // Templates (tentativa de buscar real, se der erro ignora para não quebrar)
+        try {
+          const resTemp = await fetch("https://sothink.com.br/app/api/listar?tabela=templates");
+          const dataTemp = await resTemp.json();
+          if (Array.isArray(dataTemp)) setTemplates(dataTemp);
+        } catch (e) {}
+
+      } catch (error) {
+        console.error("Erro ao carregar dados do banco:", error);
       }
     };
-    loadAllData();
-  }, []);
+    
+    // Só carrega os dados se houver um usuário ou cliente logado para otimizar
+    if (user || clientPortalObj) {
+      carregarTudoDoBanco();
+    }
+  }, [user, clientPortalObj]); // Recarrega os dados ao logar
+
+  // Função auxiliar para recarregar apenas os jobs após criar um novo
+  const fetchAllJobsApp = async () => {
+    try {
+      const response = await fetch("https://sothink.com.br/app/api/listar?tabela=jobs");
+      const data = await response.json();
+      if (Array.isArray(data)) setJobs(data);
+    } catch (error) {
+      console.error("Erro ao atualizar jobs:", error);
+    }
+  };
 
   // CRUD Handlers for Relatorios
   const handleSaveRelatorio = async (relatorioData: Partial<Relatorio>) => {
     const res = await apiService.saveRelatorio(relatorioData);
     if (res.success && res.data) {
       if (relatorioData.id) {
-        setRelatorios((prev) =>
-          prev.map((r) => (r.id === res.data.id ? res.data : r))
-        );
+        setRelatorios((prev) => prev.map((r) => (r.id === res.data.id ? res.data : r)));
       } else {
         setRelatorios((prev) => [res.data, ...prev]);
       }
@@ -210,9 +187,7 @@ export function App() {
     const res = await apiService.saveCliente(clienteData);
     if (res.success && res.data) {
       if (clienteData.id) {
-        setClientes((prev) =>
-          prev.map((c) => (c.id === res.data.id ? res.data : c))
-        );
+        setClientes((prev) => prev.map((c) => (c.id === res.data.id ? res.data : c)));
       } else {
         setClientes((prev) => [res.data, ...prev]);
       }
@@ -231,9 +206,7 @@ export function App() {
     const res = await apiService.saveAta(ataData);
     if (res.success && res.data) {
       if (ataData.id) {
-        setAtas((prev) =>
-          prev.map((a) => (a.id === res.data.id ? res.data : a))
-        );
+        setAtas((prev) => prev.map((a) => (a.id === res.data.id ? res.data : a)));
       } else {
         setAtas((prev) => [res.data, ...prev]);
       }
@@ -249,26 +222,19 @@ export function App() {
 
   // CRUD Handlers for Jobs
   const handleSaveJob = async (jobData: Partial<Job>) => {
-    const res = await apiService.saveJob(jobData);
-    if (res.success && res.data) {
-      if (jobData.id) {
-        setJobs((prev) =>
-          prev.map((j) => (j.id === res.data.id ? res.data : j))
-        );
-      } else {
-        setJobs((prev) => [res.data, ...prev]);
-      }
-    }
+    // Quando o Kanban salva internamente, ele já chama a API.
+    // Para manter a tela sincronizada, nós podemos simplesmente atualizar o estado aqui também.
+    setJobs((prev) =>
+      prev.map((j) => (j.id === jobData.id ? { ...j, ...jobData } : j))
+    );
   };
 
   const handleDeleteJob = async (id: string) => {
-    const res = await apiService.deleteJob(id);
-    if (res.success) {
-      setJobs((prev) => prev.filter((j) => j.id !== id));
-    }
+    // Já é deletado no banco pelo componente JobsKanbanView, aqui só atualizamos a UI
+    setJobs((prev) => prev.filter((j) => j.id !== id));
   };
 
-  // Quick Create Job Submit (MODIFICADO PARA NÃO DAR REFRESH NEM SAIR DA TELA DE JOBS)
+  // Quick Create Job Submit
   const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -297,21 +263,16 @@ export function App() {
       form.append("data_inicio", newJobData.data_inicio || "");
       form.append("data_entrega", newJobData.data_entrega || "");
 
-      const responsavelParaSalvar = newJobData.responsavel
-        ? newJobData.responsavel
-        : user?.nome || "";
+      const responsavelParaSalvar = newJobData.responsavel ? newJobData.responsavel : user?.nome || "";
       form.append("responsavel", responsavelParaSalvar);
 
-      form.append("etiquetas", JSON.stringify([]));
+      form.append("etiquetas", JSON.stringify(["SOCIAL"]));
       form.append("permitir_acesso_cliente", "0");
 
-      const response = await fetch(
-        "https://sothink.com.br/app/api/inserir?tabela=jobs",
-        {
-          method: "POST",
-          body: form,
-        }
-      );
+      const response = await fetch("https://sothink.com.br/app/api/inserir?tabela=jobs", {
+        method: "POST",
+        body: form,
+      });
 
       const texto = await response.text();
       let result;
@@ -342,12 +303,10 @@ export function App() {
       showToast(
         "success",
         "Novo Job Criado!",
-        `${
-          cliente?.nome_fantasia || cliente?.razao_social
-        } adicionado no Kanban.`
+        `${cliente?.nome_fantasia || cliente?.razao_social} adicionado no Kanban.`
       );
 
-      // Atualiza a lista em segundo plano e muda para a aba de jobs sem recarregar a janela inteira
+      // Atualiza a lista em segundo plano puxando as infos fresquinhas do banco
       await fetchAllJobsApp();
       setActiveTab("jobs");
     } catch (err: any) {
@@ -393,20 +352,13 @@ export function App() {
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case "dashboard":
-        return "Dashboard Geral";
-      case "clientes":
-        return "CRM de Clientes";
-      case "atas":
-        return "Atas de Reunião";
-      case "jobs":
-        return "Controle de Jobs";
-      case "relatorios":
-        return "Relatórios de Tráfego";
-      case "trafego":
-        return "Gestão de Tráfego Pago";
-      default:
-        return "Controle de Jobs";
+      case "dashboard": return "Dashboard Geral";
+      case "clientes": return "CRM de Clientes";
+      case "atas": return "Atas de Reunião";
+      case "jobs": return "Controle de Jobs";
+      case "relatorios": return "Relatórios de Tráfego";
+      case "trafego": return "Gestão de Tráfego Pago";
+      default: return "Controle de Jobs";
     }
   };
 
@@ -420,7 +372,6 @@ export function App() {
         onClose={() => setToast((prev) => ({ ...prev, show: false }))}
       />
 
-      {/* Main Header */}
       <Header
         theme={theme}
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -437,7 +388,6 @@ export function App() {
         onBackToDashboard={() => setActiveTab("dashboard")}
       />
 
-      {/* App Body Layout */}
       <div className="flex flex-1 min-h-[calc(100vh-64px)] overflow-hidden relative">
         <div
           className={`${
@@ -454,7 +404,6 @@ export function App() {
           />
         </div>
 
-        {/* Main Content Area */}
         <main className="flex-1 p-6 lg:p-8 w-full overflow-x-hidden overflow-y-auto">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -465,6 +414,7 @@ export function App() {
               {isSidebarOpen ? "Ocultar Menu" : "Mostrar Menu"}
             </span>
           </button>
+          
           {activeTab === "dashboard" && (
             <DashboardView
               clientes={clientes}
@@ -547,7 +497,6 @@ export function App() {
         </main>
       </div>
 
-      {/* Global Quick New Job Modal */}
       {newJobModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-lg w-full p-6 shadow-2xl space-y-5 my-8 animate-in zoom-in-95">

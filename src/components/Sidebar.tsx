@@ -148,7 +148,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span className="truncate">{item.label}</span>
 
                     {/* Mostra a Badge apenas se não estiver minimizado */}
-                    {item.badge !== undefined && item.badge > 0 && (
+                    {/* {item.badge !== undefined && item.badge > 0 && (
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 ${
                           isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
@@ -156,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       >
                         {item.badge}
                       </span>
-                    )}
+                    )} */}
                   </div>
                 )}
               </button>

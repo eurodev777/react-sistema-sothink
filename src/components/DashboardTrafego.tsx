@@ -9,6 +9,7 @@ import {
   Users,
   GripVertical,
   Globe,
+  ExternalLink,
 } from "lucide-react";
 import { TrafegoView } from "./TrafegoView";
 
@@ -379,14 +380,28 @@ const PlanilhaSitesView = () => {
                         />
                       </td>
                       <td className="p-1">
-                        <input
-                          type="text"
-                          value={safeValue(c.link)}
-                          onChange={(e) => handleChange(c.id, "link", e.target.value)}
-                          onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none transition-all text-slate-600"
-                          placeholder="https://..."
-                        />
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={safeValue(c.link)}
+                            onChange={(e) => handleChange(c.id, "link", e.target.value)}
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none transition-all text-slate-600"
+                            placeholder="https://..."
+                          />
+                          {/* Botão para abrir o link. Só aparece se o link não estiver vazio */}
+                          {c.link && c.link.trim() !== "" && (
+                            <a
+                              href={c.link.startsWith('http') ? c.link : `https://${c.link}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors flex-shrink-0"
+                              title="Abrir em nova aba"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
+                        </div>
                       </td>
 
                       {diasDoMes.map((dia) => {

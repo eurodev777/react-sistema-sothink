@@ -73,14 +73,14 @@ export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
       color: "border-violet-500 bg-violet-50/50 dark:bg-violet-950/20",
     },
     {
-      id: "Finalizado",
-      title: "9. Finalizado",
-      color: "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
+      id: "Publicar / Enviar para Produção",
+      title: "9. Publicar / Enviar para Produção",
+      color: "border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20",
     },
     {
-      id: "Publicar / Enviar para Produção",
-      title: "10. Publicar / Enviar para Produção",
-      color: "border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20",
+      id: "Finalizado",
+      title: "10. Finalizado",
+      color: "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
     },
     {
       id: "Pausado / Cancelado",
@@ -107,17 +107,15 @@ const getInitials = (name: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-// --- FUNÇÃO PARA CORRIGIR O BUG DE 1 DIA A MENOS ---
 const formatDateSafe = (dateStr?: string, formatType: "short" | "full" = "full") => {
   if (!dateStr) return "-";
   try {
-    // Adiciona "T12:00:00" para forçar o meio-dia (evita o fuso horário subtrair horas e cair no dia anterior)
     const safeString = dateStr.includes("T") ? dateStr : `${dateStr}T12:00:00`;
     const dateObj = new Date(safeString);
     if (formatType === "short") {
       return dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
     }
-    return dateObj.toLocaleDateString("pt-BR"); // Retorna padrão dd/mm/yyyy
+    return dateObj.toLocaleDateString("pt-BR");
   } catch (e) {
     return dateStr;
   }
@@ -716,7 +714,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
                           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
                             <div className="flex items-center gap-2 text-[11px]">
-                              {/* CORREÇÃO AQUI - Usando a nova função para evitar cair um dia */}
                               <span className="font-medium">
                                 📅{" "}
                                 {job.data_inicio
@@ -812,7 +809,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   {job.titulo}
                 </h4>
                 <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-1">
-                  {/* CORREÇÃO AQUI - Mostra a data limpa */}
                   <span>Início: {formatDateSafe(job.data_inicio)}</span>
                   <span className="font-bold text-rose-600">
                     Entrega: {formatDateSafe(job.data_entrega)}
@@ -858,7 +854,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </td>
                   <td className="py-3 font-bold">{job.prioridade}</td>
                   <td className="py-3">{job.responsavel}</td>
-                  {/* CORREÇÃO AQUI - Mostra a data limpa */}
                   <td className="py-3 text-right font-mono">
                     {formatDateSafe(job.data_inicio)}
                   </td>

@@ -99,8 +99,20 @@ export function App() {
     etiquetas: ["SOCIAL"],
   });
   const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
-  // NOVO: Estado para controlar a Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Função auxiliar para buscar todos os jobs atualizados sem refresh
+  const fetchAllJobsApp = async () => {
+    try {
+      const response = await fetch(
+        "https://sothink.com.br/app/api/listar?tabela=jobs"
+      );
+      const data = await response.json();
+      setJobs(data);
+    } catch (error) {
+      console.error("Erro ao atualizar jobs:", error);
+    }
+  };
 
   React.useEffect(() => {
     const carregarClientes = async () => {
@@ -256,7 +268,7 @@ export function App() {
     }
   };
 
-  // Quick Create Job Submit
+  // Quick Create Job Submit (MODIFICADO PARA NÃO DAR REFRESH NEM SAIR DA TELA DE JOBS)
   const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -281,12 +293,10 @@ export function App() {
       form.append("prioridade", newJobData.urgencia || "Médio");
       form.append("status", "Novos Jobs (Análise)");
 
-      // Enviando data_criacao e data_inicio para API
       form.append("data_criacao", new Date().toISOString().slice(0, 10));
       form.append("data_inicio", newJobData.data_inicio || "");
       form.append("data_entrega", newJobData.data_entrega || "");
 
-      // A MÁGICA DO USUÁRIO LOGADO AQUI:
       const responsavelParaSalvar = newJobData.responsavel
         ? newJobData.responsavel
         : user?.nome || "";
@@ -318,7 +328,7 @@ export function App() {
 
       setNewJobModalOpen(false);
 
-      // Resetando os dados após criar e restaurando data_inicio pro dia atual
+      // Resetando formulário
       setNewJobData({
         cliente_id: "",
         titulo_job: "",
@@ -326,7 +336,7 @@ export function App() {
         data_inicio: new Date().toISOString().split("T")[0],
         data_entrega: "",
         briefing: "",
-        anexos: [],
+        etiquetas: ["SOCIAL"],
       });
 
       showToast(
@@ -337,8 +347,9 @@ export function App() {
         } adicionado no Kanban.`
       );
 
+      // Atualiza a lista em segundo plano e muda para a aba de jobs sem recarregar a janela inteira
+      await fetchAllJobsApp();
       setActiveTab("jobs");
-      window.location.reload();
     } catch (err: any) {
       showToast("error", "Erro ao criar Job", err.message);
     }
@@ -428,7 +439,6 @@ export function App() {
 
       {/* App Body Layout */}
       <div className="flex flex-1 min-h-[calc(100vh-64px)] overflow-hidden relative">
-        {/* Container da Sidebar com animação de largura */}
         <div
           className={`${
             isSidebarOpen ? "w-64" : "w-0 md:w-12"
@@ -446,7 +456,6 @@ export function App() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 lg:p-8 w-full overflow-x-hidden overflow-y-auto">
-          {/* NOVO: Botão rápido para abrir/fechar o menu caso não queira colocar no Header */}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="mb-4 cursor-pointer flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
@@ -596,7 +605,6 @@ export function App() {
                 />
               </div>
 
-              {/* Trocado grid-cols-2 por grid-cols-3 para incluir Data Início */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">

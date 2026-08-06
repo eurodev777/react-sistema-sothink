@@ -104,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
         {!currentlyOnDashboard && onBackToDashboard && (
           <button
             onClick={onBackToDashboard}
-            className="flex items-center gap-2 px-4 py-1.5 bg-slate-800 dark:bg-slate-100 hover:bg-slate-700 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
+            className="flex items-center cursor-pointer gap-2 px-4 py-1.5 bg-slate-800 dark:bg-slate-100 hover:bg-slate-700 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
           >
             <LayoutDashboard className="w-4 h-4" />
             <span className="hidden sm:inline">Voltar ao Dashboard</span>

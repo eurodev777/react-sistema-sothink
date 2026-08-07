@@ -18,6 +18,7 @@ import {
   Download,
   FileText,
   Save,
+  Archive, // <-- Adicionado o ícone Archive
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -159,6 +160,9 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const [filterResponsavel, setFilterResponsavel] = useState("all");
   const [filterUrgencia, setFilterUrgencia] = useState("all");
   const [filterTag, setFilterTag] = useState("all");
+  
+  // NOVO ESTADO: Controla a exibição de jobs arquivados
+  const [showArchived, setShowArchived] = useState(false);
 
   const [activeJob, setActiveJob] = useState<Job | null>(
     selectedJobFromApp || null
@@ -383,13 +387,59 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     }
   };
 
+  // NOVA FUNÇÃO: Arquivar ou Restaurar Job
+  const handleArchiveToggle = async () => {
+    if (!activeJob?.id) return;
+    
+    const isCurrentlyArchived = (activeJob as any).arquivado === 1 || (activeJob as any).arquivado === "1";
+    const newValue = isCurrentlyArchived ? "0" : "1";
+    const actionMsg = isCurrentlyArchived ? "restaurado" : "arquivado";
+
+    try {
+      const formData = new FormData();
+      formData.append("tabela", "jobs");
+      formData.append("id", activeJob.id);
+      formData.append("arquivado", newValue);
+
+      const response = await fetch("https://sothink.com.br/app/api/editar", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await response.json();
+
+      if (data.sucesso) {
+        showToast("success", `Job ${actionMsg} com sucesso!`);
+        
+        // Atualiza a listagem local
+        setJobs((prev) =>
+          prev.map((j) => (j.id === activeJob.id ? { ...j, arquivado: newValue } : j))
+        );
+        
+        // Fecha o modal e limpa a seleção
+        setActiveJob(null);
+        if (onClearSelectedJob) onClearSelectedJob();
+      } else {
+        showToast("error", data.erro || `Erro ao atualizar status de arquivamento`);
+      }
+    } catch (error) {
+      showToast("error", "Erro de conexão com a API");
+    }
+  };
+
   useEffect(() => {
     if (selectedJobFromApp) {
       setActiveJob(selectedJobFromApp);
     }
   }, [selectedJobFromApp]);
 
+  // Modificado para respeitar a visualização de arquivados
   const filteredJobs = jobs?.filter((j) => {
+    // Lógica de Arquivados
+    const isArchived = (j as any).arquivado === 1 || (j as any).arquivado === "1";
+    if (showArchived && !isArchived) return false; // Se quer ver arquivados, esconde os ativos
+    if (!showArchived && isArchived) return false; // Se quer ver ativos, esconde os arquivados
+
     const matchesSearch =
       j.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       j.nome_fantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -518,6 +568,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
             <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-200/50">
               {filteredJobs.length}
             </span>
+            {showArchived && (
+              <span className="ml-2 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold border border-amber-200">
+                Visualizando Arquivados
+              </span>
+            )}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Gerencie as demandas da agência em tempo real
@@ -557,6 +612,19 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
               <List className="w-3.5 h-3.5" /> Lista
             </button>
           </div>
+
+          {/* BOTÃO PARA ALTERNAR VISUALIZAÇÃO DE ARQUIVADOS */}
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-md flex items-center gap-2 transition-all border ${
+              showArchived
+                ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800"
+            }`}
+          >
+            <Archive className="w-4 h-4" />
+            {showArchived ? "Voltar aos Ativos" : "Ver Arquivados"}
+          </button>
 
           <button
             onClick={onOpenNewJobModal}
@@ -885,6 +953,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   <span className="text-xs font-mono text-slate-400">
                     ID: {activeJob.id}
                   </span>
+                  {((activeJob as any).arquivado === 1 || (activeJob as any).arquivado === "1") && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold border border-amber-200/50">
+                      Arquivado
+                    </span>
+                  )}
                 </div>
                 <input
                   type="text"
@@ -1393,7 +1466,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </p>
                 </div>
 
-                <div className="pt-6 border-t border-slate-200 dark:border-slate-700 mt-4">
+                {/* BOTÕES DE AÇÃO: Excluir e Arquivar/Restaurar */}
+                <div className="pt-6 border-t border-slate-200 dark:border-slate-700 mt-4 space-y-3">
                   <button
                     type="button"
                     onClick={handleDeleteJob}
@@ -1401,7 +1475,17 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   >
                     <Trash2 className="w-4 h-4" /> Excluir Job
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={handleArchiveToggle}
+                    className="w-full px-4 py-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-600 hover:text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
+                  >
+                    <Archive className="w-4 h-4" /> 
+                    {((activeJob as any).arquivado === 1 || (activeJob as any).arquivado === "1") ? "Restaurar Job" : "Arquivar Job"}
+                  </button>
                 </div>
+
               </div>
             </div>
           </div>

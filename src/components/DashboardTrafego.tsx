@@ -10,6 +10,7 @@ import {
   GripVertical,
   Globe,
   ExternalLink,
+  Download, // <-- Ícone adicionado
 } from "lucide-react";
 import { TrafegoView } from "./TrafegoView";
 
@@ -17,6 +18,42 @@ import { TrafegoView } from "./TrafegoView";
 const safeValue = (val: any) => {
   if (val === null || val === "null" || val === undefined) return "";
   return val;
+};
+
+// Função global para exportar dados para CSV (abre no Excel)
+const exportToCSV = (dados: any[], nomeArquivo: string) => {
+  if (!dados || dados.length === 0) {
+    alert("Não há dados para exportar.");
+    return;
+  }
+
+  // Pega os cabeçalhos a partir das chaves do primeiro objeto
+  const headers = Object.keys(dados[0]);
+
+  // Monta as linhas do CSV
+  const csvRows = [];
+  csvRows.push(headers.join(";")); // Separador padrão pt-BR no Excel é ;
+
+  for (const row of dados) {
+    const values = headers.map((header) => {
+      const valor = row[header] === null || row[header] === undefined ? "" : String(row[header]);
+      const escaped = valor.replace(/"/g, '""');
+      return `"${escaped}"`;
+    });
+    csvRows.push(values.join(";"));
+  }
+
+  const csvString = csvRows.join("\n");
+  // \uFEFF força o UTF-8 no Excel para não quebrar acentos
+  const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `${nomeArquivo}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 // ==========================================
@@ -305,6 +342,15 @@ const PlanilhaSitesView = () => {
               className="w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium text-sm"
             />
           </div>
+
+          {/* NOVO BOTÃO DE EXPORTAR CSV */}
+          <button
+            onClick={() => exportToCSV(lista, `sites_monitorados_${mesAno}`)}
+            className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold"
+            title="Baixar Tabela em Excel (CSV)"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </button>
         </div>
       </div>
 
@@ -811,6 +857,15 @@ const PlanilhaMensalView = ({
               className="w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-medium text-sm"
             />
           </div>
+
+          {/* NOVO BOTÃO DE EXPORTAR CSV */}
+          <button
+            onClick={() => exportToCSV(dados, `${tipo}_${mesAno}`)}
+            className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold"
+            title="Baixar Tabela em Excel (CSV)"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </button>
         </div>
       </div>
 

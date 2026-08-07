@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Loader2, Search, GripVertical } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, GripVertical, Download } from "lucide-react";
 
 export interface CampanhaTrafego {
   id?: string;
@@ -46,6 +46,42 @@ const formatDateForDB = (dateStr?: string) => {
     }
   }
   return dateStr;
+};
+
+// Função global para exportar dados para CSV (abre no Excel)
+const exportToCSV = (dados: any[], nomeArquivo: string) => {
+  if (!dados || dados.length === 0) {
+    alert("Não há dados para exportar.");
+    return;
+  }
+
+  // Pega os cabeçalhos a partir das chaves do primeiro objeto
+  const headers = Object.keys(dados[0]);
+
+  // Monta as linhas do CSV
+  const csvRows = [];
+  csvRows.push(headers.join(";")); // Separador padrão pt-BR no Excel é ;
+
+  for (const row of dados) {
+    const values = headers.map((header) => {
+      const valor = row[header] === null || row[header] === undefined ? "" : String(row[header]);
+      const escaped = valor.replace(/"/g, '""');
+      return `"${escaped}"`;
+    });
+    csvRows.push(values.join(";"));
+  }
+
+  const csvString = csvRows.join("\n");
+  // \uFEFF força o UTF-8 no Excel para não quebrar acentos
+  const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `${nomeArquivo}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 export const TrafegoView: React.FC = () => {
@@ -483,15 +519,25 @@ export const TrafegoView: React.FC = () => {
             digitar)
           </p>
         </div>
-        <div className="relative w-full lg:w-72">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar campanha..."
-            className="w-full pl-8 pr-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
-          />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          <div className="relative w-full lg:w-72">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar campanha..."
+              className="w-full pl-8 pr-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+            />
+          </div>
+
+          <button
+            onClick={() => exportToCSV(campanhas, "gestao_de_trafego")}
+            className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-xs px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold whitespace-nowrap"
+            title="Baixar Tabela em Excel (CSV)"
+          >
+            <Download className="w-4 h-4" /> CSV
+          </button>
         </div>
       </div>
 

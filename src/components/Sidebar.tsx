@@ -96,13 +96,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`bg-white text-slate-800 transition-all duration-300 shrink-0 flex flex-col border-r border-slate-200 h-full ${
+      className={`dark:bg-slate-950 bg-white text-slate-800 dark:text-white transition-all duration-300 shrink-0 flex flex-col border-r dark:border-slate-950 border-slate-200 h-full ${
         collapsed ? 'w-12' : 'w-64'
       }`}
     >
       <div className="flex flex-col h-full">
         {/* Sidebar Brand Logo */}
-        <div className={`h-16 flex items-center border-b border-slate-200 transition-all duration-300 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
+        <div className={`h-16 flex items-center border-b dark:border-slate-950 border-slate-200 transition-all duration-300 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
           {!collapsed ? (
             <img src={logo} alt="Sothink Logo" className="h-8 w-auto object-contain" />
           ) : (

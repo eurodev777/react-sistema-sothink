@@ -15,6 +15,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { AtaReuniao, EmpresaCliente, User } from '../types';
+import { formatarData } from '../utils/formatarData';
 
 interface AtasViewProps {
   atas?: AtaReuniao[];
@@ -295,7 +296,7 @@ export const AtasView: React.FC<AtasViewProps> = ({
                       {ata.cliente_nome}
                     </span>
                     <span className="text-[11px] font-mono text-slate-400">
-                      {new Date(ata.data_reuniao).toLocaleDateString('pt-BR')} • {ata.hora_reuniao.substring(0,5)}
+                      {formatarData(ata.data_reuniao)} • {ata.hora_reuniao.substring(0,5)}
                     </span>
                   </div>
 
@@ -635,7 +636,7 @@ export const AtasView: React.FC<AtasViewProps> = ({
                     {viewAtaModal.cliente_nome}
                   </div>
                   <div className="text-slate-500">
-                    {new Date(viewAtaModal.data_reuniao).toLocaleDateString('pt-BR')} às {viewAtaModal.hora_reuniao.substring(0, 5)}
+                    {formatarData(viewAtaModal.data_reuniao)} às {viewAtaModal.hora_reuniao.substring(0, 5)}
                   </div>
                 </div>
               </div>

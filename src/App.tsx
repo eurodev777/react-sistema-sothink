@@ -79,7 +79,7 @@ export function App() {
     etiquetas: ["SOCIAL"],
   });
   
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Verificar se já existe uma sessão salva no localStorage ao iniciar
   useEffect(() => {

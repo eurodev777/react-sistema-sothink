@@ -124,9 +124,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const filteredClients = clientes.filter(
     (c) =>
       c.razao_social.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.nome_fantasia.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.cnpj.includes(searchTerm) ||
-      c.cidade.toLowerCase().includes(searchTerm.toLowerCase())
+      c.nome_fantasia.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const openNewClientModal = () => {

@@ -288,14 +288,13 @@ const PlanilhaSitesView = () => {
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
-  // ==========================================
-  // FUNÇÃO NOVA: VERIFICAÇÃO AUTOMÁTICA (DIRETA)
+// ==========================================
+  // FUNÇÃO DE VERIFICAÇÃO AUTOMÁTICA (VIA API PHP)
   // ==========================================
   const handleVerificarHoje = async () => {
     const dataAtual = new Date();
     const mesAtualStr = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, "0")}`;
 
-    // Trava de segurança para não preencher o dia de hoje no mês errado
     if (mesAno !== mesAtualStr) {
       alert("Por favor, selecione o mês atual para poder fazer a verificação de hoje.");
       return;
@@ -315,29 +314,20 @@ const PlanilhaSitesView = () => {
       
       if (!link) continue;
 
-      // Adiciona https se o usuário tiver esquecido
-      if (!link.startsWith("http")) {
-        link = "https://" + link;
-      }
-
       try {
-        // Tenta acessar o site diretamente pelo seu navegador, de forma opaca (no-cors)
-        // Isso burla bloqueios de Cloudflare e firewalls, pois simula um acesso real do seu IP
-        await fetch(link, { 
-            mode: 'no-cors', 
-            cache: 'no-store' 
-        });
+        // Chama a própria API em PHP para checar o status real do HTTP
+        const res = await fetch(`${API_URL}action=check_site&url=${encodeURIComponent(link)}`);
+        const result = await res.json();
         
-        // Se o fetch resolveu e não deu erro de rede, o servidor/site está no ar
-        novosDados[i][`d${diaHoje}`] = "OK";
+        // Se o PHP retornar status OK (ex: HTTP 200), grava OK. Se der 403, 404, etc., grava X.
+        novosDados[i][`d${diaHoje}`] = result.status === "OK" ? "OK" : "X";
 
       } catch (error) {
-        // Se deu erro no fetch, significa que o servidor não respondeu, domínio expirou ou site caiu feio
-        console.warn(`O site ${link} parece estar fora do ar.`, error);
+        console.warn(`Erro ao verificar o site ${link}:`, error);
         novosDados[i][`d${diaHoje}`] = "X";
       }
       
-      // Salva essa alteração no banco de dados
+      // Salva a alteração no banco de dados
       try {
         const formData = new FormData();
         formData.append("action", "update");
@@ -349,9 +339,8 @@ const PlanilhaSitesView = () => {
         console.error("Erro ao salvar no banco de dados.", e);
       }
       
-      // Atualiza a tela e dá uma pausa de meio segundo para não travar sua internet/navegador
       setDados([...novosDados]);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
     setCheckingSites(false);

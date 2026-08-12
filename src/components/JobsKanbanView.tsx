@@ -655,20 +655,46 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     } 
   }; 
 
-  // Ordenação prioritária por 'ordem' (se houver) e por 'data_inicio'
+
+// Ordenação prioritária por 'ordem' (se houver) e por 'data_inicio'
   const getSortedColumnJobs = (statusId: JobStatus) => {
     const rawColumnJobs = filteredJobs?.filter((j) => j.status === statusId) || [];
+    
     return [...rawColumnJobs].sort((a, b) => {
-      const ordemA = (a as any).ordem !== undefined && (a as any).ordem !== null ? Number((a as any).ordem) : Infinity;
-      const ordemB = (b as any).ordem !== undefined && (b as any).ordem !== null ? Number((b as any).ordem) : Infinity;
+      // 1. TRATAR A ORDEM
+      // Se a ordem for null, undefined, vazio ou 0 (job novo), tratamos como Infinito (vai pro final)
+      const parseOrdem = (val: any) => {
+        if (val === null || val === undefined || val === "") return Infinity;
+        const num = Number(val);
+        if (isNaN(num) || num === 0) return Infinity; 
+        return num;
+      };
 
+      const ordemA = parseOrdem((a as any).ordem);
+      const ordemB = parseOrdem((b as any).ordem);
+
+      // Se as ordens forem diferentes, quem tiver menor ordem fica em cima
       if (ordemA !== ordemB) {
         return ordemA - ordemB;
       }
 
-      const dateA = a.data_inicio ? new Date(a.data_inicio).getTime() : 0;
-      const dateB = b.data_inicio ? new Date(b.data_inicio).getTime() : 0;
-      return dateA - dateB;
+      // 2. TRATAR A DATA DE INÍCIO (Critério de desempate se não tiverem ordem)
+      const parseDate = (dateStr: any) => {
+        // Se não tiver data ou for formato "0000-00-00", joga pro final (Infinity)
+        if (!dateStr || dateStr.startsWith("0000")) return Infinity; 
+        return new Date(dateStr).getTime();
+      };
+
+      const dateA = parseDate(a.data_inicio);
+      const dateB = parseDate(b.data_inicio);
+
+      if (dateA !== dateB) {
+        return dateA - dateB;
+      }
+
+      // 3. DESEMPATE FINAL
+      // Se tiver mesma data (ou ambos sem data), ordena pelo ID para manter estabilidade
+      return String(b.id).localeCompare(String(a.id));
     });
   };
 

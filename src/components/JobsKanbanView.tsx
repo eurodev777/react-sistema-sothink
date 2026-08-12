@@ -505,7 +505,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     ); 
   }); 
 
-  // PERSISTÊNCIA DA ORDEM DOS JOBS NO BANCO
+  // PERSISTÊNCIA DA ORDEM DOS JOBS NO BANCO GG
   const updateJobOrdersInBackend = async (updatedColumnJobs: Job[]) => {
     try {
       await Promise.all(

@@ -109,13 +109,19 @@ const getInitials = (name: string) => {
   return name.substring(0, 2).toUpperCase();
 };
 
-const formatDateSafe = (dateStr?: string, formatType: "short" | "full" = "full") => {
+const formatDateSafe = (
+  dateStr?: string,
+  formatType: "short" | "full" = "full",
+) => {
   if (!dateStr) return "-";
   try {
     const safeString = dateStr.includes("T") ? dateStr : `${dateStr}T12:00:00`;
     const dateObj = new Date(safeString);
     if (formatType === "short") {
-      return dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+      return dateObj.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "short",
+      });
     }
     return dateObj.toLocaleDateString("pt-BR");
   } catch (e) {
@@ -133,7 +139,7 @@ interface JobsKanbanViewProps {
   showToast: (
     type: "success" | "error" | "info",
     title: string,
-    desc?: string
+    desc?: string,
   ) => void;
   selectedJobFromApp?: Job | null;
   onClearSelectedJob?: () => void;
@@ -153,7 +159,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   onOpenNewJobModal,
 }) => {
   const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "list">(
-    "kanban"
+    "kanban",
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [filterClientId, setFilterClientId] = useState("all");
@@ -163,13 +169,15 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   // NOVO ESTADO: Controla a exibição de jobs arquivados
   const [showArchived, setShowArchived] = useState(false);
   const [activeJob, setActiveJob] = useState<Job | null>(
-    selectedJobFromApp || null
+    selectedJobFromApp || null,
   );
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [newCommentText, setNewCommentText] = useState("");
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
-  const [clientes, setClientes] = useState<EmpresaCliente[]>(propClientes || []);
+  const [clientes, setClientes] = useState<EmpresaCliente[]>(
+    propClientes || [],
+  );
   const [jobs, setJobs] = useState<Job[]>(propJobs || []);
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -197,7 +205,20 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
-  const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const monthNames = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ];
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   // SINCRONIZADORES DE ESTADO COM O APP.TSX
@@ -217,7 +238,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const fetchAllJobs = async () => {
     try {
       const response = await fetch(
-        "https://sothink.com.br/app/api/listar?tabela=jobs"
+        "https://sothink.com.br/app/api/listar?tabela=jobs",
       );
       const data = await response.json();
       setJobs(data);
@@ -247,7 +268,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     const carregarUsuarios = async () => {
       try {
         const response = await fetch(
-          "https://sothink.com.br/app/api/listar?tabela=usuarios"
+          "https://sothink.com.br/app/api/listar?tabela=usuarios",
         );
         const data = await response.json();
         setUsuarios(data);
@@ -315,13 +336,13 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         showToast(
           "success",
           "Alterações salvas!",
-          "Job atualizado no banco com sucesso."
+          "Job atualizado no banco com sucesso.",
         );
 
         const freshJobs = await fetchAllJobs();
         if (freshJobs) {
           const updatedActive = freshJobs.find(
-            (j: Job) => j.id === activeJob.id
+            (j: Job) => j.id === activeJob.id,
           );
           if (updatedActive) {
             setActiveJob(updatedActive);
@@ -364,14 +385,14 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     const idStr = String(anexoId);
 
     const updatedAnexos = (activeJob.anexos || []).filter(
-      (a) => String(a.id) !== idStr
+      (a) => String(a.id) !== idStr,
     );
     handleUpdateActiveJobField("anexos", updatedAnexos);
 
     if (!idStr.startsWith("new-")) {
       try {
         const response = await fetch(
-          `https://sothink.com.br/app/api/deletar?id=${idStr}&tabela=jobs_arquivos`
+          `https://sothink.com.br/app/api/deletar?id=${idStr}&tabela=jobs_arquivos`,
         );
         const data = await response.json();
         if (data.sucesso) showToast("info", "Arquivo apagado com sucesso.");
@@ -385,12 +406,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     if (!activeJob?.id) return;
     if (
       window.confirm(
-        "Tem certeza que deseja excluir este job? Esta ação não pode ser desfeita."
+        "Tem certeza que deseja excluir este job? Esta ação não pode ser desfeita.",
       )
     ) {
       try {
         const response = await fetch(
-          `https://sothink.com.br/app/api/deletar?id=${activeJob.id}&tabela=jobs`
+          `https://sothink.com.br/app/api/deletar?id=${activeJob.id}&tabela=jobs`,
         );
         const data = await response.json();
 
@@ -412,7 +433,9 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const handleArchiveToggle = async () => {
     if (!activeJob?.id) return;
 
-    const isCurrentlyArchived = (activeJob as any).arquivado === 1 || (activeJob as any).arquivado === "1";
+    const isCurrentlyArchived =
+      (activeJob as any).arquivado === 1 ||
+      (activeJob as any).arquivado === "1";
     const newValue = isCurrentlyArchived ? "0" : "1";
     const actionMsg = isCurrentlyArchived ? "restaurado" : "arquivado";
 
@@ -434,14 +457,19 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
         // Atualiza a listagem local
         setJobs((prev) =>
-          prev.map((j) => (j.id === activeJob.id ? { ...j, arquivado: newValue } : j))
+          prev.map((j) =>
+            j.id === activeJob.id ? { ...j, arquivado: newValue } : j,
+          ),
         );
 
         // Fecha o modal e limpa a seleção
         setActiveJob(null);
         if (onClearSelectedJob) onClearSelectedJob();
       } else {
-        showToast("error", data.erro || `Erro ao atualizar status de arquivamento`);
+        showToast(
+          "error",
+          data.erro || `Erro ao atualizar status de arquivamento`,
+        );
       }
     } catch (error) {
       showToast("error", "Erro de conexão com a API");
@@ -457,7 +485,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   // Modificado para respeitar a visualização de arquivados
   const filteredJobs = jobs?.filter((j) => {
     // Lógica de Arquivados
-    const isArchived = (j as any).arquivado === 1 || (j as any).arquivado === "1";
+    const isArchived =
+      (j as any).arquivado === 1 || (j as any).arquivado === "1";
     if (showArchived && !isArchived) return false; // Se quer ver arquivados, esconde os ativos
     if (!showArchived && isArchived) return false; // Se quer ver ativos, esconde os arquivados
 
@@ -490,7 +519,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
   const handleDropColumn = async (
     e: React.DragEvent,
-    targetStatus: JobStatus
+    targetStatus: JobStatus,
   ) => {
     e.preventDefault();
     const jobId = e.dataTransfer.getData("text/plain") || draggedJobId;
@@ -500,7 +529,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     if (!targetJob || targetJob.status === targetStatus) return;
 
     setJobs((prev) =>
-      prev.map((j) => (j.id === jobId ? { ...j, status: targetStatus } : j))
+      prev.map((j) => (j.id === jobId ? { ...j, status: targetStatus } : j)),
     );
 
     try {
@@ -526,22 +555,22 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           showToast(
             "info",
             "Status Atualizado",
-            `Movido para: ${targetStatus}`
+            `Movido para: ${targetStatus}`,
           );
         }
       } else {
         setJobs((prev) =>
           prev.map((j) =>
-            j.id === jobId ? { ...j, status: targetJob.status } : j
-          )
+            j.id === jobId ? { ...j, status: targetJob.status } : j,
+          ),
         );
         showToast("error", data.erro || "Erro ao atualizar status no banco.");
       }
     } catch (e: any) {
       setJobs((prev) =>
         prev.map((j) =>
-          j.id === jobId ? { ...j, status: targetJob.status } : j
-        )
+          j.id === jobId ? { ...j, status: targetJob.status } : j,
+        ),
       );
       showToast("error", "Erro ao mover job", e.message);
     } finally {
@@ -604,28 +633,31 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-medium">
             <button
               onClick={() => setViewMode("kanban")}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${viewMode === "kanban"
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+                viewMode === "kanban"
                   ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold"
                   : "text-slate-600 dark:text-slate-400"
-                }`}
+              }`}
             >
               <Kanban className="w-3.5 h-3.5" /> Kanban
             </button>
             <button
               onClick={() => setViewMode("calendar")}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${viewMode === "calendar"
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+                viewMode === "calendar"
                   ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold"
                   : "text-slate-600 dark:text-slate-400"
-                }`}
+              }`}
             >
               <CalendarIcon className="w-3.5 h-3.5" /> Calendário
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${viewMode === "list"
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+                viewMode === "list"
                   ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold"
                   : "text-slate-600 dark:text-slate-400"
-                }`}
+              }`}
             >
               <List className="w-3.5 h-3.5" /> Lista
             </button>
@@ -634,10 +666,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           {/* BOTÃO PARA ALTERNAR VISUALIZAÇÃO DE ARQUIVADOS */}
           <button
             onClick={() => setShowArchived(!showArchived)}
-            className={`px-3 py-1.5 text-xs font-bold rounded-md flex items-center gap-2 transition-all border ${showArchived
+            className={`px-3 py-1.5 text-xs font-bold rounded-md flex items-center gap-2 transition-all border ${
+              showArchived
                 ? "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800"
                 : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800"
-              }`}
+            }`}
           >
             <Archive className="w-4 h-4" />
             {showArchived ? "Voltar aos Ativos" : "Ver Arquivados"}
@@ -826,13 +859,14 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                             <div className="flex items-center gap-2 shrink-0">
                               <div className="flex items-center gap-1.5 font-medium text-[11px]">
                                 <span
-                                  className={`priority-dot ${job.prioridade === "Crítico" ||
-                                      job.prioridade === "Alto"
+                                  className={`priority-dot ${
+                                    job.prioridade === "Crítico" ||
+                                    job.prioridade === "Alto"
                                       ? "priority-high"
                                       : job.prioridade === "Médio"
                                         ? "priority-med"
                                         : "priority-low"
-                                    }`}
+                                  }`}
                                 />
                                 <span className="hidden sm:block">
                                   {job.prioridade}
@@ -862,12 +896,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
       {/* CALENDAR VIEW */}
       {viewMode === "calendar" && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
-
           {/* Header do Calendário */}
           <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
               <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5 text-indigo-500" /> Calendário Mensal
+                <CalendarIcon className="w-5 h-5 text-indigo-500" /> Calendário
+                Mensal
               </h3>
               <span className="text-xs text-slate-400">
                 Jobs organizados por Data de Início (ou Entrega)
@@ -896,24 +930,32 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
           {/* Grade do Calendário */}
           <div className="grid grid-cols-7 gap-px bg-slate-200 dark:bg-slate-700 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm">
-
             {/* Cabeçalho dos dias da semana */}
             {weekDays.map((day) => (
-              <div key={day} className="bg-slate-50 dark:bg-slate-800 p-2 text-center text-xs font-bold text-slate-500 uppercase">
+              <div
+                key={day}
+                className="bg-slate-50 dark:bg-slate-800 p-2 text-center text-xs font-bold text-slate-500 uppercase"
+              >
                 {day}
               </div>
             ))}
 
             {/* Espaços vazios antes do dia 1 */}
             {Array.from({ length: firstDayIndex }).map((_, idx) => (
-              <div key={`empty-${idx}`} className="bg-white dark:bg-slate-900 min-h-[120px]" />
+              <div
+                key={`empty-${idx}`}
+                className="bg-white dark:bg-slate-900 min-h-[120px]"
+              />
             ))}
 
             {/* Blocos de Dias */}
             {Array.from({ length: daysInMonth }).map((_, idx) => {
               const day = idx + 1;
               const today = new Date();
-              const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+              const isToday =
+                day === today.getDate() &&
+                currentMonth === today.getMonth() &&
+                currentYear === today.getFullYear();
 
               // Filtrar os jobs que caem neste dia
               const jobsForDay = filteredJobs?.filter((job) => {
@@ -924,18 +966,24 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                 const onlyDate = dateStr.split("T")[0].split(" ")[0];
                 const [jYear, jMonth, jDay] = onlyDate.split("-").map(Number);
 
-                return jYear === currentYear && (jMonth - 1) === currentMonth && jDay === day;
+                return (
+                  jYear === currentYear &&
+                  jMonth - 1 === currentMonth &&
+                  jDay === day
+                );
               });
 
               return (
                 <div
                   key={day}
-                  className={`bg-white dark:bg-slate-900 p-1.5 min-h-[120px] transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 flex flex-col ${isToday ? "ring-2 ring-inset ring-indigo-500" : ""
-                    }`}
+                  className={`bg-white dark:bg-slate-900 p-1.5 min-h-[120px] transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 flex flex-col ${
+                    isToday ? "ring-2 ring-inset ring-indigo-500" : ""
+                  }`}
                 >
                   <span
-                    className={`inline-block mb-1 text-xs font-bold w-6 h-6 text-center leading-6 rounded-full ${isToday ? "bg-indigo-600 text-white" : "text-slate-400"
-                      }`}
+                    className={`inline-block mb-1 text-xs font-bold w-6 h-6 text-center leading-6 rounded-full ${
+                      isToday ? "bg-indigo-600 text-white" : "text-slate-400"
+                    }`}
                   >
                     {day}
                   </span>
@@ -946,11 +994,27 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       <div
                         key={job.id}
                         onClick={() => setActiveJob(job)}
-                        className="text-[10px] p-1.5 rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60 cursor-pointer hover:border-indigo-300 overflow-hidden shadow-xs transition-colors"
+                        className="text-[10px] p-1.5 rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60 cursor-pointer hover:border-indigo-300 overflow-hidden shadow-xs transition-colors flex justify-between items-start gap-1"
                         title={`${job.nome_fantasia} - ${job.titulo}`}
                       >
-                        <div className="font-extrabold truncate">{job.nome_fantasia}</div>
-                        <div className="truncate opacity-80">{job.titulo}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-extrabold truncate">
+                            {job.nome_fantasia}
+                          </div>
+                          <div className="truncate opacity-80">
+                            {job.titulo}
+                          </div>
+                        </div>
+
+                        {/* Ícone do Responsável no Calendário */}
+                        {job?.responsavel && (
+                          <div
+                            className="w-5 h-5 shrink-0 rounded-full bg-indigo-200 dark:bg-indigo-800/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-[9px] font-extrabold shadow-sm"
+                            title={`Responsável: ${job.responsavel}`}
+                          >
+                            {getInitials(job.responsavel)}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1028,7 +1092,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   <span className="text-xs font-mono text-slate-400">
                     ID: {activeJob.id}
                   </span>
-                  {((activeJob as any).arquivado === 1 || (activeJob as any).arquivado === "1") && (
+                  {((activeJob as any).arquivado === 1 ||
+                    (activeJob as any).arquivado === "1") && (
                     <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold border border-amber-200/50">
                       Arquivado
                     </span>
@@ -1138,17 +1203,18 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                               };
                               handleUpdateActiveJobField("checklists", updated);
                             }}
-                            className={`flex-1 bg-transparent border-none text-xs focus:outline-none ${item.concluido
+                            className={`flex-1 bg-transparent border-none text-xs focus:outline-none ${
+                              item.concluido
                                 ? "line-through text-slate-400"
                                 : "font-semibold text-slate-800 dark:text-slate-200"
-                              }`}
+                            }`}
                           />
                           <button
                             type="button"
                             onClick={async () => {
                               const itemToRemove = activeJob.checklists?.[idx];
                               const updated = activeJob.checklists?.filter(
-                                (_, i) => i !== idx
+                                (_, i) => i !== idx,
                               );
                               handleUpdateActiveJobField("checklists", updated);
 
@@ -1158,7 +1224,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                               ) {
                                 try {
                                   await fetch(
-                                    `https://sothink.com.br/app/api/deletar?id=${itemToRemove.id}&tabela=jobs_checklists`
+                                    `https://sothink.com.br/app/api/deletar?id=${itemToRemove.id}&tabela=jobs_checklists`,
                                   );
                                 } catch (e) {
                                   console.error("Erro ao deletar checklist", e);
@@ -1186,7 +1252,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                 };
                                 handleUpdateActiveJobField(
                                   "checklists",
-                                  updated
+                                  updated,
                                 );
                               }}
                               className="w-full text-[10px] bg-transparent text-slate-500 border-none outline-none focus:ring-0 p-0"
@@ -1205,7 +1271,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                 };
                                 handleUpdateActiveJobField(
                                   "checklists",
-                                  updated
+                                  updated,
                                 );
                               }}
                               className="w-full text-[10px] bg-transparent text-slate-500 border-none outline-none focus:ring-0 p-0"
@@ -1403,8 +1469,9 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       <span className="text-slate-400">Sem responsável...</span>
                     )}
                     <ChevronRight
-                      className={`w-4 h-4 text-slate-400 transition-transform ${showUserDropdown ? "rotate-90" : ""
-                        }`}
+                      className={`w-4 h-4 text-slate-400 transition-transform ${
+                        showUserDropdown ? "rotate-90" : ""
+                      }`}
                     />
                   </button>
 
@@ -1453,7 +1520,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     onChange={(e) =>
                       handleUpdateActiveJobField(
                         "status",
-                        e.target.value as JobStatus
+                        e.target.value as JobStatus,
                       )
                     }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-indigo-600"
@@ -1475,7 +1542,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     onChange={(e) =>
                       handleUpdateActiveJobField(
                         "prioridade",
-                        e.target.value as JobUrgencia
+                        e.target.value as JobUrgencia,
                       )
                     }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
@@ -1527,7 +1594,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       onChange={(e) =>
                         handleUpdateActiveJobField(
                           "permitir_acesso_cliente",
-                          e.target.checked
+                          e.target.checked,
                         )
                       }
                       className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
@@ -1555,10 +1622,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     className="w-full px-4 py-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-600 hover:text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
                   >
                     <Archive className="w-4 h-4" />
-                    {((activeJob as any).arquivado === 1 || (activeJob as any).arquivado === "1") ? "Restaurar Job" : "Arquivar Job"}
+                    {(activeJob as any).arquivado === 1 ||
+                    (activeJob as any).arquivado === "1"
+                      ? "Restaurar Job"
+                      : "Arquivar Job"}
                   </button>
                 </div>
-
               </div>
             </div>
           </div>

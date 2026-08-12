@@ -125,7 +125,7 @@ export function App() {
         if (Array.isArray(dataJobs)) setJobs(dataJobs);
 
         // Atas
-        const resAtas = await fetch("https://sothink.com.br/app/api/listar?tabela=atas");
+        const resAtas = await fetch("https://sothink.com.br/app/api/listar?tabela=atas_reuniao");
         const dataAtas = await resAtas.json();
         if (Array.isArray(dataAtas)) setAtas(dataAtas);
 

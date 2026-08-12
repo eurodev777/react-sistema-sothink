@@ -88,6 +88,7 @@ export const TrafegoView: React.FC = () => {
   const [campanhas, setCampanhas] = useState<CampanhaTrafego[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState(""); // <-- NOVO: Estado para o filtro de status
   const [dragInfo, setDragInfo] = useState<{index: number | null, plataforma: string | null}>({index: null, plataforma: null});
 
   const API_URL = "https://sothink.com.br/app/api/trafego"; // Aponta para o seu trafego.php
@@ -212,15 +213,23 @@ export const TrafegoView: React.FC = () => {
 
   const renderTable = (plataforma: "Google" | "Meta") => {
     const listaCampanhas = Array.isArray(campanhas) ? campanhas : [];
-    const isFiltered = searchTerm.trim() !== "";
+    
+    // Atualizado: Trava o drag & drop se houver qualquer filtro (busca ou status) ativo
+    const isFiltered = searchTerm.trim() !== "" || statusFilter.trim() !== "";
 
     const dados = listaCampanhas.filter((c) => {
       const nomeEmpresa = c.empresa || "";
       const busca = searchTerm || "";
-      return (
-        c.plataforma === plataforma &&
-        nomeEmpresa.toLowerCase().includes(busca.toLowerCase())
-      );
+      const statusC = c.status_obs || "";
+      
+      // Checa se a plataforma bate
+      const matchPlataforma = c.plataforma === plataforma;
+      // Checa se o texto da busca bate
+      const matchBusca = nomeEmpresa.toLowerCase().includes(busca.toLowerCase());
+      // Checa se o filtro de status bate (se tiver vazio, mostra todos)
+      const matchStatus = statusFilter === "" || statusC === statusFilter;
+
+      return matchPlataforma && matchBusca && matchStatus;
     });
 
     return (
@@ -269,7 +278,7 @@ export const TrafegoView: React.FC = () => {
               {dados.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="text-center py-8 text-slate-400">
-                    Nenhuma campanha cadastrada.
+                    Nenhuma campanha cadastrada ou encontrada para o filtro.
                   </td>
                 </tr>
               ) : (
@@ -280,6 +289,7 @@ export const TrafegoView: React.FC = () => {
                     statusVal === "OK" ? "text-emerald-700 bg-emerald-100" :
                     statusVal === "PAUSADA" ? "text-rose-700 bg-rose-100" :
                     statusVal === "AGUARDANDO PUBLICAÇÃO" ? "text-amber-700 bg-amber-100" :
+                    statusVal === "AGUARDANDO CRIATIVO" ? "text-purple-700 bg-purple-100" : // <-- NOVO STATUS COLORIDO
                     "text-slate-600 hover:bg-slate-100 bg-transparent";
 
                   return (
@@ -314,6 +324,7 @@ export const TrafegoView: React.FC = () => {
                         <option value="" className="text-slate-700 bg-white">Selecione...</option>
                         <option value="OK" className="text-emerald-700 bg-white">OK</option>
                         <option value="AGUARDANDO PUBLICAÇÃO" className="text-amber-700 bg-white">AGUARDANDO PUBLICAÇÃO</option>
+                        <option value="AGUARDANDO CRIATIVO" className="text-purple-700 bg-white">AGUARDANDO CRIATIVO</option> {/* <-- NOVO STATUS AQUI */}
                         <option value="PAUSADA" className="text-rose-700 bg-white">PAUSADA</option>
                       </select>
                     </td>
@@ -520,6 +531,20 @@ export const TrafegoView: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          
+          {/* NOVO: Select para Filtro de Status */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+          >
+            <option value="">Todos os Status</option>
+            <option value="OK">OK</option>
+            <option value="AGUARDANDO PUBLICAÇÃO">AGUARDANDO PUBLICAÇÃO</option>
+            <option value="AGUARDANDO CRIATIVO">AGUARDANDO CRIATIVO</option>
+            <option value="PAUSADA">PAUSADA</option>
+          </select>
+
           <div className="relative w-full lg:w-72">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input

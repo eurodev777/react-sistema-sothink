@@ -10,7 +10,8 @@ import {
   GripVertical,
   Globe,
   ExternalLink,
-  Download, // <-- Ícone adicionado
+  Download,
+  Activity, // <-- Novo ícone para o botão de verificar sites
 } from "lucide-react";
 import { TrafegoView } from "./TrafegoView";
 
@@ -186,6 +187,7 @@ export const DashboardTrafego = () => {
 const PlanilhaSitesView = () => {
   const [dados, setDados] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [checkingSites, setCheckingSites] = useState(false); // <-- Estado para o loading de verificação
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const [mesAno, setMesAno] = useState(() => {
@@ -286,6 +288,76 @@ const PlanilhaSitesView = () => {
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
+// ==========================================
+  // FUNÇÃO NOVA: VERIFICAÇÃO AUTOMÁTICA (DIRETA)
+  // ==========================================
+  const handleVerificarHoje = async () => {
+    const dataAtual = new Date();
+    const mesAtualStr = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, "0")}`;
+
+    // Trava de segurança para não preencher o dia de hoje no mês errado
+    if (mesAno !== mesAtualStr) {
+      alert("Por favor, selecione o mês atual para poder fazer a verificação de hoje.");
+      return;
+    }
+
+    const diaHoje = dataAtual.getDate();
+    const confirmacao = window.confirm(`Isso fará um teste em todos os sites e preencherá automaticamente o dia ${diaHoje}. Deseja iniciar?`);
+    if (!confirmacao) return;
+
+    setCheckingSites(true);
+
+    const novosDados = [...dados];
+
+    for (let i = 0; i < novosDados.length; i++) {
+      const c = novosDados[i];
+      let link = c.link?.trim();
+      
+      if (!link) continue;
+
+      // Adiciona https se o usuário tiver esquecido
+      if (!link.startsWith("http")) {
+        link = "https://" + link;
+      }
+
+      try {
+        // Tenta acessar o site diretamente pelo seu navegador, de forma opaca (no-cors)
+        // Isso burla bloqueios de Cloudflare e firewalls, pois simula um acesso real do seu IP
+        await fetch(link, { 
+            mode: 'no-cors', 
+            cache: 'no-store' 
+        });
+        
+        // Se o fetch resolveu e não deu erro de rede, o servidor/site está no ar
+        novosDados[i][`d${diaHoje}`] = "OK";
+
+      } catch (error) {
+        // Se deu erro no fetch, significa que o servidor não respondeu, domínio expirou ou site caiu feio
+        console.warn(`O site ${link} parece estar fora do ar.`, error);
+        novosDados[i][`d${diaHoje}`] = "X";
+      }
+      
+      // Salva essa alteração no banco de dados
+      try {
+        const formData = new FormData();
+        formData.append("action", "update");
+        Object.entries(novosDados[i]).forEach(([key, val]) =>
+          formData.append(key, val as string)
+        );
+        await fetch(API_URL, { method: "POST", body: formData });
+      } catch (e) {
+        console.error("Erro ao salvar no banco de dados.", e);
+      }
+      
+      // Atualiza a tela e dá uma pausa de meio segundo para não travar sua internet/navegador
+      setDados([...novosDados]);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    setCheckingSites(false);
+    alert("Verificação de sites concluída com sucesso!");
+  };
+
   const lista = dados.filter((d) => {
     const matchEmpresa = filtroEmpresa === "" || d.empresa === filtroEmpresa;
     const matchLink =
@@ -343,7 +415,6 @@ const PlanilhaSitesView = () => {
             />
           </div>
 
-          {/* NOVO BOTÃO DE EXPORTAR CSV */}
           <button
             onClick={() => exportToCSV(lista, `sites_monitorados_${mesAno}`)}
             className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold"
@@ -362,12 +433,29 @@ const PlanilhaSitesView = () => {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
           <div className="bg-slate-50 px-4 py-3 flex justify-between items-center border-b border-slate-200">
             <h2 className="font-bold text-slate-800">Sites Monitorados</h2>
-            <button
-              onClick={handleAddRow}
-              className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow transition-all text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" /> Nova Linha
-            </button>
+            <div className="flex gap-2">
+              {/* NOVO BOTÃO DE VERIFICAÇÃO */}
+              <button
+                onClick={handleVerificarHoje}
+                disabled={checkingSites}
+                className="bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 shadow-sm hover:shadow transition-all text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-semibold"
+                title="Checar todos os sites no dia de hoje"
+              >
+                {checkingSites ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Activity className="w-4 h-4" />
+                )}
+                {checkingSites ? "Verificando..." : "Verificar Hoje"}
+              </button>
+
+              <button
+                onClick={handleAddRow}
+                className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow transition-all text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" /> Nova Linha
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -435,7 +523,6 @@ const PlanilhaSitesView = () => {
                             className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none transition-all text-slate-600"
                             placeholder="https://..."
                           />
-                          {/* Botão para abrir o link. Só aparece se o link não estiver vazio */}
                           {c.link && c.link.trim() !== "" && (
                             <a
                               href={c.link.startsWith('http') ? c.link : `https://${c.link}`}
@@ -455,7 +542,7 @@ const PlanilhaSitesView = () => {
                         const colorClass =
                           valor === "OK"
                             ? "text-emerald-700 bg-emerald-100 font-bold"
-                            : valor === "X"
+                            : valor === "X" || valor === "x"
                             ? "text-rose-700 bg-rose-100 font-bold"
                             : "text-slate-400 hover:bg-slate-100";
 
@@ -627,7 +714,11 @@ const PlanilhaMensalView = ({
   const calcularTotal = (item: any) => {
     let total = 0;
     for (let i = 1; i <= 31; i++) {
-      total += Number(item[`d${i}`]) || 0;
+      const val = item[`d${i}`];
+      // Se for X não tenta somar
+      if (val !== 'X' && val !== 'x') {
+        total += Number(val) || 0;
+      }
     }
     return total;
   };
@@ -757,24 +848,31 @@ const PlanilhaMensalView = ({
 
                     {diasDoMes.map((dia) => {
                       const val = safeValue(c[`d${dia}`]);
+                      const isX = val.toString().toUpperCase() === "X"; // Verifica se o valor é um X
                       
                       return (
                       <td key={dia} className="p-1 border-l border-slate-100">
                         <div className={`flex items-center justify-center rounded px-1 transition-colors ${
-                          isCusto 
+                          isX
+                            ? "bg-amber-100 text-amber-700" // AQUI: Se for X, fundo amarelo e texto amarelo escuro
+                            : isCusto 
                             ? "hover:bg-emerald-50 focus-within:bg-emerald-50 text-emerald-700" 
                             : "hover:bg-indigo-50 focus-within:bg-indigo-50 text-indigo-700"
                         }`}>
-                          {isCusto && (
+                          {/* Só mostra o R$ se for Custo E não for "X" */}
+                          {isCusto && !isX && val !== "" && (
                             <span className="text-[10px] font-bold mr-0.5 opacity-60">R$</span>
                           )}
+                          
                           <input
-                            type={isCusto ? "text" : "number"}
+                            type="text" 
                             value={val}
                             onChange={(e) => handleChange(c.id, `d${dia}`, e.target.value)}
                             onBlur={() => handleBlur(c)}
-                            className={`w-10 py-1 text-center bg-transparent rounded outline-none font-medium transition-colors ${
-                              isCusto ? "focus:text-emerald-700" : "focus:text-indigo-700"
+                            className={`w-10 py-1 text-center bg-transparent rounded outline-none transition-colors ${
+                              isX 
+                                ? "text-amber-800 font-bold" // AQUI: Negrito no texto do X
+                                : isCusto ? "focus:text-emerald-700 font-medium" : "focus:text-indigo-700 font-medium"
                             }`}
                           />
                         </div>

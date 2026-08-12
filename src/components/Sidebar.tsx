@@ -97,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       className={`dark:bg-slate-950 bg-white text-slate-800 dark:text-white transition-all duration-300 shrink-0 flex flex-col border-r dark:border-slate-950 border-slate-200 h-full ${
-        collapsed ? 'w-12' : 'w-64'
+        collapsed ? 'w-16' : 'w-64'
       }`}
     >
       <div className="flex flex-col h-full">
@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation Items */}
-        <nav className="p-0.5 mt-2 space-y-2 flex-1 overflow-y-auto">
+        <nav className="p-2.5 mt-2 space-y-2 flex-1 overflow-y-auto">
           {!collapsed && (
             <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
               {isClient ? 'Portal Exclusivo' : 'Menu Principal'}

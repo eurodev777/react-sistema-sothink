@@ -288,7 +288,7 @@ const PlanilhaSitesView = () => {
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
-// ==========================================
+  // ==========================================
   // FUNÇÃO NOVA: VERIFICAÇÃO AUTOMÁTICA (DIRETA)
   // ==========================================
   const handleVerificarHoje = async () => {

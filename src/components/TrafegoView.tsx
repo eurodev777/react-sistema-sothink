@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Trash2, Loader2, Search, GripVertical, Download } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  Search,
+  GripVertical,
+  Download,
+} from "lucide-react";
 
 export interface CampanhaTrafego {
   id?: string;
@@ -19,7 +26,14 @@ export interface CampanhaTrafego {
 
 // Função para ocultar null, "null", undefined, 0 ou "0"
 const safeValue = (val: any) => {
-  if (val === null || val === "null" || val === undefined || val === 0 || val === "0") return "";
+  if (
+    val === null ||
+    val === "null" ||
+    val === undefined ||
+    val === 0 ||
+    val === "0"
+  )
+    return "";
   return val;
 };
 
@@ -28,10 +42,16 @@ const formatDateForInput = (dateStr?: string) => {
   if (dateStr.includes("/")) {
     const parts = dateStr.split("/");
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(
+        2,
+        "0"
+      )}`;
     } else if (parts.length === 2) {
       const currentYear = new Date().getFullYear();
-      return `${currentYear}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+      return `${currentYear}-${parts[1].padStart(2, "0")}-${parts[0].padStart(
+        2,
+        "0"
+      )}`;
     }
   }
   return dateStr;
@@ -64,7 +84,10 @@ const exportToCSV = (dados: any[], nomeArquivo: string) => {
 
   for (const row of dados) {
     const values = headers.map((header) => {
-      const valor = row[header] === null || row[header] === undefined ? "" : String(row[header]);
+      const valor =
+        row[header] === null || row[header] === undefined
+          ? ""
+          : String(row[header]);
       const escaped = valor.replace(/"/g, '""');
       return `"${escaped}"`;
     });
@@ -73,7 +96,9 @@ const exportToCSV = (dados: any[], nomeArquivo: string) => {
 
   const csvString = csvRows.join("\n");
   // \uFEFF força o UTF-8 no Excel para não quebrar acentos
-  const blob = new Blob(["\uFEFF" + csvString], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + csvString], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
@@ -89,7 +114,11 @@ export const TrafegoView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState(""); // <-- NOVO: Estado para o filtro de status
-  const [dragInfo, setDragInfo] = useState<{index: number | null, plataforma: string | null}>({index: null, plataforma: null});
+  const [dragInfo, setDragInfo] = useState<{
+    index: number | null;
+    plataforma: string | null;
+  }>({ index: null, plataforma: null });
+  const [clienteFilter, setClienteFilter] = useState(""); // <-- NOVO AQUI
 
   const API_URL = "https://sothink.com.br/app/api/trafego"; // Aponta para o seu trafego.php
 
@@ -110,6 +139,11 @@ export const TrafegoView: React.FC = () => {
   useEffect(() => {
     fetchCampanhas();
   }, []);
+
+  // <-- NOVO: Extrair empresas (clientes) únicas para o Select
+  const empresasUnicas = Array.from(
+    new Set(campanhas.map((c) => c.empresa).filter((e) => e && e.trim() !== ""))
+  ).sort();
 
   const handleAddRow = async (plataforma: "Google" | "Meta") => {
     const formData = new FormData();
@@ -169,27 +203,40 @@ export const TrafegoView: React.FC = () => {
   // ==========================================
   // FUNÇÕES DE MUDANÇA DE ORDEM (DRAG & DROP)
   // ==========================================
-  const handleDragStart = (e: React.DragEvent, index: number, plataforma: string) => {
+  const handleDragStart = (
+    e: React.DragEvent,
+    index: number,
+    plataforma: string
+  ) => {
     setDragInfo({ index, plataforma });
     e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
   };
 
-  const handleDrop = async (e: React.DragEvent, targetIndex: number, targetPlataforma: string, listaFiltrada: CampanhaTrafego[]) => {
+  const handleDrop = async (
+    e: React.DragEvent,
+    targetIndex: number,
+    targetPlataforma: string,
+    listaFiltrada: CampanhaTrafego[]
+  ) => {
     e.preventDefault();
-    
+
     // Não permite arrastar entre plataformas (ex: Google para Meta) nem soltar no mesmo lugar
-    if (dragInfo.plataforma !== targetPlataforma || dragInfo.index === null || dragInfo.index === targetIndex) {
-        setDragInfo({index: null, plataforma: null});
-        return;
+    if (
+      dragInfo.plataforma !== targetPlataforma ||
+      dragInfo.index === null ||
+      dragInfo.index === targetIndex
+    ) {
+      setDragInfo({ index: null, plataforma: null });
+      return;
     }
 
     const novaLista = [...listaFiltrada];
     const itemMovido = novaLista[dragInfo.index];
-    
+
     // Move o item na lista localmente
     novaLista.splice(dragInfo.index, 1);
     novaLista.splice(targetIndex, 0, itemMovido);
@@ -198,11 +245,13 @@ export const TrafegoView: React.FC = () => {
 
     // Atualiza o state mantendo os itens da outra plataforma intocados
     setCampanhas((prev) => {
-      const outrasPlataformas = prev.filter((p) => p.plataforma !== targetPlataforma);
+      const outrasPlataformas = prev.filter(
+        (p) => p.plataforma !== targetPlataforma
+      );
       return [...outrasPlataformas, ...novaLista];
     });
-    
-    setDragInfo({index: null, plataforma: null});
+
+    setDragInfo({ index: null, plataforma: null });
 
     // Envia a nova ordem pro PHP
     const formData = new FormData();
@@ -213,23 +262,29 @@ export const TrafegoView: React.FC = () => {
 
   const renderTable = (plataforma: "Google" | "Meta") => {
     const listaCampanhas = Array.isArray(campanhas) ? campanhas : [];
-    
-    // Atualizado: Trava o drag & drop se houver qualquer filtro (busca ou status) ativo
-    const isFiltered = searchTerm.trim() !== "" || statusFilter.trim() !== "";
+
+    // <-- ATUALIZADO: Incluir o clienteFilter na trava do drag & drop
+    const isFiltered =
+      searchTerm.trim() !== "" ||
+      statusFilter.trim() !== "" ||
+      clienteFilter.trim() !== "";
 
     const dados = listaCampanhas.filter((c) => {
       const nomeEmpresa = c.empresa || "";
       const busca = searchTerm || "";
       const statusC = c.status_obs || "";
-      
-      // Checa se a plataforma bate
-      const matchPlataforma = c.plataforma === plataforma;
-      // Checa se o texto da busca bate
-      const matchBusca = nomeEmpresa.toLowerCase().includes(busca.toLowerCase());
-      // Checa se o filtro de status bate (se tiver vazio, mostra todos)
-      const matchStatus = statusFilter === "" || statusC === statusFilter;
 
-      return matchPlataforma && matchBusca && matchStatus;
+      const matchPlataforma = c.plataforma === plataforma;
+      const matchBusca = nomeEmpresa
+        .toLowerCase()
+        .includes(busca.toLowerCase());
+      const matchStatus = statusFilter === "" || statusC === statusFilter;
+      // <-- NOVO: Checa se o cliente bate
+      const matchCliente =
+        clienteFilter === "" || nomeEmpresa === clienteFilter;
+
+      // <-- ATUALIZADO: Retorna com o matchCliente
+      return matchPlataforma && matchBusca && matchStatus && matchCliente;
     });
 
     return (
@@ -237,15 +292,23 @@ export const TrafegoView: React.FC = () => {
         <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
           <h2 className="font-extrabold text-slate-800 flex items-center gap-2">
             {plataforma === "Google" ? (
-              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" className="w-4 h-4" />
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                alt="Google"
+                className="w-4 h-4"
+              />
             ) : (
-              <img src="data:image/webp;base64,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" alt="Meta" className="h-3 w-auto object-contain" />
+              <img
+                src="data:image/webp;base64,UklGRqIKAABXRUJQVlA4TJUKAAAvWwAPACa71vYvkq1c5HYZ99ku4+5z3GZmu7u7u7u7u7v73kH//lX/nkvAOVohTsZatQndoSOc0D06Gc6xXrhGXhPi0ZFwXwOaueuwpheRRl4hF+DuV8BqnCPRcKIOKkJD/WOxRS6N3YFPSK6N/ZDM4Y/ttBeRO5kEgAEIoFm3bdu2bdu2bWbbtm3btm3bjmHbSIr6b/KZme/vZma3/xOwacCprm6xYUFffdktcl/rM7xyo/AUqAqMr0I3tynPp9bax4T4f2OPoz5X1vlQJ2v8k8nbmTAe0QI4RvI2NvjEvqaal2uYWqdnxtIvJheKPOSO5K4U7hQWd0o3SldKZ4r8FLnJvQZXNf9tcwsStVnpVv0uw0AwkCNAFOBcDQchwLTDMvQx1voOTw3LapT0ZMhJ5kSebtG1gs93oNiv/Pt5Rb2orG70Wk8YCORIwAWqpljQ30z662J+56O4gYUIWa1WR4p/dTa5KIxwt1Agc7FMStrFJaWup51vD7nJ0i0UrM/ffcfrw4ZuF9NSUAGAcYqKbaS76WN1s4Xu6vOTW4QKsVodKEqsaBZVUFi1mwwCnC7L6m0gequarejC+gYWatYveVLOzk1CKpyjxslMVZkAzv1BNw3R2tjtRRbWj7bowepC6UA5MyuRKl+lxmGmSYkTsdtu7rqD8SBLYySedRlKMcf6G1j0Yt3iRPkkqM4zmjisxY1BVw0tLrMN3Y64ocsXFFhnZSVOh4nEpQnBRqWW4JqXzCLUhSIfeR6yn35y9/3+tUWI9VxeVEtrqNNJXhIHmdTyPzf2OhJP1E1dWSqBKStqncIg7zc7mUVg+k8DNjTdrK9ZWQlxU6/PyEhttA+/5e3uzxdg/VKxhc26Dkcc5W1+gIOqPCHUUPDcTHuoAnElZR/F3d+SLsCZfEtP+xvJvR1uTyonCgHWOyWcHnBhocsMYOq8HEeRq+p9x7VQIG78g6iaf9avW8iPLrawWlhOFLqyUQlnh08KsOYlryu4p+yRwnWZNivNUPSaZo8bDRVioWBJmYuYm4dsZBbyW0osq9e0Goos/3beXYDVgdyPMxoCxvFBhhQXFpqNAVyufIUi4k91byEdcOnPoujKn5a8FAKs6WGEq3DOpS6qQqpDnWSE+CunRJugMREhF5mFmL7ftLSEFL/3SSE+dNGAc7nqDSLlGg8oQ0qZoxQUdbh9C2n3VpoHUo093t+JZPWgLsZylUggr2t3WofZGMCzpsaagPGxITeZhfjobS8MSHddhxWcXG0heVJ7UAXzBsNxQYbUOylJg5TyZylgp5vDo0n7zc0HJZyRnnKSC/Ci8aCt/55I/442BnDTawlLKvkgC9GRvNLnGam31Tr3E+BKXfnLogdsJykNsrUUEqG56v51Ug6yZTWihzvdGl9G+lB+6tGhvx6WV7nMAMYIxebWruSEG5R5OaMel1RYPkroQx/6kCdNQbpN/U4Pb6YA3Dg2wICZmSkPlRd1ZmbmhzIz7+1ANSUp6aPRR5XkPhPJm8aZpp7opodTSJDc4AOBJrKnC403Lfy0kI096nFiuEnRqBBjOmlzPurz01vf5U9nAONA5L7Bk9aHFn5CB8NLD1cyMB5JOpUAD5roPRM9rPuKMsCzZiYZIi6tkSudL30BetiJdkEZ9NDiLzXOrxLIdQDkTfuhzU403cxvesPdzQRp3TSFiANcXxc6O+xNH751QvqzUk3inPOr2NNJm73p1rQ4tX39AaRUukZErP339GY0w14MTaQuPRwSAXR4BJGUluZBV/H1Tg23nQwGsIRxWN/hiBGbpoKMhZlgd8Yb0usoLxMHo2DIuPPROmkfSkuzO9BOSU7U6n1gGAB41qJSwzUtVoRp6zlgF/pjU1tUbCYOa4sLPXBj40pF8qKL3jtSu4wGGUd5GM4pTF5MRZnhwszRG1aknrIPCmRr8pU4KeHPS0nypXOm62r60JqWZEZI66IlHOEffViKs8KFWKp/O6n1M5fEQcZXNzli+beLCzXpfYevbBSlpaVug+S6L4hddWJB1hJs8Dc7any09mUMMnXXEiIuq9WhTyPYPRkqvdsoocoA9frYTDoUZiX4so4NJ62aD2njIEuYAtTtoHcdrONLa7fbzU4MU5IipR0XQwVY4kJg1advcQ5/DtCPozD77ExRGu1rEoelUV4GYODazp0m7UNph+sUYAxdN1GqeJoKFDMUx046+PlxBnDCxTmXlTmdTX1uYJCSsp8IT4j981Gl/TntcPvhdrPZjaGT/kOn/jvKkLqyxhMXv/6c0P2usKnb6TT7JY3DphnJRsBSjxc3GtIdfBmW14lKWwXZAC4vKbWYCSGYBw7iOQqpTos3f8BhW91XRPLTDv0Qwfys5Fs7lc4a0iDtJxFDwlEhvOBdI4cHKu/YfilUiMmHCcAO+rcDNakw422H+X00umuLYJpfYKF8f4I/GD/9p3IPE4e1TopCwYGrei9aQmGmOxRl3NjnFHrpixAE5uZZOIH48phRkcasFJM4zBgKHxvx56U+3G4HzF6MdQUPCh3VJBtA45xci+AnnZtG4kyoBOMwFxOByfdmTzrSVneGKYlJXEd1EUynjB2TrksMI27ocHEt/knjsPJeFLukkp+/M/AF89aCTBGr1019LqqlKBXItueOC8ANsDY3y0RNiTGJE6XnisJWqqczLekc3kwNhW9RZfaTQcov6zynSjCNDTYxq5v96Yxga/qLSDF0/XAbUlFmN+YpSVFM3EhwgMdPBbZXlExQriKm3EnKHGZsbZvTmJISHWl1tprPcY6HncBvyryu3YQtLTPZALLtlwNPqxE4E3EPIydKQx2FVKt82jzozWbzOXQe5stU4f4tbKCtNEi5Bs4vtGBAMGgDrCSon5n8ASfKFc4S6W7ocvPFSQ/zYm6j/AraaR0YZOttIsSEqeAEFj8eHxXQx1hGTmTqsiqnhKOCoiuDgGKsPqy9jSCgj5FMBljaE7HRFyoQ53LyHq5qcMLXjJwsDXE0pF7j5+7BYN4KnTXjgE4akTDcXZoB5tstwjsQJ0ebBHDOucK662hRgb34xQ/uZ6Ft50PjZNs1kP47ghfPvoxfgDIyMg7Y+fAzyper631Try8p9vFhVuV28iNwgtxSWIiIu2wBMxg4zDSjJBk1lZPVhHF4sR5wfhEuahaQUYytCEdhzmLcxXlK8oYQwgkGYgDYU2e4q4wGTp3Z5uca6rWP3XfbL5zjYVBJ9lsd/bejQnhv+GWSWvEiEUzeSYVe1nBXQz3X/X+8hJ40I8mgFTWuMVpZ3dSFei/zYPNiFHVuyFb/DZE4zEUSJamNqDAV7np5ex2UcRookgio2y7Cug4nYXctvZIGk9rLCFNlyq3diwnyY9d5+Zevq8PYnih0sJ1eqYhSjEPsham0icTjyngCndPohPEBCltcYih8bradXFIEqdLJF5c6ptqJsTF06eLLuk9Gxv+PDuKGVKnaHa5rdxQ9xs9KH6bNaFNUxlTZZEreiwtgqu5p/UZt2B5SkO1RJTkDuO8azBvCF0wIImpljnNSlCHVZZX+xI7Kqv2MZQ8xaQuTt7LSeTYTZH9zLSw2TPVzC9Db4m8sEspf+5L2hm0Whzcn7YwtpVJ/S50AhQIA"
+                alt="Meta"
+                className="h-3 w-auto object-contain"
+              />
             )}
             {plataforma} Ads
           </h2>
           <button
             onClick={() => handleAddRow(plataforma)}
-            className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+            className="cursor-pointer flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
           >
             <Plus className="w-4 h-4" /> Nova Linha
           </button>
@@ -285,223 +348,266 @@ export const TrafegoView: React.FC = () => {
                 dados.map((c, index) => {
                   // Lógica de cores do STATUS
                   const statusVal = safeValue(c.status_obs);
-                  const statusColor = 
-                    statusVal === "OK" ? "text-emerald-700 bg-emerald-100" :
-                    statusVal === "PAUSADA" ? "text-rose-700 bg-rose-100" :
-                    statusVal === "AGUARDANDO PUBLICAÇÃO" ? "text-amber-700 bg-amber-100" :
-                    statusVal === "AGUARDANDO CRIATIVO" ? "text-purple-700 bg-purple-100" : // <-- NOVO STATUS COLORIDO
-                    "text-slate-600 hover:bg-slate-100 bg-transparent";
+                  const statusColor =
+                    statusVal === "OK"
+                      ? "text-emerald-700 bg-emerald-100"
+                      : statusVal === "PAUSADA"
+                      ? "text-rose-700 bg-rose-100"
+                      : statusVal === "AGUARDANDO PUBLICAÇÃO"
+                      ? "text-amber-700 bg-amber-100"
+                      : statusVal === "AGUARDANDO CRIATIVO"
+                      ? "text-purple-700 bg-purple-100" // <-- NOVO STATUS COLORIDO
+                      : "text-slate-600 hover:bg-slate-100 bg-transparent";
 
                   return (
-                  <tr
-                    key={c.id}
-                    className={`hover:bg-slate-50/70 transition-colors group ${dragInfo.index === index && dragInfo.plataforma === plataforma ? "opacity-50 bg-slate-100" : ""}`}
-                    draggable={!isFiltered}
-                    onDragStart={(e) => !isFiltered && handleDragStart(e, index, plataforma)}
-                    onDragOver={(e) => !isFiltered && handleDragOver(e)}
-                    onDrop={(e) => !isFiltered && handleDrop(e, index, plataforma, dados)}
-                  >
-                    {/* COLUNA DE ORDENAÇÃO (DRAG) */}
-                    <td className="p-1 text-center text-slate-400">
-                      {!isFiltered ? (
-                        <div className="cursor-grab hover:text-indigo-600 flex justify-center w-full transition-colors" title="Arraste para reordenar">
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-slate-300" title="Remova o filtro para ordenar">-</span>
-                      )}
-                    </td>
+                    <tr
+                      key={c.id}
+                      className={`hover:bg-slate-50/70 transition-colors group ${
+                        dragInfo.index === index &&
+                        dragInfo.plataforma === plataforma
+                          ? "opacity-50 bg-slate-100"
+                          : ""
+                      }`}
+                      draggable={!isFiltered}
+                      onDragStart={(e) =>
+                        !isFiltered && handleDragStart(e, index, plataforma)
+                      }
+                      onDragOver={(e) => !isFiltered && handleDragOver(e)}
+                      onDrop={(e) =>
+                        !isFiltered && handleDrop(e, index, plataforma, dados)
+                      }
+                    >
+                      {/* COLUNA DE ORDENAÇÃO (DRAG) */}
+                      <td className="p-1 text-center text-slate-400">
+                        {!isFiltered ? (
+                          <div
+                            className="cursor-grab hover:text-indigo-600 flex justify-center w-full transition-colors"
+                            title="Arraste para reordenar"
+                          >
+                            <GripVertical className="w-4 h-4" />
+                          </div>
+                        ) : (
+                          <span
+                            className="text-[10px] text-slate-300"
+                            title="Remova o filtro para ordenar"
+                          >
+                            -
+                          </span>
+                        )}
+                      </td>
 
-                    <td className="p-1">
-                      <select
-                        value={statusVal}
-                        onChange={(e) =>
-                          handleChange(c.id!, "status_obs", e.target.value)
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className={`w-full px-2 py-1.5 rounded outline-none font-bold cursor-pointer transition-colors ${statusColor}`}
-                      >
-                        <option value="" className="text-slate-700 bg-white">Selecione...</option>
-                        <option value="OK" className="text-emerald-700 bg-white">OK</option>
-                        <option value="AGUARDANDO PUBLICAÇÃO" className="text-amber-700 bg-white">AGUARDANDO PUBLICAÇÃO</option>
-                        <option value="AGUARDANDO CRIATIVO" className="text-purple-700 bg-white">AGUARDANDO CRIATIVO</option> {/* <-- NOVO STATUS AQUI */}
-                        <option value="PAUSADA" className="text-rose-700 bg-white">PAUSADA</option>
-                      </select>
-                    </td>
-                    <td className="p-1">
-                      <input
-                        type="date"
-                        value={formatDateForInput(safeValue(c.data_atualizacao))}
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "data_atualizacao",
-                            formatDateForDB(e.target.value)
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 text-black focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none transition-colors"
-                      />
-                    </td>
-                    <td className="p-1">
-                      <input
-                        type="text"
-                        value={safeValue(c.empresa)}
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "empresa",
-                            e.target.value
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-bold text-slate-800 transition-colors"
-                        placeholder="Empresa"
-                      />
-                    </td>
-                    <td className="p-1">
-                      <input
-                        type="text"
-                        value={safeValue(c.campanha)}
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "campanha",
-                            e.target.value
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-semibold text-slate-700 transition-colors"
-                        placeholder="Nome da Campanha"
-                      />
-                    </td>
-                    <td className="p-1">
-                      <input
-                        type="date"
-                        value={formatDateForInput(safeValue(c.ultimo_pagamento))}
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "ultimo_pagamento",
-                            formatDateForDB(e.target.value)
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black transition-colors"
-                      />
-                    </td>
-                    
-                    {/* CAMPOS COM VALORES R$ (Efeito esverdeado) */}
-                    <td className="p-1">
-                      <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
-                        <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">R$</span>
-                        <input
-                          type="text"
-                          value={safeValue(c.verba_total)}
-                          placeholder="0,00"
+                      <td className="p-1">
+                        <select
+                          value={statusVal}
                           onChange={(e) =>
-                            handleChange(c.id!, "verba_total", e.target.value)
+                            handleChange(c.id!, "status_obs", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
-                        />
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
-                        <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">R$</span>
+                          className={`w-full px-2 py-1.5 rounded outline-none font-bold cursor-pointer transition-colors ${statusColor}`}
+                        >
+                          <option value="" className="text-slate-700 bg-white">
+                            Selecione...
+                          </option>
+                          <option
+                            value="OK"
+                            className="text-emerald-700 bg-white"
+                          >
+                            OK
+                          </option>
+                          <option
+                            value="AGUARDANDO PUBLICAÇÃO"
+                            className="text-amber-700 bg-white"
+                          >
+                            AGUARDANDO PUBLICAÇÃO
+                          </option>
+                          <option
+                            value="AGUARDANDO CRIATIVO"
+                            className="text-purple-700 bg-white"
+                          >
+                            AGUARDANDO CRIATIVO
+                          </option>{" "}
+                          {/* <-- NOVO STATUS AQUI */}
+                          <option
+                            value="PAUSADA"
+                            className="text-rose-700 bg-white"
+                          >
+                            PAUSADA
+                          </option>
+                        </select>
+                      </td>
+                      <td className="p-1">
                         <input
-                          type="text"
-                          value={safeValue(c.verba_disponivel)}
-                          placeholder="0,00"
+                          type="date"
+                          value={formatDateForInput(
+                            safeValue(c.data_atualizacao)
+                          )}
                           onChange={(e) =>
                             handleChange(
                               c.id!,
-                              "verba_disponivel",
-                              e.target.value
+                              "data_atualizacao",
+                              formatDateForDB(e.target.value)
                             )
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 text-black focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none transition-colors"
                         />
-                      </div>
-                    </td>
-                    <td className="p-1">
-                      <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
-                        <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">R$</span>
-                        <input
-                          type="text"
-                          value={safeValue(c.orcamento_diario)}
-                          placeholder="0,00"
-                          onChange={(e) =>
-                            handleChange(
-                              c.id!,
-                              "orcamento_diario",
-                              e.target.value
-                            )
-                          }
-                          onBlur={() => handleBlur(c)}
-                          className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
-                        />
-                      </div>
-                    </td>
-
-                    <td className="p-1">
-                      <input
-                        type="text"
-                        value={safeValue(c.gasto_diario)}
-                        placeholder="ex: 30(S) 15(S)"
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!,
-                            "gasto_diario",
-                            e.target.value
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 font-medium transition-colors"
-                      />
-                    </td>
-                    {plataforma === "Meta" && (
+                      </td>
                       <td className="p-1">
                         <input
                           type="text"
-                          value={safeValue(c.objetivo)}
-                          placeholder="Whats App / Leads"
+                          value={safeValue(c.empresa)}
                           onChange={(e) =>
-                            handleChange(c.id!, "objetivo", e.target.value)
+                            handleChange(c.id!, "empresa", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-bold text-slate-800 transition-colors"
+                          placeholder="Empresa"
                         />
                       </td>
-                    )}
-                    <td className="p-1">
-                      <input
-                        type="date"
-                        value={formatDateForInput(safeValue(c.data_termino))}
-                        onChange={(e) =>
-                          handleChange(
-                            c.id!, 
-                            "data_termino", 
-                            formatDateForDB(e.target.value)
-                          )
-                        }
-                        onBlur={() => handleBlur(c)}
-                        className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black transition-colors"
-                      />
-                    </td>
-                    <td className="p-1 text-center">
-                      <button
-                        onClick={() => handleDelete(c.id!)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                        title="Deletar Linha"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                )})
+                      <td className="p-1">
+                        <input
+                          type="text"
+                          value={safeValue(c.campanha)}
+                          onChange={(e) =>
+                            handleChange(c.id!, "campanha", e.target.value)
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-semibold text-slate-700 transition-colors"
+                          placeholder="Nome da Campanha"
+                        />
+                      </td>
+                      <td className="p-1">
+                        <input
+                          type="date"
+                          value={formatDateForInput(
+                            safeValue(c.ultimo_pagamento)
+                          )}
+                          onChange={(e) =>
+                            handleChange(
+                              c.id!,
+                              "ultimo_pagamento",
+                              formatDateForDB(e.target.value)
+                            )
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black transition-colors"
+                        />
+                      </td>
+
+                      {/* CAMPOS COM VALORES R$ (Efeito esverdeado) */}
+                      <td className="p-1">
+                        <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
+                          <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">
+                            R$
+                          </span>
+                          <input
+                            type="text"
+                            value={safeValue(c.verba_total)}
+                            placeholder="0,00"
+                            onChange={(e) =>
+                              handleChange(c.id!, "verba_total", e.target.value)
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
+                          <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">
+                            R$
+                          </span>
+                          <input
+                            type="text"
+                            value={safeValue(c.verba_disponivel)}
+                            placeholder="0,00"
+                            onChange={(e) =>
+                              handleChange(
+                                c.id!,
+                                "verba_disponivel",
+                                e.target.value
+                              )
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                          />
+                        </div>
+                      </td>
+                      <td className="p-1">
+                        <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
+                          <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">
+                            R$
+                          </span>
+                          <input
+                            type="text"
+                            value={safeValue(c.orcamento_diario)}
+                            placeholder="0,00"
+                            onChange={(e) =>
+                              handleChange(
+                                c.id!,
+                                "orcamento_diario",
+                                e.target.value
+                              )
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                          />
+                        </div>
+                      </td>
+
+                      <td className="p-1">
+                        <input
+                          type="text"
+                          value={safeValue(c.gasto_diario)}
+                          placeholder="ex: 30(S) 15(S)"
+                          onChange={(e) =>
+                            handleChange(c.id!, "gasto_diario", e.target.value)
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 font-medium transition-colors"
+                        />
+                      </td>
+                      {plataforma === "Meta" && (
+                        <td className="p-1">
+                          <input
+                            type="text"
+                            value={safeValue(c.objetivo)}
+                            placeholder="Whats App / Leads"
+                            onChange={(e) =>
+                              handleChange(c.id!, "objetivo", e.target.value)
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 transition-colors"
+                          />
+                        </td>
+                      )}
+                      <td className="p-1">
+                        <input
+                          type="date"
+                          value={formatDateForInput(safeValue(c.data_termino))}
+                          onChange={(e) =>
+                            handleChange(
+                              c.id!,
+                              "data_termino",
+                              formatDateForDB(e.target.value)
+                            )
+                          }
+                          onBlur={() => handleBlur(c)}
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black transition-colors"
+                        />
+                      </td>
+                      <td className="p-1 text-center">
+                        <button
+                          onClick={() => handleDelete(c.id!)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          title="Deletar Linha"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -531,18 +637,30 @@ export const TrafegoView: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          
           {/* NOVO: Select para Filtro de Status */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+            className="cursor-pointer w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
           >
             <option value="">Todos os Status</option>
             <option value="OK">OK</option>
             <option value="AGUARDANDO PUBLICAÇÃO">AGUARDANDO PUBLICAÇÃO</option>
             <option value="AGUARDANDO CRIATIVO">AGUARDANDO CRIATIVO</option>
             <option value="PAUSADA">PAUSADA</option>
+          </select>
+
+          <select
+            value={clienteFilter}
+            onChange={(e) => setClienteFilter(e.target.value)}
+            className="cursor-pointer w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+          >
+            <option value="">Todos os Clientes</option>
+            {empresasUnicas.map((emp, index) => (
+              <option key={index} value={emp}>
+                {emp}
+              </option>
+            ))}
           </select>
 
           <div className="relative w-full lg:w-72">
@@ -558,7 +676,7 @@ export const TrafegoView: React.FC = () => {
 
           <button
             onClick={() => exportToCSV(campanhas, "gestao_de_trafego")}
-            className="w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-xs px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold whitespace-nowrap"
+            className="cursor-pointer w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-xs px-3 py-2 rounded-xl flex items-center justify-center gap-2 font-bold whitespace-nowrap"
             title="Baixar Tabela em Excel (CSV)"
           >
             <Download className="w-4 h-4" /> CSV

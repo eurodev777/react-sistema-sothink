@@ -520,7 +520,7 @@ export const AtasView: React.FC<AtasViewProps> = ({
                           e.stopPropagation();
                           setViewAtaModal(ata);
                         }}
-                        className="text-[10px] p-1.5 rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60 cursor-pointer hover:border-indigo-300 overflow-hidden shadow-sm transition-colors flex justify-between items-start gap-1"
+                        className="text-[10px] p-1.5 rounded-md bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/60 cursor-pointer hover:border-indigo-300 overflow-hidden shadow-sm transition-colors flex justify-between items-start gap-1 group/ata"
                         title={`${ata.cliente_nome} - ${ata.objetivo}`}
                       >
                         <div className="flex-1 min-w-0">
@@ -540,14 +540,40 @@ export const AtasView: React.FC<AtasViewProps> = ({
                           )}
                         </div>
 
-                        {ata.responsavel && (
-                          <div
-                            className="w-5 h-5 shrink-0 rounded-full bg-indigo-200 dark:bg-indigo-800/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-[9px] font-extrabold shadow-sm"
-                            title={`Responsável: ${ata.responsavel}`}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {ata.responsavel && (
+                            <div
+                              className="w-5 h-5 rounded-full bg-indigo-200 dark:bg-indigo-800/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-[9px] font-extrabold shadow-sm"
+                              title={`Responsável: ${ata.responsavel}`}
+                            >
+                              {getInitials(ata.responsavel)}
+                            </div>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(ata);
+                            }}
+                            className="w-5 h-5 rounded-md bg-white/80 dark:bg-slate-950/50 border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/ata:opacity-100 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-all"
+                            title="Editar ata"
                           >
-                            {getInitials(ata.responsavel)}
-                          </div>
-                        )}
+                            <Edit className="w-3 h-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAta(ata.id!, e);
+                            }}
+                            className="w-5 h-5 rounded-md bg-white/80 dark:bg-slate-950/50 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover/ata:opacity-100 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all"
+                            title="Excluir ata"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

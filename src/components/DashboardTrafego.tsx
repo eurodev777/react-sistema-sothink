@@ -639,6 +639,22 @@ const PlanilhaMensalView = ({
   const [filtroCampanha, setFiltroCampanha] = useState("");
   const [filtroStatus, setFiltroStatus] = useState(""); // <-- NOVO AQUI
 
+  // Confirmações preenchidas pelo cliente no Portal do Cliente.
+  // Ficam separadas dos dados oficiais da agência.
+  const [mostrarConfirmacoesCliente, setMostrarConfirmacoesCliente] = useState(false);
+  const [carregandoConfirmacoesCliente, setCarregandoConfirmacoesCliente] = useState(false);
+  const [confirmacoesCliente, setConfirmacoesCliente] = useState<
+    Record<
+      string,
+      Array<{
+        cliente_id: string;
+        cliente_nome: string;
+        check: any;
+        possui_dados_salvos: boolean;
+      }>
+    >
+  >({});
+
   const API_URL = `https://sothink.com.br/app/api/api_diario?tipo=${tipo}`;
 
   const diasDoMes = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -667,11 +683,149 @@ const PlanilhaMensalView = ({
     fetchDados();
     setFiltroEmpresa("");
     setFiltroCampanha("");
+
+    // Ao trocar o mês, força uma nova leitura das confirmações do cliente.
+    setMostrarConfirmacoesCliente(false);
+    setConfirmacoesCliente({});
   }, [mesAno]);
 
   const empresasUnicas = Array.from(
     new Set(dados.map((d) => d.empresa).filter((e) => e && e.trim() !== ""))
   ).sort();
+
+  const carregarConfirmacoesCliente = async () => {
+    if (tipo !== "leads") return;
+
+    setCarregandoConfirmacoesCliente(true);
+
+    try {
+      // A API read_client precisa saber qual cliente consultar.
+      // Como estamos no painel da agência, buscamos os clientes cadastrados
+      // e consultamos a confirmação de cada um somente quando o botão é acionado.
+      const clientesResponse = await fetch(
+        "https://sothink.com.br/app/api/listar?tabela=clientes",
+        { cache: "no-store" }
+      );
+
+      if (!clientesResponse.ok) {
+        throw new Error(`Erro HTTP ${clientesResponse.status} ao carregar clientes.`);
+      }
+
+      const clientesData = await clientesResponse.json();
+      const clientesLista = Array.isArray(clientesData) ? clientesData : [];
+
+      const resultados = await Promise.all(
+        clientesLista.map(async (cliente: any) => {
+          if (!cliente?.id) return [];
+
+          try {
+            const response = await fetch(
+              `https://sothink.com.br/app/api/api_diario?tipo=leads&action=read_client&mes_ano=${encodeURIComponent(
+                mesAno
+              )}&cliente_id=${encodeURIComponent(String(cliente.id))}`,
+              { cache: "no-store" }
+            );
+
+            if (!response.ok) return [];
+
+            const data = await response.json();
+            if (!Array.isArray(data)) return [];
+
+            return data.map((lead: any) => {
+              const check = lead?.cliente_check || {};
+              const possuiDadosSalvos =
+                Boolean(check?.id) ||
+                diasDoMes.some((dia) => {
+                  const valor = check?.[`d${dia}`];
+                  return (
+                    valor !== null &&
+                    valor !== undefined &&
+                    String(valor).trim() !== ""
+                  );
+                });
+
+              return {
+                lead_id: String(lead.id),
+                cliente_id: String(cliente.id),
+                cliente_nome:
+                  cliente.nome_fantasia ||
+                  cliente.razao_social ||
+                  `Cliente ${cliente.id}`,
+                check,
+                possui_dados_salvos: possuiDadosSalvos,
+              };
+            });
+          } catch (error) {
+            console.error(
+              `Erro ao carregar confirmação do cliente ${cliente.id}:`,
+              error
+            );
+            return [];
+          }
+        })
+      );
+
+      const mapa: Record<
+        string,
+        Array<{
+          cliente_id: string;
+          cliente_nome: string;
+          check: any;
+          possui_dados_salvos: boolean;
+        }>
+      > = {};
+
+      resultados.flat().forEach((item: any) => {
+        if (!item?.lead_id) return;
+
+        if (!mapa[item.lead_id]) {
+          mapa[item.lead_id] = [];
+        }
+
+        // Evita duplicar o mesmo cliente na mesma campanha.
+        const jaExiste = mapa[item.lead_id].some(
+          (existente) => existente.cliente_id === item.cliente_id
+        );
+
+        if (!jaExiste) {
+          mapa[item.lead_id].push({
+            cliente_id: item.cliente_id,
+            cliente_nome: item.cliente_nome,
+            check: item.check,
+            possui_dados_salvos: item.possui_dados_salvos,
+          });
+        }
+      });
+
+      setConfirmacoesCliente(mapa);
+      setMostrarConfirmacoesCliente(true);
+    } catch (error: any) {
+      console.error("Erro ao carregar confirmações dos clientes:", error);
+      alert(
+        error?.message ||
+          "Não foi possível carregar as confirmações preenchidas pelos clientes."
+      );
+    } finally {
+      setCarregandoConfirmacoesCliente(false);
+    }
+  };
+
+  const handleToggleConfirmacoesCliente = async () => {
+    if (tipo !== "leads") return;
+
+    if (mostrarConfirmacoesCliente) {
+      setMostrarConfirmacoesCliente(false);
+      return;
+    }
+
+    // Se já carregou neste mês, apenas exibe novamente.
+    if (Object.keys(confirmacoesCliente).length > 0) {
+      setMostrarConfirmacoesCliente(true);
+      return;
+    }
+
+    await carregarConfirmacoesCliente();
+  };
 
   const handleAddRow = async (plataforma: "Google" | "Meta") => {
     const formData = new FormData();
@@ -804,12 +958,38 @@ const PlanilhaMensalView = ({
             )}
             {plataforma} Ads
           </h2>
-          <button
-            onClick={() => handleAddRow(plataforma)}
-            className="cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow transition-all text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
-          >
-            <Plus className="w-4 h-4" /> Nova Linha
-          </button>
+          <div className="flex items-center gap-2">
+            {tipo === "leads" && (
+              <button
+                onClick={handleToggleConfirmacoesCliente}
+                disabled={carregandoConfirmacoesCliente}
+                className={`cursor-pointer text-white shadow-sm hover:shadow transition-all text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-bold disabled:opacity-60 disabled:cursor-not-allowed ${
+                  mostrarConfirmacoesCliente
+                    ? "bg-slate-600 hover:bg-slate-700"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+                title="Visualizar os leads que o cliente informou como recebidos"
+              >
+                {carregandoConfirmacoesCliente ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Users className="w-4 h-4" />
+                )}
+                {carregandoConfirmacoesCliente
+                  ? "Carregando..."
+                  : mostrarConfirmacoesCliente
+                  ? "Ocultar confirmação cliente"
+                  : "Ver confirmação cliente"}
+              </button>
+            )}
+
+            <button
+              onClick={() => handleAddRow(plataforma)}
+              className="cursor-pointer bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm hover:shadow transition-all text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
+            >
+              <Plus className="w-4 h-4" /> Nova Linha
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -853,9 +1033,14 @@ const PlanilhaMensalView = ({
                       ? "text-amber-700 bg-amber-100"
                       : "text-slate-600 hover:bg-slate-100 bg-transparent";
 
+                  const confirmacoesDaCampanha =
+                    tipo === "leads"
+                      ? confirmacoesCliente[String(c.id)] || []
+                      : [];
+
                   return (
+                    <React.Fragment key={c.id}>
                     <tr
-                      key={c.id}
                       className={`hover:bg-slate-50/70 transition-colors group ${
                         dragInfo.index === index &&
                         dragInfo.plataforma === plataforma
@@ -1007,6 +1192,106 @@ const PlanilhaMensalView = ({
                         </button>
                       </td>
                     </tr>
+
+                    {tipo === "leads" &&
+                      mostrarConfirmacoesCliente &&
+                      (confirmacoesDaCampanha.length > 0 ? (
+                        confirmacoesDaCampanha.map((confirmacao) => {
+                          const check = confirmacao.check || {};
+                          const possuiDados = confirmacao.possui_dados_salvos;
+
+                          return (
+                            <tr
+                              key={`${c.id}-cliente-${confirmacao.cliente_id}`}
+                              className="bg-emerald-50/60 border-t border-emerald-100"
+                            >
+                              <td className="p-1 text-center">
+                                <Users
+                                  className="w-4 h-4 text-emerald-600 mx-auto"
+                                  aria-label="Confirmação do cliente"
+                                />
+                              </td>
+
+                              <td className="px-3 py-2">
+                                <div className="flex flex-col">
+                                  <span className="text-[9px] uppercase tracking-wide font-black text-emerald-700">
+                                    Confirmação do cliente
+                                  </span>
+                                  <span
+                                    className="font-bold text-slate-800 max-w-[150px] truncate"
+                                    title={confirmacao.cliente_nome}
+                                  >
+                                    {confirmacao.cliente_nome}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="px-3 py-2 text-slate-500 italic">
+                                Leads informados pelo cliente
+                              </td>
+
+                              <td className="px-2 py-2 text-center">
+                                <span
+                                  className={`inline-flex px-2 py-1 rounded-md text-[9px] font-black ${
+                                    possuiDados
+                                      ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                      : "bg-slate-100 text-slate-500 border border-slate-200"
+                                  }`}
+                                >
+                                  {possuiDados ? "CLIENTE CONFIRMOU" : "SEM DADOS"}
+                                </span>
+                              </td>
+
+                              {diasDoMes.map((dia) => {
+                                const valor = safeValue(check[`d${dia}`]);
+                                const preenchido =
+                                  valor !== null &&
+                                  valor !== undefined &&
+                                  String(valor).trim() !== "";
+
+                                return (
+                                  <td
+                                    key={dia}
+                                    className={`p-1 text-center border-l ${
+                                      preenchido
+                                        ? "border-emerald-100 bg-emerald-50 text-emerald-800"
+                                        : "border-slate-100 text-slate-300"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`inline-flex min-w-[40px] h-7 items-center justify-center rounded font-bold ${
+                                        preenchido
+                                          ? "bg-white border border-emerald-200 shadow-sm"
+                                          : ""
+                                      }`}
+                                    >
+                                      {preenchido ? valor : "-"}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+
+                              <td className="p-1 text-center font-black bg-emerald-100/60 text-emerald-800 border-l border-emerald-200">
+                                {calcularTotal(check)}
+                              </td>
+
+                              <td className="p-1 text-center text-emerald-600 font-bold">
+                                Visualização
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr
+                          key={`${c.id}-sem-confirmacao`}
+                          className="bg-slate-50 border-t border-slate-100"
+                        >
+                          <td colSpan={37} className="px-4 py-2 text-[10px] text-slate-400 italic">
+                            ↳ Nenhuma confirmação de cliente vinculada a esta campanha.
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
                   );
                 })
               )}

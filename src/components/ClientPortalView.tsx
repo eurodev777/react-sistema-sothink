@@ -13,7 +13,6 @@ import {
   CalendarDays,
   LayoutDashboard,
   CheckSquare,
-  UserRound,
 } from 'lucide-react';
 import { EmpresaCliente, Job, Relatorio } from '../types';
 import { ClientAtasView } from './ClientAtasView';
@@ -53,6 +52,50 @@ const parseArray = <T,>(value: any): T[] => {
   } catch {
     return [];
   }
+};
+
+const CLIENT_KANBAN_COLUMNS = [
+  { id: 'Novos Jobs (Análise)', title: '1. Novos Jobs (Análise)', color: 'border-sky-500 bg-sky-950/20' },
+  { id: 'Aguardando Terceiros', title: '2. Aguardando Terceiros', color: 'border-purple-500 bg-purple-950/20' },
+  { id: 'Programado', title: '3. Programado', color: 'border-blue-500 bg-blue-950/20' },
+  { id: 'Em Andamento', title: '4. Em Andamento', color: 'border-amber-500 bg-amber-950/20' },
+  { id: 'Aprovação Interna', title: '5. Aprovação Interna', color: 'border-teal-500 bg-teal-950/20' },
+  { id: 'Alterações', title: '6. Alterações', color: 'border-orange-500 bg-orange-950/20' },
+  { id: 'Revisão', title: '7. Revisão', color: 'border-indigo-500 bg-indigo-950/20' },
+  { id: 'Aprovação Cliente', title: '8. Aprovação Cliente', color: 'border-violet-500 bg-violet-950/20' },
+  { id: 'Publicar / Enviar para Produção', title: '9. Publicar / Enviar para Produção', color: 'border-cyan-500 bg-cyan-950/20' },
+  { id: 'Finalizado', title: '10. Finalizado', color: 'border-emerald-500 bg-emerald-950/20' },
+  { id: 'Pausado / Cancelado', title: '11. Pausado / Cancelado', color: 'border-slate-500 bg-slate-800/30' },
+] as const;
+
+const getInitials = (name?: string) => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+};
+
+const getPriorityDotClass = (priority?: string) => {
+  if (priority === 'Crítico' || priority === 'Alto') return 'bg-rose-500';
+  if (priority === 'Médio') return 'bg-amber-400';
+  return 'bg-emerald-500';
+};
+
+const getJobTags = (job: Job): string[] => {
+  const value = (job as any).etiquetas;
+  if (Array.isArray(value)) return value;
+  return parseArray<string>(value);
+};
+
+const getJobChecklists = (job: Job): any[] => {
+  const value = (job as any).checklists;
+  if (Array.isArray(value)) return value;
+  return parseArray<any>(value);
+};
+
+const getJobAttachments = (job: Job): any[] => {
+  const value = (job as any).anexos;
+  return Array.isArray(value) ? value : [];
 };
 
 export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
@@ -102,6 +145,26 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
     () => portalJobs.filter((job) => String(job.cliente_id) === String(client.id)),
     [portalJobs, client.id]
   );
+
+  const getClientColumnJobs = (status: string) => {
+    const raw = clientJobs.filter((job) => String(job.status) === status);
+
+    const parseDate = (date?: string) => {
+      if (!date || String(date).startsWith('0000')) return Number.MAX_SAFE_INTEGER;
+      const safe = date.includes('T') ? date : `${date}T12:00:00`;
+      const time = new Date(safe).getTime();
+      return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+    };
+
+    return [...raw].sort((a, b) => {
+      const ordemA = Number((a as any).ordem || 0);
+      const ordemB = Number((b as any).ordem || 0);
+      if (ordemA > 0 && ordemB > 0) return ordemA - ordemB;
+      if (ordemA > 0) return -1;
+      if (ordemB > 0) return 1;
+      return parseDate(a.data_inicio || a.data_entrega) - parseDate(b.data_inicio || b.data_entrega);
+    });
+  };
 
   const handleCreateJobByClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -296,42 +359,102 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                 <p>Clique em <strong>“Solicitar / Criar Job”</strong> para enviar uma nova demanda.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {clientJobs.map((job) => (
-                  <button
-                    type="button"
-                    key={job.id}
-                    onClick={() => setSelectedJob(job)}
-                    className="text-left bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-lg hover:border-blue-500 cursor-pointer transition-all space-y-3 group flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="px-2.5 py-1 rounded-full bg-blue-950 text-blue-300 text-[10px] font-bold border border-blue-800 truncate">
-                          {job.status || 'Sem status'}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-400 shrink-0">
-                          Prazo: {formatDateSafe(job.data_entrega)}
-                        </span>
-                      </div>
+              <div className="-mx-1 overflow-x-auto pb-5 pt-1">
+                <div className="flex gap-4 min-w-max px-1 min-h-[560px]">
+                  {CLIENT_KANBAN_COLUMNS.map((col) => {
+                    const columnJobs = getClientColumnJobs(col.id);
 
-                      <h4 className="font-extrabold text-white text-base group-hover:text-blue-400 transition-colors">
-                        {getJobTitle(job)}
-                      </h4>
+                    return (
+                      <section
+                        key={col.id}
+                        className={`w-72 shrink-0 rounded-2xl border ${col.color} p-3 flex flex-col max-h-[720px] overflow-hidden shadow-sm`}
+                      >
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-700/60">
+                          <h3 className="font-extrabold text-slate-200 text-xs truncate">{col.title}</h3>
+                          <span className="w-6 h-6 rounded-full bg-slate-950 border border-slate-700 font-black text-[10px] text-slate-300 flex items-center justify-center shrink-0">
+                            {columnJobs.length}
+                          </span>
+                        </div>
 
-                      <p className="text-xs text-slate-400 line-clamp-2">
-                        {job.briefing || 'Sem briefing.'}
-                      </p>
-                    </div>
+                        <div className="flex-1 overflow-y-auto space-y-3 my-2 pr-1">
+                          {columnJobs.length === 0 ? (
+                            <div className="p-5 text-center text-[11px] text-slate-500 italic border border-dashed border-slate-700/60 rounded-xl">
+                              Nenhum job nesta coluna
+                            </div>
+                          ) : (
+                            columnJobs.map((job) => {
+                              const tags = getJobTags(job);
+                              const checklists = getJobChecklists(job);
+                              const attachments = getJobAttachments(job);
+                              const doneItems = checklists.filter((item) => item?.concluido).length;
 
-                    <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                      <span className="flex items-center gap-1 font-medium text-slate-300">
-                        <UserRound className="w-3.5 h-3.5 text-blue-400" />
-                        {job.responsavel || 'A definir'}
-                      </span>
-                      <span className="font-bold text-blue-400">Visualizar ➔</span>
-                    </div>
-                  </button>
-                ))}
+                              return (
+                                <button
+                                  key={job.id}
+                                  type="button"
+                                  onClick={() => setSelectedJob(job)}
+                                  className="w-full text-left p-4 bg-slate-900 rounded-lg border border-slate-800 shadow-sm hover:shadow-md hover:border-blue-500/60 transition-all cursor-pointer space-y-3 text-xs"
+                                  title="Clique para visualizar os detalhes"
+                                >
+                                  <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div className="flex flex-wrap gap-1 min-w-0">
+                                      {tags.length > 0 ? (
+                                        tags.slice(0, 3).map((tag, index) => (
+                                          <span key={`${tag}-${index}`} className="px-2 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-800 text-indigo-300 text-[9px] font-extrabold uppercase tracking-wide">
+                                            {tag}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-400 text-[9px] font-extrabold uppercase tracking-wide">Geral</span>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] font-semibold text-slate-500 shrink-0">#{String(job.id).slice(-5)}</span>
+                                  </div>
+
+                                  <div className="font-semibold text-sm leading-snug text-slate-100 line-clamp-2">
+                                    {getJobTitle(job)}
+                                  </div>
+
+                                  {job.briefing && (
+                                    <p className="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">{job.briefing}</p>
+                                  )}
+
+                                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between gap-2 text-slate-400">
+                                    <div className="flex items-center gap-2 text-[10px] min-w-0">
+                                      <span className="font-medium whitespace-nowrap">📅 {job.data_inicio ? formatDateSafe(job.data_inicio) : 'A definir'}</span>
+                                      {attachments.length > 0 && (
+                                        <span className="flex items-center gap-0.5 font-bold text-blue-400" title={`${attachments.length} anexo(s)`}>
+                                          <Paperclip className="w-3 h-3" />{attachments.length}
+                                        </span>
+                                      )}
+                                      {checklists.length > 0 && (
+                                        <span className="flex items-center gap-0.5 font-semibold text-emerald-400" title={`Checklist: ${doneItems}/${checklists.length}`}>
+                                          <CheckSquare className="w-3 h-3" />{doneItems}/{checklists.length}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <div className="flex items-center gap-1.5 text-[10px]" title={`Prioridade: ${job.prioridade || 'Não definida'}`}>
+                                        <span className={`w-2 h-2 rounded-full ${getPriorityDotClass(job.prioridade)}`} />
+                                        <span className="hidden sm:inline font-semibold">{job.prioridade || '-'}</span>
+                                      </div>
+                                      {job.responsavel && (
+                                        <div className="w-6 h-6 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center justify-center text-[9px] font-extrabold" title={`Responsável: ${job.responsavel}`}>
+                                          {getInitials(job.responsavel)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

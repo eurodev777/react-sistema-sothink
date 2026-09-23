@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   LayoutDashboard,
   Building2,
@@ -11,11 +11,19 @@ import {
   Sparkles,
   TrendingUp,
   Megaphone,
-} from 'lucide-react';
-import { User } from '../types';
-import logo from '../assets/logo.jpeg';
+} from "lucide-react";
+import { User } from "../types";
+import logo from "../assets/logo.jpeg";
 
-export type ActiveTab = 'dashboard' | 'clientes' | 'atas' | 'jobs' | 'templates' | 'relatorios' | 'portal' | 'api-docs';
+export type ActiveTab =
+  | "dashboard"
+  | "clientes"
+  | "atas"
+  | "jobs"
+  | "templates"
+  | "relatorios"
+  | "portal"
+  | "api-docs";
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -42,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   atasCount = 0,
   jobsCount = 0,
 }) => {
-  const isClient = currentUser?.role === 'cliente';
+  const isClient = currentUser?.role === "cliente";
 
   const cCount = counts ? counts.clientes : clientesCount;
   const aCount = counts ? counts.atas : atasCount;
@@ -51,60 +59,72 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = isClient
     ? [
         {
-          id: 'portal' as ActiveTab,
-          label: 'Área do Cliente',
+          id: "portal" as ActiveTab,
+          label: "Área do Cliente",
           icon: <ShieldCheck className="w-5 h-5" />,
           badge: jCount,
         },
       ]
     : [
         {
-          id: 'dashboard' as ActiveTab,
-          label: 'Dashboard',
+          id: "dashboard" as ActiveTab,
+          label: "Dashboard",
           icon: <LayoutDashboard className="w-5 h-5" />,
         },
         {
-          id: 'clientes' as ActiveTab,
-          label: 'Clientes',
+          id: "clientes" as ActiveTab,
+          label: "Clientes",
           icon: <Building2 className="w-5 h-5" />,
           badge: cCount,
         },
         {
-          id: 'jobs' as ActiveTab,
-          label: 'Jobs',
+          id: "rh" as ActiveTab,
+          label: "RH",
+          icon: <Building2 className="w-5 h-5" />,
+          badge: cCount,
+        },
+        {
+          id: "jobs" as ActiveTab,
+          label: "Jobs",
           icon: <Kanban className="w-5 h-5" />,
           badge: jCount,
         },
         {
-          id: 'relatorios' as ActiveTab,
-          label: 'Relatórios',
+          id: "relatorios" as ActiveTab,
+          label: "Relatórios",
           icon: <TrendingUp className="w-5 h-5" />,
         },
         {
-          id: 'atas' as ActiveTab,
-          label: 'Atendimento',
+          id: "atas" as ActiveTab,
+          label: "Atendimento",
           icon: <FileText className="w-5 h-5" />,
           badge: aCount,
         },
         {
-          id: 'trafego' as ActiveTab,
-          label: 'Tráfego',
+          id: "trafego" as ActiveTab,
+          label: "Tráfego",
           icon: <Megaphone className="w-5 h-5" />,
           badge: aCount,
-        }
+        },
       ];
 
   return (
     <aside
       className={`dark:bg-slate-950 bg-white text-slate-800 dark:text-white transition-all duration-300 shrink-0 flex flex-col border-r dark:border-slate-950 border-slate-200 h-full ${
-        collapsed ? 'w-16' : 'w-64'
+        collapsed ? "w-16" : "w-64"
       }`}
     >
       <div className="flex flex-col h-full">
         {/* Sidebar Brand Logo */}
-        <div className={`h-16 flex items-center border-b dark:border-slate-950 border-slate-200 transition-all duration-300 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
+        <div
+          className={`h-16 flex items-center border-b dark:border-slate-950 border-slate-200 transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-6"}`}
+        >
           {!collapsed ? (
-            <img src={logo} alt="Sothink Logo" className="h-8 w-auto object-contain" />
+            <img
+              src={logo}
+              alt="Sothink Logo"
+              className="h-8 w-auto object-contain"
+            />
           ) : (
             // Quando fechado, mostra uma versão reduzida do logo (ou uma letra/ícone para não quebrar o visual)
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-sm">
@@ -117,7 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="p-2.5 mt-2 space-y-2 flex-1 overflow-y-auto">
           {!collapsed && (
             <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-              {isClient ? 'Portal Exclusivo' : 'Menu Principal'}
+              {isClient ? "Portal Exclusivo" : "Menu Principal"}
             </div>
           )}
 
@@ -130,16 +150,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => onTabChange(item.id)}
                 title={collapsed ? item.label : undefined}
                 className={`w-full flex items-center py-3 rounded-xl text-sm font-semibold transition-all group relative ${
-                  collapsed ? 'justify-center px-0' : 'justify-start px-3 gap-3'
+                  collapsed ? "justify-center px-0" : "justify-start px-3 gap-3"
                 } ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                <span className={`shrink-0 transition-transform duration-200 ${
-                  collapsed ? 'group-hover:scale-110' : ''
-                } ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'}`}>
+                <span
+                  className={`shrink-0 transition-transform duration-200 ${
+                    collapsed ? "group-hover:scale-110" : ""
+                  } ${isActive ? "text-white" : "text-slate-400 group-hover:text-blue-600"}`}
+                >
                   {item.icon}
                 </span>
 

@@ -25,6 +25,7 @@ import { apiService } from "./services/apiService";
 import { Menu, Plus, X } from "lucide-react";
 import { TrafegoView } from "./components/TrafegoView";
 import { DashboardTrafego } from "./components/DashboardTrafego";
+import { RHView } from "./components/RhView";
 
 export function App() {
   // Theme state
@@ -354,6 +355,7 @@ export function App() {
     switch (activeTab) {
       case "dashboard": return "Dashboard Geral";
       case "clientes": return "CRM de Clientes";
+      case "rh": return "RH";
       case "atas": return "Atas de Reunião";
       case "jobs": return "Controle de Jobs";
       case "relatorios": return "Relatórios de Tráfego";
@@ -455,6 +457,10 @@ export function App() {
               }}
               showToast={showToast}
             />
+          )}
+
+          {activeTab === "rh" && (
+            <RHView />
           )}
 
           {activeTab === "atas" && (

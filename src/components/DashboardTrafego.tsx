@@ -431,9 +431,9 @@ const PlanilhaSitesView = () => {
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" />
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-          <div className="bg-slate-50 px-4 py-3 flex justify-between items-center border-b border-slate-200">
-            <h2 className="font-bold text-slate-800">Sites Monitorados</h2>
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8">
+          <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
+            <h2 className="font-bold text-slate-800 dark:text-slate-100">Sites Monitorados</h2>
             <div className="flex gap-2">
               {/* NOVO BOTÃO DE VERIFICAÇÃO */}
               <button
@@ -461,7 +461,7 @@ const PlanilhaSitesView = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left whitespace-nowrap">
-              <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-[10px]">
+              <thead className="bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-bold text-[10px]">
                 <tr>
                   <th className="px-2 py-3 w-10 text-center"></th>
                   <th className="px-3 py-3 w-40 min-w-[150px]">Empresa</th>
@@ -474,7 +474,7 @@ const PlanilhaSitesView = () => {
                   <th className="px-3 py-3 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-black">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
                 {lista.length === 0 ? (
                   <tr>
                     <td
@@ -488,8 +488,8 @@ const PlanilhaSitesView = () => {
                   lista.map((c, index) => (
                     <tr
                       key={c.id}
-                      className={`hover:bg-blue-50/30 transition-colors ${
-                        draggedIndex === index ? "opacity-50 bg-slate-100" : ""
+                      className={`bg-slate-50/70 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors ${
+                        draggedIndex === index ? "opacity-50 bg-slate-200 dark:bg-slate-800" : ""
                       }`}
                       draggable={!isFiltered}
                       onDragStart={(e) =>
@@ -524,7 +524,7 @@ const PlanilhaSitesView = () => {
                             handleChange(c.id, "empresa", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none font-bold transition-all text-slate-800"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none font-bold transition-all text-slate-800 dark:text-slate-100"
                           placeholder="Empresa"
                         />
                       </td>
@@ -537,7 +537,7 @@ const PlanilhaSitesView = () => {
                               handleChange(c.id, "link", e.target.value)
                             }
                             onBlur={() => handleBlur(c)}
-                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none transition-all text-slate-600"
+                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none transition-all text-slate-600 dark:text-slate-300"
                             placeholder="https://..."
                           />
                           {c.link && c.link.trim() !== "" && (
@@ -565,12 +565,12 @@ const PlanilhaSitesView = () => {
                             ? "text-emerald-700 bg-emerald-100 font-bold"
                             : valor === "X" || valor === "x"
                             ? "text-rose-700 bg-rose-100 font-bold"
-                            : "text-slate-400 hover:bg-slate-100";
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800";
 
                         return (
                           <td
                             key={dia}
-                            className="p-1 border-l border-slate-100"
+                            className="p-1 border-l border-slate-200 dark:border-slate-800"
                           >
                             <div className="flex items-center justify-center">
                               <select
@@ -595,7 +595,7 @@ const PlanilhaSitesView = () => {
                       <td className="p-1 text-center">
                         <button
                           onClick={() => handleDelete(c.id)}
-                          className="text-slate-400 p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          className="text-slate-400 p-1.5 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -940,9 +940,9 @@ const PlanilhaMensalView = ({
     });
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="bg-slate-50 px-4 py-3 flex justify-between items-center border-b border-slate-200">
-          <h2 className="font-extrabold text-slate-800 flex items-center gap-2">
+      <div className="bg-slate-50 dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8">
+        <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
+          <h2 className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             {plataforma === "Google" ? (
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
@@ -994,7 +994,7 @@ const PlanilhaMensalView = ({
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left whitespace-nowrap">
-            <thead className="bg-slate-100 text-slate-600 uppercase font-bold text-[10px]">
+            <thead className="bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-bold text-[10px]">
               <tr>
                 <th className="px-2 py-3 w-10 text-center"></th>
                 <th className="px-3 py-3 w-40 min-w-[150px]">Empresa</th>
@@ -1013,7 +1013,7 @@ const PlanilhaMensalView = ({
                 <th className="px-3 py-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-black">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
               {lista.length === 0 ? (
                 <tr>
                   <td colSpan={36} className="text-center py-8 text-slate-400">
@@ -1026,12 +1026,12 @@ const PlanilhaMensalView = ({
                   const statusVal = safeValue(c.status_obs);
                   const statusColor =
                     statusVal === "OK"
-                      ? "text-emerald-700 bg-emerald-100"
+                      ? "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/40"
                       : statusVal === "PAUSADA"
-                      ? "text-rose-700 bg-rose-100"
+                      ? "text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40"
                       : statusVal === "FINALIZADA"
-                      ? "text-amber-700 bg-amber-100"
-                      : "text-slate-600 hover:bg-slate-100 bg-transparent";
+                      ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent";
 
                   const confirmacoesDaCampanha =
                     tipo === "leads"
@@ -1041,10 +1041,10 @@ const PlanilhaMensalView = ({
                   return (
                     <React.Fragment key={c.id}>
                     <tr
-                      className={`hover:bg-slate-50/70 transition-colors group ${
+                      className={`bg-slate-50/70 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors group ${
                         dragInfo.index === index &&
                         dragInfo.plataforma === plataforma
-                          ? "opacity-50 bg-slate-100"
+                          ? "opacity-50 bg-slate-200 dark:bg-slate-800"
                           : ""
                       }`}
                       draggable={!isFiltered}
@@ -1083,7 +1083,7 @@ const PlanilhaMensalView = ({
                             handleChange(c.id, "empresa", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none font-bold transition-all text-slate-800"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none font-bold transition-all text-slate-800 dark:text-slate-100"
                           placeholder="Empresa"
                         />
                       </td>
@@ -1095,7 +1095,7 @@ const PlanilhaMensalView = ({
                             handleChange(c.id, "campanha", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition-all text-slate-600"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition-all text-slate-600 dark:text-slate-300"
                           placeholder="Nome da Campanha"
                         />
                       </td>
@@ -1108,24 +1108,24 @@ const PlanilhaMensalView = ({
                           onBlur={() => handleBlur(c)}
                           className={`w-full px-1 py-1.5 rounded outline-none font-semibold cursor-pointer transition-colors ${statusColor}`}
                         >
-                          <option value="" className="text-slate-700 bg-white">
+                          <option value="" className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900">
                             Selecione...
                           </option>
                           <option
                             value="OK"
-                            className="text-emerald-700 bg-white"
+                            className="text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900"
                           >
                             OK
                           </option>
                           <option
                             value="PAUSADA"
-                            className="text-rose-700 bg-white"
+                            className="text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-900"
                           >
                             PAUSADA
                           </option>
                           <option
                             value="FINALIZADA"
-                            className="text-amber-700 bg-white"
+                            className="text-amber-700 dark:text-amber-300 bg-white dark:bg-slate-900"
                           >
                             FINALIZADA
                           </option>
@@ -1139,15 +1139,15 @@ const PlanilhaMensalView = ({
                         return (
                           <td
                             key={dia}
-                            className="p-1 border-l border-slate-100"
+                            className="p-1 border-l border-slate-200 dark:border-slate-800"
                           >
                             <div
                               className={`flex items-center justify-center rounded px-1 transition-colors ${
                                 isX
-                                  ? "bg-amber-100 text-amber-700" // AQUI: Se for X, fundo amarelo e texto amarelo escuro
+                                  ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" // AQUI: Se for X, fundo amarelo e texto amarelo escuro
                                   : isCusto
-                                  ? "hover:bg-emerald-50 focus-within:bg-emerald-50 text-emerald-700"
-                                  : "hover:bg-indigo-50 focus-within:bg-indigo-50 text-indigo-700"
+                                  ? "hover:bg-emerald-50 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-50 dark:focus-within:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
+                                  : "hover:bg-indigo-50 dark:hover:bg-indigo-950/30 focus-within:bg-indigo-50 dark:focus-within:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
                               }`}
                             >
                               {/* Só mostra o R$ se for Custo E não for "X" */}
@@ -1178,7 +1178,7 @@ const PlanilhaMensalView = ({
                       })}
 
                       {tipo === "leads" && (
-                        <td className="p-1 text-center font-bold bg-indigo-50/50 text-indigo-700 border-l border-indigo-100">
+                        <td className="p-1 text-center font-bold bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-l border-indigo-100 dark:border-indigo-900">
                           {calcularTotal(c)}
                         </td>
                       )}
@@ -1186,7 +1186,7 @@ const PlanilhaMensalView = ({
                       <td className="p-1 text-center">
                         <button
                           onClick={() => handleDelete(c.id)}
-                          className="text-slate-400 p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          className="text-slate-400 p-1.5 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1203,7 +1203,7 @@ const PlanilhaMensalView = ({
                           return (
                             <tr
                               key={`${c.id}-cliente-${confirmacao.cliente_id}`}
-                              className="bg-emerald-50/60 border-t border-emerald-100"
+                              className="bg-emerald-50/70 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900/60"
                             >
                               <td className="p-1 text-center">
                                 <Users
@@ -1218,7 +1218,7 @@ const PlanilhaMensalView = ({
                                     Confirmação do cliente
                                   </span>
                                   <span
-                                    className="font-bold text-slate-800 max-w-[150px] truncate"
+                                    className="font-bold text-slate-800 dark:text-slate-100 max-w-[150px] truncate"
                                     title={confirmacao.cliente_nome}
                                   >
                                     {confirmacao.cliente_nome}
@@ -1226,7 +1226,7 @@ const PlanilhaMensalView = ({
                                 </div>
                               </td>
 
-                              <td className="px-3 py-2 text-slate-500 italic">
+                              <td className="px-3 py-2 text-slate-500 dark:text-slate-400 italic">
                                 Leads informados pelo cliente
                               </td>
 
@@ -1234,8 +1234,8 @@ const PlanilhaMensalView = ({
                                 <span
                                   className={`inline-flex px-2 py-1 rounded-md text-[9px] font-black ${
                                     possuiDados
-                                      ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                      : "bg-slate-100 text-slate-500 border border-slate-200"
+                                      ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                      : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
                                   }`}
                                 >
                                   {possuiDados ? "CLIENTE CONFIRMOU" : "SEM DADOS"}
@@ -1254,14 +1254,14 @@ const PlanilhaMensalView = ({
                                     key={dia}
                                     className={`p-1 text-center border-l ${
                                       preenchido
-                                        ? "border-emerald-100 bg-emerald-50 text-emerald-800"
-                                        : "border-slate-100 text-slate-300"
+                                        ? "border-emerald-100 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300"
+                                        : "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-600"
                                     }`}
                                   >
                                     <span
                                       className={`inline-flex min-w-[40px] h-7 items-center justify-center rounded font-bold ${
                                         preenchido
-                                          ? "bg-white border border-emerald-200 shadow-sm"
+                                          ? "bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 shadow-sm"
                                           : ""
                                       }`}
                                     >
@@ -1271,7 +1271,7 @@ const PlanilhaMensalView = ({
                                 );
                               })}
 
-                              <td className="p-1 text-center font-black bg-emerald-100/60 text-emerald-800 border-l border-emerald-200">
+                              <td className="p-1 text-center font-black bg-emerald-100/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-l border-emerald-200 dark:border-emerald-900">
                                 {calcularTotal(check)}
                               </td>
 
@@ -1284,7 +1284,7 @@ const PlanilhaMensalView = ({
                       ) : (
                         <tr
                           key={`${c.id}-sem-confirmacao`}
-                          className="bg-slate-50 border-t border-slate-100"
+                          className="bg-slate-100/70 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800"
                         >
                           <td colSpan={37} className="px-4 py-2 text-[10px] text-slate-400 italic">
                             ↳ Nenhuma confirmação de cliente vinculada a esta campanha.

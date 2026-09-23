@@ -288,9 +288,9 @@ export const TrafegoView: React.FC = () => {
     });
 
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
-          <h2 className="font-extrabold text-slate-800 flex items-center gap-2">
+      <div className="bg-slate-100 dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-300 dark:border-slate-700 overflow-hidden mb-8">
+        <div className="bg-slate-200/80 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 px-4 py-3 flex justify-between items-center">
+          <h2 className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             {plataforma === "Google" ? (
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
@@ -316,7 +316,7 @@ export const TrafegoView: React.FC = () => {
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left whitespace-nowrap">
-            <thead className="bg-slate-100 text-slate-500 uppercase font-bold text-[10px]">
+            <thead className="bg-slate-300/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-bold text-[10px]">
               <tr>
                 <th className="px-3 py-3 w-10 text-center"></th>
                 <th className="px-3 py-3 w-40">Obs (Status)</th>
@@ -337,7 +337,7 @@ export const TrafegoView: React.FC = () => {
                 <th className="px-3 py-3 w-10 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 !text-black">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
               {dados.length === 0 ? (
                 <tr>
                   <td colSpan={13} className="text-center py-8 text-slate-400">
@@ -350,22 +350,22 @@ export const TrafegoView: React.FC = () => {
                   const statusVal = safeValue(c.status_obs);
                   const statusColor =
                     statusVal === "OK"
-                      ? "text-emerald-700 bg-emerald-100"
+                      ? "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/40"
                       : statusVal === "PAUSADA"
-                      ? "text-rose-700 bg-rose-100"
+                      ? "text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40"
                       : statusVal === "AGUARDANDO PUBLICAÇÃO"
-                      ? "text-amber-700 bg-amber-100"
+                      ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40"
                       : statusVal === "AGUARDANDO CRIATIVO"
-                      ? "text-purple-700 bg-purple-100" // <-- NOVO STATUS COLORIDO
-                      : "text-slate-600 hover:bg-slate-100 bg-transparent";
+                      ? "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-950/40" // <-- NOVO STATUS COLORIDO
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 bg-transparent";
 
                   return (
                     <tr
                       key={c.id}
-                      className={`hover:bg-slate-50/70 transition-colors group ${
+                      className={`bg-slate-100/70 dark:bg-slate-900 hover:bg-slate-200/70 dark:hover:bg-slate-800/70 transition-colors group ${
                         dragInfo.index === index &&
                         dragInfo.plataforma === plataforma
-                          ? "opacity-50 bg-slate-100"
+                          ? "opacity-50 bg-slate-300 dark:bg-slate-800"
                           : ""
                       }`}
                       draggable={!isFiltered}
@@ -405,31 +405,31 @@ export const TrafegoView: React.FC = () => {
                           onBlur={() => handleBlur(c)}
                           className={`w-full px-2 py-1.5 rounded outline-none font-bold cursor-pointer transition-colors ${statusColor}`}
                         >
-                          <option value="" className="text-slate-700 bg-white">
+                          <option value="" className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900">
                             Selecione...
                           </option>
                           <option
                             value="OK"
-                            className="text-emerald-700 bg-white"
+                            className="text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900"
                           >
                             OK
                           </option>
                           <option
                             value="AGUARDANDO PUBLICAÇÃO"
-                            className="text-amber-700 bg-white"
+                            className="text-amber-700 dark:text-amber-300 bg-white dark:bg-slate-900"
                           >
                             AGUARDANDO PUBLICAÇÃO
                           </option>
                           <option
                             value="AGUARDANDO CRIATIVO"
-                            className="text-purple-700 bg-white"
+                            className="text-purple-700 dark:text-purple-300 bg-white dark:bg-slate-900"
                           >
                             AGUARDANDO CRIATIVO
                           </option>{" "}
                           {/* <-- NOVO STATUS AQUI */}
                           <option
                             value="PAUSADA"
-                            className="text-rose-700 bg-white"
+                            className="text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-900"
                           >
                             PAUSADA
                           </option>
@@ -449,7 +449,7 @@ export const TrafegoView: React.FC = () => {
                             )
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 text-black focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none transition-colors"
                         />
                       </td>
                       <td className="p-1">
@@ -460,7 +460,7 @@ export const TrafegoView: React.FC = () => {
                             handleChange(c.id!, "empresa", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-bold text-slate-800 transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-bold text-slate-800 dark:text-slate-100 transition-colors"
                           placeholder="Empresa"
                         />
                       </td>
@@ -472,7 +472,7 @@ export const TrafegoView: React.FC = () => {
                             handleChange(c.id!, "campanha", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-semibold text-slate-700 transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none font-semibold text-slate-700 dark:text-slate-200 transition-colors"
                           placeholder="Nome da Campanha"
                         />
                       </td>
@@ -490,14 +490,14 @@ export const TrafegoView: React.FC = () => {
                             )
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-800 dark:text-slate-200 transition-colors"
                         />
                       </td>
 
                       {/* CAMPOS COM VALORES R$ (Efeito esverdeado) */}
                       <td className="p-1">
-                        <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
-                          <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">
+                        <div className="flex items-center rounded hover:bg-emerald-100/70 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-100/70 dark:focus-within:bg-emerald-950/30 transition-colors">
+                          <span className="text-emerald-700/70 dark:text-emerald-300/80 font-bold text-[10px] pl-1 mr-0.5">
                             R$
                           </span>
                           <input
@@ -508,13 +508,13 @@ export const TrafegoView: React.FC = () => {
                               handleChange(c.id!, "verba_total", e.target.value)
                             }
                             onBlur={() => handleBlur(c)}
-                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 dark:focus:text-emerald-300 rounded outline-none text-slate-700 dark:text-slate-200 font-medium"
                           />
                         </div>
                       </td>
                       <td className="p-1">
-                        <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
-                          <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">
+                        <div className="flex items-center rounded hover:bg-emerald-100/70 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-100/70 dark:focus-within:bg-emerald-950/30 transition-colors">
+                          <span className="text-emerald-700/70 dark:text-emerald-300/80 font-bold text-[10px] pl-1 mr-0.5">
                             R$
                           </span>
                           <input
@@ -529,13 +529,13 @@ export const TrafegoView: React.FC = () => {
                               )
                             }
                             onBlur={() => handleBlur(c)}
-                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 dark:focus:text-emerald-300 rounded outline-none text-slate-700 dark:text-slate-200 font-medium"
                           />
                         </div>
                       </td>
                       <td className="p-1">
-                        <div className="flex items-center rounded hover:bg-emerald-50 focus-within:bg-emerald-50 transition-colors">
-                          <span className="text-emerald-700/60 font-bold text-[10px] pl-1 mr-0.5">
+                        <div className="flex items-center rounded hover:bg-emerald-100/70 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-100/70 dark:focus-within:bg-emerald-950/30 transition-colors">
+                          <span className="text-emerald-700/70 dark:text-emerald-300/80 font-bold text-[10px] pl-1 mr-0.5">
                             R$
                           </span>
                           <input
@@ -550,7 +550,7 @@ export const TrafegoView: React.FC = () => {
                               )
                             }
                             onBlur={() => handleBlur(c)}
-                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 rounded outline-none text-slate-700 font-medium"
+                            className="w-full px-1 py-1.5 bg-transparent border-transparent focus:text-emerald-800 dark:focus:text-emerald-300 rounded outline-none text-slate-700 dark:text-slate-200 font-medium"
                           />
                         </div>
                       </td>
@@ -564,7 +564,7 @@ export const TrafegoView: React.FC = () => {
                             handleChange(c.id!, "gasto_diario", e.target.value)
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 font-medium transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 dark:text-slate-200 font-medium transition-colors"
                         />
                       </td>
                       {plataforma === "Meta" && (
@@ -577,7 +577,7 @@ export const TrafegoView: React.FC = () => {
                               handleChange(c.id!, "objetivo", e.target.value)
                             }
                             onBlur={() => handleBlur(c)}
-                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 transition-colors"
+                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 dark:text-slate-200 transition-colors"
                           />
                         </td>
                       )}
@@ -593,13 +593,13 @@ export const TrafegoView: React.FC = () => {
                             )
                           }
                           onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100/50 focus:bg-white border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-black transition-colors"
+                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-800 dark:text-slate-200 transition-colors"
                         />
                       </td>
                       <td className="p-1 text-center">
                         <button
                           onClick={() => handleDelete(c.id!)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded transition-colors"
                           title="Deletar Linha"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -626,7 +626,7 @@ export const TrafegoView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-300 dark:border-slate-700">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Gestão de Tráfego Pago
@@ -641,7 +641,7 @@ export const TrafegoView: React.FC = () => {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="cursor-pointer w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+            className="cursor-pointer w-full sm:w-auto px-3 py-2 text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
           >
             <option value="">Todos os Status</option>
             <option value="OK">OK</option>
@@ -653,7 +653,7 @@ export const TrafegoView: React.FC = () => {
           <select
             value={clienteFilter}
             onChange={(e) => setClienteFilter(e.target.value)}
-            className="cursor-pointer w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+            className="cursor-pointer w-full sm:w-auto px-3 py-2 text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
           >
             <option value="">Todos os Clientes</option>
             {empresasUnicas.map((emp, index) => (
@@ -670,7 +670,7 @@ export const TrafegoView: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar campanha..."
-              className="w-full pl-8 pr-3 py-2 text-black bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
+              className="w-full pl-8 pr-3 py-2 text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
             />
           </div>
 

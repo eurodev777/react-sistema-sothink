@@ -23,6 +23,7 @@ import {
   EyeOff,
   Copy,
   Check,
+  MessageSquare,
 } from "lucide-react";
 import { EmpresaCliente, ResponsavelCliente, AtaReuniao, Job } from "../types";
 import { apiService } from "../services/apiService";
@@ -144,6 +145,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [responsaveis, setResponsaveis] = useState<ResponsavelCliente[]>([]);
   const [clientes, setClientes] = useState<ClientWithDbFields[]>([]);
   const [loadingClientes, setLoadingClientes] = useState(false);
+
+  // Conversa compartilhada entre cliente e agência
+  const [commentJob, setCommentJob] = useState<Job | null>(null);
+  const [jobComments, setJobComments] = useState<any[]>([]);
+  const [newClientComment, setNewClientComment] = useState("");
+  const [loadingJobComments, setLoadingJobComments] = useState(false);
+  const [sendingJobComment, setSendingJobComment] = useState(false);
 
   const carregarClientes = async (keepSelectedId?: string) => {
     try {
@@ -478,6 +486,104 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       setTimeout(() => setCopiedField(null), 1500);
     } catch {
       showToast("error", "Não foi possível copiar");
+    }
+  };
+
+  const carregarComentariosDoJob = async (job: Job) => {
+    if (!job?.id) return;
+
+    try {
+      setLoadingJobComments(true);
+      const response = await fetch(
+        "https://sothink.com.br/app/api/listar?tabela=jobs_comentarios",
+        { cache: "no-store" }
+      );
+
+      const data = await response.json();
+      const todos = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+        ? data.data
+        : [];
+
+      const comentariosDoJob = todos
+        .filter((com: any) => String(com.job_id) === String(job.id))
+        .sort((a: any, b: any) => Number(a.id || 0) - Number(b.id || 0));
+
+      setJobComments(comentariosDoJob);
+    } catch (error) {
+      console.error("Erro ao carregar comentários do job:", error);
+      showToast(
+        "error",
+        "Erro ao carregar comentários",
+        "Não foi possível carregar a conversa deste job."
+      );
+    } finally {
+      setLoadingJobComments(false);
+    }
+  };
+
+  const abrirComentariosDoJob = async (job: Job) => {
+    setCommentJob(job);
+    setJobComments([]);
+    setNewClientComment("");
+    await carregarComentariosDoJob(job);
+  };
+
+  const handleAddClientComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newClientComment.trim() || !commentJob?.id || !selectedClient?.id) return;
+
+    try {
+      setSendingJobComment(true);
+
+      const formData = new FormData();
+      formData.append("tabela", "jobs_comentarios");
+      formData.append("job_id", String(commentJob.id));
+      formData.append(
+        "cliente_id",
+        String((commentJob as any).cliente_id || selectedClient.id)
+      );
+      formData.append("autor_tipo", "cliente");
+      formData.append(
+        "autor_nome",
+        selectedClient.nome_fantasia || selectedClient.razao_social || "Cliente"
+      );
+      formData.append("comentario", newClientComment.trim());
+
+      const response = await fetch(
+        "https://sothink.com.br/app/api/inserir?tabela=jobs_comentarios",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const texto = await response.text();
+      let result: any = {};
+
+      try {
+        result = texto ? JSON.parse(texto) : {};
+      } catch {
+        throw new Error("Resposta inválida da API: " + texto);
+      }
+
+      if (!response.ok || result?.erro || result?.sucesso === false) {
+        throw new Error(result?.erro || "Não foi possível enviar o comentário.");
+      }
+
+      setNewClientComment("");
+      await carregarComentariosDoJob(commentJob);
+      showToast("success", "Comentário enviado!");
+    } catch (error: any) {
+      showToast(
+        "error",
+        "Erro ao comentar",
+        error?.message || "Não foi possível enviar o comentário."
+      );
+    } finally {
+      setSendingJobComment(false);
     }
   };
 
@@ -957,7 +1063,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {selectedJobs.map((job) => (
                     <div
                       key={job.id}
-                      onClick={() => onSelectJob(job)}
+                      onClick={() => abrirComentariosDoJob(job)}
                       className="cursor-pointer p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:border-blue-300 transition-colors shadow-sm"
                     >
                       <div className="flex justify-between items-start mb-2 gap-2">
@@ -968,9 +1074,24 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           {job.status}
                         </span>
                       </div>
+
                       <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                         {job.briefing || job.descricao || "Sem descrição."}
                       </p>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirComentariosDoJob(job);
+                          }}
+                          className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/70 text-xs font-bold flex items-center gap-2 transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          Comentários
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1057,6 +1178,167 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               </p>
             </div>
           )}
+        </div>
+      )}
+
+{commentJob && selectedClient && (
+        <div
+          className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-4 pt-10 overflow-y-auto"
+          onClick={() => setCommentJob(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-5xl w-full p-6 sm:p-8 shadow-2xl animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header do Modal */}
+            <div className="flex items-start justify-between pb-4 border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                    Detalhes do Job
+                  </span>
+                  <span className="text-xs font-mono text-slate-400">
+                    ID: {commentJob.id}
+                  </span>
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white">
+                  {commentJob.titulo}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCommentJob(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* COLUNA ESQUERDA: Detalhes do Job (Somente Leitura) */}
+              <div className="space-y-6">
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                  <h4 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-500" /> Briefing do Job
+                  </h4>
+                  <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                    {commentJob.briefing || commentJob.descricao || "Nenhum briefing informado para este job."}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                      Status Atual
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">
+                      {commentJob.status}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                      Prioridade
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">
+                      {commentJob.prioridade || "Padrão"}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                      Data de Início
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">
+                      {commentJob.data_inicio ? new Date(commentJob.data_inicio).toLocaleDateString('pt-BR') : "-"}
+                    </span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                      Prazo / Entrega
+                    </span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400 text-sm">
+                      {commentJob.data_entrega ? new Date(commentJob.data_entrega).toLocaleDateString('pt-BR') : "A definir"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* COLUNA DIREITA: Comentários e Interação */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col h-[500px]">
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
+                  <MessageSquare className="w-4 h-4 text-indigo-500" /> Conversa com a Agência
+                </h4>
+
+                {/* Lista de Comentários */}
+                <div className="flex-1 overflow-y-auto pr-2 space-y-3 mb-4 custom-scrollbar">
+                  {loadingJobComments ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500">
+                      <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                      <span className="text-xs font-bold">Carregando mensagens...</span>
+                    </div>
+                  ) : jobComments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-6 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400">
+                      <MessageSquare className="w-8 h-8 mb-2 opacity-50" />
+                      <p className="text-xs">Nenhum comentário neste job ainda.<br/>Envie a primeira mensagem!</p>
+                    </div>
+                  ) : (
+                    jobComments.map((com: any) => {
+                      const isCliente = com.autor_tipo === "cliente";
+                      return (
+                        <div
+                          key={com.id}
+                          className={`flex flex-col ${isCliente ? "items-end" : "items-start"}`}
+                        >
+                          <div
+                            className={`max-w-[85%] p-3.5 rounded-2xl ${
+                              isCliente
+                                ? "bg-indigo-600 text-white rounded-tr-sm"
+                                : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-sm"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1.5 opacity-90">
+                              <strong className="text-[10px] uppercase tracking-wide">
+                                {com.autor_nome || (isCliente ? "Você" : "Equipe Sothink")}
+                              </strong>
+                              <span className="text-[9px] font-mono opacity-70">
+                                {com.data_criacao || com.data_hora || ""}
+                              </span>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                              {com.comentario || com.texto || ""}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Input de Novo Comentário */}
+                <form
+                  onSubmit={handleAddClientComment}
+                  className="bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm"
+                >
+                  <textarea
+                    rows={2}
+                    value={newClientComment}
+                    onChange={(e) => setNewClientComment(e.target.value)}
+                    placeholder="Escreva sua mensagem ou solicitação..."
+                    className="w-full px-3 py-2 bg-transparent resize-none text-sm focus:outline-none text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+                  />
+                  <div className="flex justify-end mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="submit"
+                      disabled={!newClientComment.trim() || sendingJobComment}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all active:scale-95"
+                    >
+                      {sendingJobComment && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {sendingJobComment ? "Enviando..." : "Enviar Mensagem"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

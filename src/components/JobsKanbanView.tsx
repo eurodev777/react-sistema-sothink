@@ -100,8 +100,19 @@ export const TAGS_PRESETS = [
   "ENVIAR PARA PRODUÇÃO",
 ];
 
-const getInitials = (name: string) => {
-  if (!name) return "??";
+
+const parseJobTags = (value: any): string[] => {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return value.trim() ? [value.trim()] : [];
+  }
+};
+
+const getInitials = (name: string) => {  if (!name) return "??";
   const parts = name.trim().split(" ");
   if (parts.length > 1) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -240,8 +251,17 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         "https://sothink.com.br/app/api/listar?tabela=jobs"
       );
       const data = await response.json();
-      setJobs(data);
-      return data;
+      const normalizados = Array.isArray(data)
+        ? data.map((job: any) => ({
+            ...job,
+            etiquetas: parseJobTags(job.etiquetas),
+            comentarios: Array.isArray(job.comentarios)
+              ? job.comentarios
+              : [],
+          }))
+        : [];
+      setJobs(normalizados);
+      return normalizados;
     } catch (error) {
       console.error("Erro ao carregar jobs:", error);
       return null;
@@ -312,7 +332,10 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         activeJob.permitir_acesso_cliente === 1;
 
       formData.append("permitir_acesso_cliente", hasAcesso ? "1" : "0");
-      formData.append("descricao", JSON.stringify(activeJob.comentarios || []));
+      formData.append(
+        "etiquetas",
+        JSON.stringify(parseJobTags((activeJob as any).etiquetas))
+      );
       formData.append("checklists", JSON.stringify(activeJob.checklists || []));
 
       if (activeJob.anexos && activeJob.anexos.length > 0) {
@@ -729,20 +752,82 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCommentText.trim() || !activeJob) return;
+    if (!newCommentText.trim() || !activeJob?.id) return;
 
-    const nowStr = new Date().toLocaleString("pt-BR");
-    const newCom = {
-      id: `cm-${Date.now()}`,
-      usuario: loggedUser?.nome || "Usuário",
-      cargo: loggedUser?.role || "Membro",
-      texto: newCommentText.trim(),
-      data_hora: nowStr,
-    };
+    try {
+      const formData = new FormData();
+      formData.append("tabela", "jobs_comentarios");
+      formData.append("job_id", String(activeJob.id));
+      formData.append("cliente_id", String(activeJob.cliente_id || ""));
+      formData.append("autor_tipo", "agencia");
+      formData.append(
+        "autor_nome",
+        loggedUser?.nome || loggedUser?.name || "Equipe Sothink"
+      );
+      formData.append("comentario", newCommentText.trim());
 
-    const updatedComms = [...(activeJob.comentarios || []), newCom];
-    handleUpdateActiveJobField("comentarios", updatedComms);
-    setNewCommentText("");
+      const response = await fetch(
+        "https://sothink.com.br/app/api/inserir?tabela=jobs_comentarios",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const texto = await response.text();
+      let result: any = {};
+      try {
+        result = texto ? JSON.parse(texto) : {};
+      } catch {
+        throw new Error("Resposta inválida da API: " + texto);
+      }
+
+      if (!response.ok || result?.erro || result?.sucesso === false) {
+        throw new Error(result?.erro || "Não foi possível salvar o comentário.");
+      }
+
+      const novoComentario = {
+        id: result?.id || `comentario-${Date.now()}`,
+        job_id: String(activeJob.id),
+        cliente_id: String(activeJob.cliente_id || ""),
+        autor_tipo: "agencia",
+        autor_nome:
+          loggedUser?.nome || loggedUser?.name || "Equipe Sothink",
+        comentario: newCommentText.trim(),
+        data_criacao: new Date().toLocaleString("pt-BR"),
+        // compatibilidade com formato antigo:
+        usuario: loggedUser?.nome || loggedUser?.name || "Equipe Sothink",
+        cargo: "Agência",
+        texto: newCommentText.trim(),
+        data_hora: new Date().toLocaleString("pt-BR"),
+      };
+
+      const comentariosAtuais = Array.isArray((activeJob as any).comentarios)
+        ? (activeJob as any).comentarios
+        : [];
+
+      const jobAtualizado = {
+        ...activeJob,
+        comentarios: [...comentariosAtuais, novoComentario],
+      } as Job;
+
+      setActiveJob(jobAtualizado);
+
+      // Atualiza SOMENTE o Job comentado no Kanban local.
+      setJobs((prev) =>
+        prev.map((job) => (job.id === activeJob.id ? jobAtualizado : job))
+      );
+
+      setNewCommentText("");
+
+      showToast("success", "Comentário enviado!");
+    } catch (error: any) {
+      showToast(
+        "error",
+        "Erro ao comentar",
+        error?.message || "Não foi possível salvar o comentário."
+      );
+    }
   };
 
   return (
@@ -1300,6 +1385,34 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   />
                 </div>
 
+                {/* COMENTÁRIO RÁPIDO - sempre visível */}
+                <div className="bg-indigo-50/70 dark:bg-indigo-950/20 p-4 rounded-2xl border-2 border-indigo-300 dark:border-indigo-800 space-y-3">
+                  <h4 className="font-extrabold text-indigo-700 dark:text-indigo-300 text-xs flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    COMENTAR NESTE JOB
+                  </h4>
+
+                  <form onSubmit={handleAddComment} className="space-y-2">
+                    <textarea
+                      rows={3}
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                      placeholder="Escreva um comentário ou alinhamento para este Job..."
+                      className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={!newCommentText.trim()}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl flex items-center gap-2"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Enviar comentário
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
                 {/* Checklist */}
                 <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1545,6 +1658,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     Comentários & Alinhamentos
                   </h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {(!activeJob.comentarios || activeJob.comentarios.length === 0) && (
+                      <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-[11px] text-slate-400">
+                        Nenhum comentário ainda.
+                      </div>
+                    )}
                     {activeJob.comentarios?.map((com) => (
                       <div
                         key={com.id}
@@ -1552,14 +1670,17 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       >
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                            {com.usuario} ({com.cargo})
+                            {(com as any).autor_nome || (com as any).usuario || "Usuário"}{" "}
+                            ({(com as any).autor_tipo === "cliente"
+                              ? "Cliente"
+                              : (com as any).cargo || "Agência"})
                           </span>
                           <span className="text-slate-400 font-mono text-[10px]">
-                            {com.data_hora}
+                            {(com as any).data_criacao || (com as any).data_hora || ""}
                           </span>
                         </div>
                         <p className="text-slate-700 dark:text-slate-300">
-                          {com.texto}
+                          {(com as any).comentario || (com as any).texto || ""}
                         </p>
                       </div>
                     ))}
@@ -1698,6 +1819,47 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     <option value="Alto">Alto</option>
                     <option value="Crítico">Crítico</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-2">
+                    Etiquetas / Tags
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TAGS_PRESETS.map((tag) => {
+                      const tagsAtuais = parseJobTags(
+                        (activeJob as any).etiquetas
+                      );
+                      const selecionada = tagsAtuais.includes(tag);
+
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => {
+                            const novasTags = selecionada
+                              ? tagsAtuais.filter((item) => item !== tag)
+                              : [...tagsAtuais, tag];
+
+                            handleUpdateActiveJobField(
+                              "etiquetas" as keyof Job,
+                              novasTags as any
+                            );
+                          }}
+                          className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-extrabold transition-all ${
+                            selecionada
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-sm"
+                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    Clique para adicionar ou remover etiquetas deste Job.
+                  </p>
                 </div>
 
                 <div>

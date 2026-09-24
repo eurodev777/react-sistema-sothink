@@ -58,32 +58,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       const data = await response.json();
 
       if (data.success) {
-        const ativo =
-          data.user?.ativo === true ||
-          data.user?.ativo === 1 ||
-          data.user?.ativo === "1" ||
-          data.user?.ativo === "true";
-
-        if (!ativo) {
-          setErrorMessage(
-            "Esta conta está inativa. Entre em contato com o administrador.",
-          );
-          return;
-        }
-
+        // Salva os dados no localStorage
         localStorage.setItem("@d2r:user", JSON.stringify(data.user));
-
         localStorage.removeItem("@d2r:clientPortal");
 
-        localStorage.setItem(
-          "@d2r:clientPortal",
-          JSON.stringify(data.clientPortalObj),
-        );
+        if (data.clientPortalObj) {
+          localStorage.setItem(
+            "@d2r:clientPortal",
+            JSON.stringify(data.clientPortalObj),
+          );
+        }
 
         showToast(
           "success",
           "Acesso Autorizado!",
-          `Bem-vindo, ${data.user.nome}`,
+          `Bem-vindo, ${data.user.nome || data.user.razao_social || data.user.username}`,
         );
 
         onLoginSuccess(data.user, data.clientPortalObj);

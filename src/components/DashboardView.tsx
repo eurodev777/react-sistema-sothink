@@ -1,35 +1,53 @@
-import React from 'react';
+import React from "react";
 import {
   Users,
   FileText,
   ClipboardList,
   BarChart2,
   ArrowRight,
-  Megaphone // <-- Ícone novo importado
-} from 'lucide-react';
-import { EmpresaCliente, AtaReuniao, Job } from '../types';
+  ShieldCheck,
+  Megaphone, // <-- Ícone novo importado
+} from "lucide-react";
+import { EmpresaCliente, AtaReuniao, Job } from "../types";
 
 interface DashboardViewProps {
   clientes: EmpresaCliente[];
   atas: AtaReuniao[];
   jobs: Job[];
+  users: any[];
+
+  podeAcessarAba: (
+    tab:
+      | "dashboard"
+      | "clientes"
+      | "rh"
+      | "atas"
+      | "jobs"
+      | "relatorios"
+      | "trafego",
+  ) => boolean;
+
   onOpenNewCliente: () => void;
   onOpenNewAta: () => void;
   onOpenNewJob: () => void;
   onSelectJob: (job: Job) => void;
-  onNavigateTab: (tab: 'clientes' | 'atas' | 'jobs' | 'relatorios' | 'trafego') => void;
+
+  onNavigateTab: (
+    tab: "clientes" | "rh" | "atas" | "jobs" | "relatorios" | "trafego",
+  ) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({
+export const DashboardView = ({
   clientes,
   atas,
   jobs,
+  users,
   onNavigateTab,
-}) => {
+  podeAcessarAba,
+}: DashboardViewProps) => {
   return (
     <div className="w-full min-h-screen dark:bg-slate-950 bg-slate-50 text-slate-800 animate-in fade-in duration-300">
       <div className="max-w-7xl mx-auto space-y-10">
-        
         {/* Header Section */}
         <div className="space-y-4">
           <h1 className="text-4xl font-extrabold dark:text-white text-slate-900 tracking-tight">
@@ -39,152 +57,202 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
-          {/* Card 1: CRM */}
-          <div 
-            onClick={() => onNavigateTab('clientes')}
-            className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                <Users className="w-7 h-7 text-white" />
+          {/* Card: Clientes */}
+          {podeAcessarAba("clientes") && (
+            <div
+              onClick={() => onNavigateTab("clientes")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    {clientes.length} cadastrados
+                  </span>
+                </div>
               </div>
-              <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
-                <span className="text-xs font-medium dark:text-white text-slate-600">
-                  {clientes.length} cadastrados
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Clientes
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
-            
-            <div className="space-y-3 flex-1">
-              <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                Clientes 
-              </h2>
-            </div>
+          )}
 
-            <div className="pt-2">
-              <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
-                Acessar Módulo <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Atas */}
-          <div 
-            onClick={() => onNavigateTab('atas')}
-            className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <FileText className="w-7 h-7 text-white" />
+          {/* Card: RH */}
+          {podeAcessarAba("rh") && (
+            <div
+              onClick={() => onNavigateTab("rh")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                  <ShieldCheck className="w-7 h-7 text-white" />
+                </div>
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    {users.length} Recursos Humanos
+                  </span>
+                </div>
               </div>
-              <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
-                <span className="text-xs font-medium dark:text-white text-slate-600">
-                  {atas.length} registradas
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  RH
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
-            
-            <div className="space-y-3 flex-1">
-              <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                Atendimento 
-              </h2>
-            </div>
+          )}
 
-            <div className="pt-2">
-              <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
-                Acessar Módulo <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </div>
+          {/* Card: Atendimento */}
+          {podeAcessarAba("atas") && (
+            <div
+              onClick={() => onNavigateTab("atas")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <FileText className="w-7 h-7 text-white" />
+                </div>
 
-          {/* Card 3: Kanban */}
-          <div 
-            onClick={() => onNavigateTab('jobs')}
-            className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="w-14 h-14 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <ClipboardList className="w-7 h-7 text-white" />
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    {atas.length} registradas
+                  </span>
+                </div>
               </div>
-              <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
-                <span className="text-xs font-medium dark:text-white text-slate-600">
-                  {jobs.length} ativos
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Atendimento
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
-            
-            <div className="space-y-3 flex-1">
-              <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                Jobs
-              </h2>
-            </div>
+          )}
 
-            <div className="pt-2">
-              <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
-                Acessar Módulo <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </div>
+          {/* Card: Jobs */}
+          {podeAcessarAba("jobs") && (
+            <div
+              onClick={() => onNavigateTab("jobs")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <ClipboardList className="w-7 h-7 text-white" />
+                </div>
 
-          {/* Card 4: Dashboard / Relatórios */}
-          <div 
-            onClick={() => onNavigateTab('relatorios')}
-            className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="w-14 h-14 rounded-xl bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <BarChart2 className="w-7 h-7 text-white" />
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    {jobs.length} ativos
+                  </span>
+                </div>
               </div>
-              <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
-                <span className="text-xs font-medium dark:text-white text-slate-600">
-                  Visualizar Indicadores
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Jobs
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
-            
-            <div className="space-y-3 flex-1">
-              <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                Relatórios
-              </h2>
-            </div>
+          )}
 
-            <div className="pt-2">
-              <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
-                Acessar Módulo <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </div>
+          {/* Card: Relatórios */}
+          {podeAcessarAba("relatorios") && (
+            <div
+              onClick={() => onNavigateTab("relatorios")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  <BarChart2 className="w-7 h-7 text-white" />
+                </div>
 
-          {/* NOVO: Card 5: Tráfego Pago */}
-          <div 
-            onClick={() => onNavigateTab('trafego')}
-            className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="w-14 h-14 rounded-xl bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                <Megaphone className="w-7 h-7 text-white" />
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    Visualizar Indicadores
+                  </span>
+                </div>
               </div>
-              <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
-                <span className="text-xs font-medium dark:text-white text-slate-600">
-                  Google & Meta Ads
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Relatórios
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
-            
-            <div className="space-y-3 flex-1">
-              <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                Tráfego Pago
-              </h2>
-            </div>
+          )}
 
-            <div className="pt-2">
-              <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
-                Acessar Módulo <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </div>
+          {/* Card: Tráfego Pago */}
+          {podeAcessarAba("trafego") && (
+            <div
+              onClick={() => onNavigateTab("trafego")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                  <Megaphone className="w-7 h-7 text-white" />
+                </div>
 
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    Google & Meta Ads
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Tráfego Pago
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

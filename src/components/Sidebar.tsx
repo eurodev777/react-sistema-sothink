@@ -18,10 +18,12 @@ import logo from "../assets/logo.jpeg";
 export type ActiveTab =
   | "dashboard"
   | "clientes"
+  | "rh"
   | "atas"
   | "jobs"
   | "templates"
   | "relatorios"
+  | "trafego"
   | "portal"
   | "api-docs";
 
@@ -35,6 +37,7 @@ interface SidebarProps {
     atas: number;
     jobs: number;
   };
+  podeAcessarAba?: (tab: ActiveTab) => boolean;
   clientesCount?: number;
   atasCount?: number;
   jobsCount?: number;
@@ -49,12 +52,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   clientesCount = 0,
   atasCount = 0,
   jobsCount = 0,
+  podeAcessarAba,
 }) => {
   const isClient = currentUser?.role === "cliente";
 
   const cCount = counts ? counts.clientes : clientesCount;
   const aCount = counts ? counts.atas : atasCount;
   const jCount = counts ? counts.jobs : jobsCount;
+
+  const pode = (tab: ActiveTab) => {
+    // Se não foi enviada função de permissão,
+    // mantém o comportamento atual
+    if (!podeAcessarAba) return true;
+
+    return podeAcessarAba(tab);
+  };
 
   const navItems = isClient
     ? [
@@ -71,41 +83,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: "Dashboard",
           icon: <LayoutDashboard className="w-5 h-5" />,
         },
-        {
-          id: "clientes" as ActiveTab,
-          label: "Clientes",
-          icon: <Building2 className="w-5 h-5" />,
-          badge: cCount,
-        },
-        {
-          id: "rh" as ActiveTab,
-          label: "RH",
-          icon: <Building2 className="w-5 h-5" />,
-          badge: cCount,
-        },
-        {
-          id: "jobs" as ActiveTab,
-          label: "Jobs",
-          icon: <Kanban className="w-5 h-5" />,
-          badge: jCount,
-        },
-        {
-          id: "relatorios" as ActiveTab,
-          label: "Relatórios",
-          icon: <TrendingUp className="w-5 h-5" />,
-        },
-        {
-          id: "atas" as ActiveTab,
-          label: "Atendimento",
-          icon: <FileText className="w-5 h-5" />,
-          badge: aCount,
-        },
-        {
-          id: "trafego" as ActiveTab,
-          label: "Tráfego",
-          icon: <Megaphone className="w-5 h-5" />,
-          badge: aCount,
-        },
+
+        ...(pode("clientes")
+          ? [
+              {
+                id: "clientes" as ActiveTab,
+                label: "Clientes",
+                icon: <Building2 className="w-5 h-5" />,
+                badge: cCount,
+              },
+            ]
+          : []),
+
+        ...(pode("rh")
+          ? [
+              {
+                id: "rh" as ActiveTab,
+                label: "RH",
+                icon: <ShieldCheck className="w-5 h-5" />,
+              },
+            ]
+          : []),
+
+        ...(pode("jobs")
+          ? [
+              {
+                id: "jobs" as ActiveTab,
+                label: "Jobs",
+                icon: <Kanban className="w-5 h-5" />,
+                badge: jCount,
+              },
+            ]
+          : []),
+
+        ...(pode("relatorios")
+          ? [
+              {
+                id: "relatorios" as ActiveTab,
+                label: "Relatórios",
+                icon: <TrendingUp className="w-5 h-5" />,
+              },
+            ]
+          : []),
+
+        ...(pode("atas")
+          ? [
+              {
+                id: "atas" as ActiveTab,
+                label: "Atendimento",
+                icon: <FileText className="w-5 h-5" />,
+                badge: aCount,
+              },
+            ]
+          : []),
+
+        ...(pode("trafego")
+          ? [
+              {
+                id: "trafego" as ActiveTab,
+                label: "Tráfego",
+                icon: <Megaphone className="w-5 h-5" />,
+                badge: 0,
+              },
+            ]
+          : []),
       ];
 
   return (

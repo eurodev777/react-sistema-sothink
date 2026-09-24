@@ -25,7 +25,7 @@ import { apiService } from "./services/apiService";
 import { Menu, Plus, X } from "lucide-react";
 import { TrafegoView } from "./components/TrafegoView";
 import { DashboardTrafego } from "./components/DashboardTrafego";
-import { RHView } from "./components/RhView";
+import { RHView } from "./components/RHView";
 
 export function App() {
   // Theme state
@@ -33,11 +33,13 @@ export function App() {
 
   // Authentication State
   const [user, setUser] = useState<User | null>(null);
-  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(null);
+  const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(
+    null,
+  );
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "clientes" | "atas" | "jobs" | "relatorios" | "trafego"
+    "dashboard" | "clientes" | "rh" | "atas" | "jobs" | "relatorios" | "trafego"
   >("dashboard");
 
   // Toast Notification State
@@ -55,17 +57,20 @@ export function App() {
   const showToast = (type: ToastType, title: string, desc?: string) => {
     setToast({ show: true, type, title, desc });
   };
-
+  const [permissoes, setPermissoes] = useState<any[]>([]);
   // Main Data States - INICIANDO 100% VAZIOS (SEM MOCK)
   const [atas, setAtas] = useState<AtaReuniao[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
 
   // Navigation Deep Links / Pre-selections
-  const [preSelectedClientForAta, setPreSelectedClientForAta] = useState<EmpresaCliente | null>(null);
-  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] = useState<Job | null>(null);
+  const [preSelectedClientForAta, setPreSelectedClientForAta] =
+    useState<EmpresaCliente | null>(null);
+  const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] =
+    useState<Job | null>(null);
 
   // Quick Create Job Modal State
   const [newJobModalOpen, setNewJobModalOpen] = useState(false);
@@ -79,7 +84,7 @@ export function App() {
     briefing: "",
     etiquetas: ["SOCIAL"],
   });
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Verificar se já existe uma sessão salva no localStorage ao iniciar
@@ -102,6 +107,110 @@ export function App() {
     }
   }, []);
 
+  useEffect(() => {
+    const carregarPermissoes = async () => {
+      if (!user?.id) {
+        setPermissoes([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=usuarios_permissoes",
+        );
+
+        const data = await response.json();
+        console.log(data);
+
+        if (Array.isArray(data)) {
+          setPermissoes(data);
+        } else if (Array.isArray(data?.dados)) {
+          setPermissoes(data.dados);
+        } else {
+          setPermissoes([]);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar permissões:", error);
+
+        setPermissoes([]);
+      }
+    };
+
+    carregarPermissoes();
+  }, [user]);
+
+  const temPermissao = (quadro: string) => {
+    if (!user) return false;
+
+    // Administrador tem acesso total
+    if (
+      user.tipo === "admin" ||
+      user.role === "admin" ||
+      user.perfil === "admin" ||
+      user.perfil === "administrador"
+    ) {
+      return true;
+    }
+
+    const permissao = permissoes.find(
+      (p) =>
+        String(p.usuario_id) === String(user.id) &&
+        String(p.quadro) === String(quadro),
+    );
+
+    return (
+      permissao?.permitido === true ||
+      permissao?.permitido === 1 ||
+      permissao?.permitido === "1" ||
+      permissao?.permitido === "true"
+    );
+  };
+
+  const podeAcessarAba = (
+    tab:
+      | "dashboard"
+      | "clientes"
+      | "rh"
+      | "atas"
+      | "jobs"
+      | "relatorios"
+      | "trafego",
+  ) => {
+    switch (tab) {
+      case "dashboard":
+        return true;
+
+      case "clientes":
+        return temPermissao("clientes");
+
+      case "rh":
+        return temPermissao("usuarios");
+
+      case "atas":
+        return temPermissao("atas_reuniao");
+
+      case "jobs":
+        return temPermissao("jobs");
+
+      case "relatorios":
+        return temPermissao("relatorios_performance");
+
+      case "trafego":
+        return temPermissao("trafego");
+
+      default:
+        return false;
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    if (!podeAcessarAba(activeTab)) {
+      setActiveTab("dashboard");
+    }
+  }, [activeTab, user, permissoes]);
+
   // Apply Dark Mode Class to HTML
   useEffect(() => {
     if (theme === "dark") {
@@ -116,37 +225,64 @@ export function App() {
     const carregarTudoDoBanco = async () => {
       try {
         // Clientes
-        const resClientes = await fetch("https://sothink.com.br/app/api/listar?tabela=clientes");
+        const resClientes = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=clientes",
+        );
         const dataClientes = await resClientes.json();
         if (Array.isArray(dataClientes)) setClientes(dataClientes);
 
         // Jobs
-        const resJobs = await fetch("https://sothink.com.br/app/api/listar?tabela=jobs");
+        const resJobs = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=jobs",
+        );
         const dataJobs = await resJobs.json();
         if (Array.isArray(dataJobs)) setJobs(dataJobs);
 
         // Atas
-        const resAtas = await fetch("https://sothink.com.br/app/api/listar?tabela=atas_reuniao");
+        const resAtas = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=atas_reuniao",
+        );
         const dataAtas = await resAtas.json();
         if (Array.isArray(dataAtas)) setAtas(dataAtas);
 
         // Relatorios
-        const resRelat = await fetch("https://sothink.com.br/app/api/listar?tabela=relatorios");
+        const resRelat = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=relatorios",
+        );
         const dataRelat = await resRelat.json();
+
         if (Array.isArray(dataRelat)) setRelatorios(dataRelat);
+
+        // Colaboradores
+        const resUsers = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=usuarios",
+        );
+
+        const dataUsers = await resUsers.json();
+
+        console.log("USUÁRIOS API:", dataUsers);
+
+        if (Array.isArray(dataUsers)) {
+          setUsers(dataUsers);
+        } else if (Array.isArray(dataUsers?.dados)) {
+          setUsers(dataUsers.dados);
+        } else {
+          setUsers([]);
+        }
 
         // Templates (tentativa de buscar real, se der erro ignora para não quebrar)
         try {
-          const resTemp = await fetch("https://sothink.com.br/app/api/listar?tabela=templates");
+          const resTemp = await fetch(
+            "https://sothink.com.br/app/api/listar?tabela=templates",
+          );
           const dataTemp = await resTemp.json();
           if (Array.isArray(dataTemp)) setTemplates(dataTemp);
         } catch (e) {}
-
       } catch (error) {
         console.error("Erro ao carregar dados do banco:", error);
       }
     };
-    
+
     // Só carrega os dados se houver um usuário ou cliente logado para otimizar
     if (user || clientPortalObj) {
       carregarTudoDoBanco();
@@ -156,7 +292,9 @@ export function App() {
   // Função auxiliar para recarregar apenas os jobs após criar um novo
   const fetchAllJobsApp = async () => {
     try {
-      const response = await fetch("https://sothink.com.br/app/api/listar?tabela=jobs");
+      const response = await fetch(
+        "https://sothink.com.br/app/api/listar?tabela=jobs",
+      );
       const data = await response.json();
       if (Array.isArray(data)) setJobs(data);
     } catch (error) {
@@ -169,7 +307,9 @@ export function App() {
     const res = await apiService.saveRelatorio(relatorioData);
     if (res.success && res.data) {
       if (relatorioData.id) {
-        setRelatorios((prev) => prev.map((r) => (r.id === res.data.id ? res.data : r)));
+        setRelatorios((prev) =>
+          prev.map((r) => (r.id === res.data.id ? res.data : r)),
+        );
       } else {
         setRelatorios((prev) => [res.data, ...prev]);
       }
@@ -188,7 +328,9 @@ export function App() {
     const res = await apiService.saveCliente(clienteData);
     if (res.success && res.data) {
       if (clienteData.id) {
-        setClientes((prev) => prev.map((c) => (c.id === res.data.id ? res.data : c)));
+        setClientes((prev) =>
+          prev.map((c) => (c.id === res.data.id ? res.data : c)),
+        );
       } else {
         setClientes((prev) => [res.data, ...prev]);
       }
@@ -207,7 +349,9 @@ export function App() {
     const res = await apiService.saveAta(ataData);
     if (res.success && res.data) {
       if (ataData.id) {
-        setAtas((prev) => prev.map((a) => (a.id === res.data.id ? res.data : a)));
+        setAtas((prev) =>
+          prev.map((a) => (a.id === res.data.id ? res.data : a)),
+        );
       } else {
         setAtas((prev) => [res.data, ...prev]);
       }
@@ -226,7 +370,7 @@ export function App() {
     // Quando o Kanban salva internamente, ele já chama a API.
     // Para manter a tela sincronizada, nós podemos simplesmente atualizar o estado aqui também.
     setJobs((prev) =>
-      prev.map((j) => (j.id === jobData.id ? { ...j, ...jobData } : j))
+      prev.map((j) => (j.id === jobData.id ? { ...j, ...jobData } : j)),
     );
   };
 
@@ -243,7 +387,7 @@ export function App() {
       showToast(
         "error",
         "Campos Obrigatórios",
-        "Selecione o cliente e informe o título do job."
+        "Selecione o cliente e informe o título do job.",
       );
       return;
     }
@@ -264,16 +408,21 @@ export function App() {
       form.append("data_inicio", newJobData.data_inicio || "");
       form.append("data_entrega", newJobData.data_entrega || "");
 
-      const responsavelParaSalvar = newJobData.responsavel ? newJobData.responsavel : user?.nome || "";
+      const responsavelParaSalvar = newJobData.responsavel
+        ? newJobData.responsavel
+        : user?.nome || "";
       form.append("responsavel", responsavelParaSalvar);
 
       form.append("etiquetas", JSON.stringify(["SOCIAL"]));
       form.append("permitir_acesso_cliente", "0");
 
-      const response = await fetch("https://sothink.com.br/app/api/inserir?tabela=jobs", {
-        method: "POST",
-        body: form,
-      });
+      const response = await fetch(
+        "https://sothink.com.br/app/api/inserir?tabela=jobs",
+        {
+          method: "POST",
+          body: form,
+        },
+      );
 
       const texto = await response.text();
       let result;
@@ -304,7 +453,7 @@ export function App() {
       showToast(
         "success",
         "Novo Job Criado!",
-        `${cliente?.nome_fantasia || cliente?.razao_social} adicionado no Kanban.`
+        `${cliente?.nome_fantasia || cliente?.razao_social} adicionado no Kanban.`,
       );
 
       // Atualiza a lista em segundo plano puxando as infos fresquinhas do banco
@@ -353,14 +502,22 @@ export function App() {
 
   const getTabTitle = () => {
     switch (activeTab) {
-      case "dashboard": return "Dashboard Geral";
-      case "clientes": return "CRM de Clientes";
-      case "rh": return "RH";
-      case "atas": return "Atas de Reunião";
-      case "jobs": return "Controle de Jobs";
-      case "relatorios": return "Relatórios de Tráfego";
-      case "trafego": return "Gestão de Tráfego Pago";
-      default: return "Controle de Jobs";
+      case "dashboard":
+        return "Dashboard Geral";
+      case "clientes":
+        return "CRM de Clientes";
+      case "rh":
+        return "RH";
+      case "atas":
+        return "Atas de Reunião";
+      case "jobs":
+        return "Controle de Jobs";
+      case "relatorios":
+        return "Relatórios de Tráfego";
+      case "trafego":
+        return "Gestão de Tráfego Pago";
+      default:
+        return "Controle de Jobs";
     }
   };
 
@@ -403,6 +560,8 @@ export function App() {
             atasCount={atas.length}
             jobsCount={jobs.length}
             collapsed={!isSidebarOpen}
+            currentUser={user}
+            podeAcessarAba={podeAcessarAba}
           />
         </div>
 
@@ -416,12 +575,13 @@ export function App() {
               {isSidebarOpen ? "Ocultar Menu" : "Mostrar Menu"}
             </span>
           </button>
-          
+
           {activeTab === "dashboard" && (
             <DashboardView
               clientes={clientes}
               atas={atas}
               jobs={jobs}
+              users={users}
               onOpenNewCliente={() => setActiveTab("clientes")}
               onOpenNewAta={() => {
                 setPreSelectedClientForAta(null);
@@ -433,6 +593,8 @@ export function App() {
                 setActiveTab("jobs");
               }}
               onNavigateTab={setActiveTab}
+              // currentUser={user}
+              podeAcessarAba={podeAcessarAba}
             />
           )}
 
@@ -459,9 +621,7 @@ export function App() {
             />
           )}
 
-          {activeTab === "rh" && (
-            <RHView />
-          )}
+          {activeTab === "rh" && <RHView />}
 
           {activeTab === "atas" && (
             <AtasView

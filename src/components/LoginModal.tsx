@@ -14,12 +14,12 @@ import { User as UserType, EmpresaCliente } from "../types";
 interface LoginModalProps {
   onLoginSuccess: (
     user: UserType,
-    clientPortalObj?: EmpresaCliente | null
+    clientPortalObj?: EmpresaCliente | null,
   ) => void;
   showToast: (
     type: "success" | "error" | "info",
     title: string,
-    desc?: string
+    desc?: string,
   ) => void;
 }
 
@@ -57,17 +57,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       const data = await response.json();
 
       if (data.success) {
-        // Salva os dados do usuário no localStorage para manter a sessão
+        const ativo =
+          data.user?.ativo === true ||
+          data.user?.ativo === 1 ||
+          data.user?.ativo === "1" ||
+          data.user?.ativo === "true";
+
+        if (!ativo) {
+          setErrorMessage(
+            "Esta conta está inativa. Entre em contato com o administrador.",
+          );
+          return;
+        }
+
         localStorage.setItem("@d2r:user", JSON.stringify(data.user));
+
+        localStorage.removeItem("@d2r:clientPortal");
+
         localStorage.setItem(
           "@d2r:clientPortal",
-          JSON.stringify(data.clientPortalObj)
+          JSON.stringify(data.clientPortalObj),
         );
 
         showToast(
           "success",
           "Acesso Autorizado!",
-          `Bem-vindo, ${data.user.nome}`
+          `Bem-vindo, ${data.user.nome}`,
         );
 
         onLoginSuccess(data.user, data.clientPortalObj);

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+
 import {
   Users,
   UserPlus,
@@ -13,7 +14,6 @@ import {
   UserX,
   BriefcaseBusiness,
   UsersRound,
-  Phone,
   MapPin,
   AlertTriangle,
   KeyRound,
@@ -29,25 +29,19 @@ interface Usuario {
   cpf_cnpj?: string;
   cargo?: string;
   whatsapp?: string;
-
   endereco?: string;
   numero?: string;
   bairro?: string;
   cidade?: string;
   estado?: string;
   cep?: string;
-
   emergencia_1_nome?: string;
   emergencia_1_whatsapp?: string;
   emergencia_2_nome?: string;
   emergencia_2_whatsapp?: string;
-
   usuario?: string;
   email?: string;
-
-  // Algumas bases podem usar senha e outras password.
   senha?: string;
-
   tipo?: string;
   perfil?: string;
   ativo?: string | number | boolean;
@@ -65,24 +59,19 @@ interface FormUsuario {
   cpf_cnpj: string;
   cargo: string;
   whatsapp: string;
-
   endereco: string;
   numero: string;
   bairro: string;
   cidade: string;
   estado: string;
   cep: string;
-
   emergencia_1_nome: string;
   emergencia_1_whatsapp: string;
-
   emergencia_2_nome: string;
   emergencia_2_whatsapp: string;
-
   usuario: string;
   email: string;
   senha: string;
-
   tipo: string;
   perfil: string;
   ativo: boolean;
@@ -114,6 +103,11 @@ const QUADROS = [
     nome: "RH / Colaboradores",
     descricao: "Gestão dos colaboradores",
   },
+  {
+    id: "trafego",
+    nome: "Tráfego Pago",
+    descricao: "Gestão de tráfego e campanhas",
+  },
 ];
 
 const EMPTY_FORM: FormUsuario = {
@@ -121,24 +115,19 @@ const EMPTY_FORM: FormUsuario = {
   cpf_cnpj: "",
   cargo: "",
   whatsapp: "",
-
   endereco: "",
   numero: "",
   bairro: "",
   cidade: "",
   estado: "",
   cep: "",
-
   emergencia_1_nome: "",
   emergencia_1_whatsapp: "",
-
   emergencia_2_nome: "",
   emergencia_2_whatsapp: "",
-
   usuario: "",
   email: "",
   senha: "",
-
   tipo: "colaborador",
   perfil: "colaborador",
   ativo: true,
@@ -149,6 +138,177 @@ const isTrue = (value: any) =>
   value === 1 ||
   value === "1" ||
   value === "true";
+
+/* =========================================================
+   MÁSCARAS
+   ========================================================= */
+
+/**
+ * CPF
+ * 123.456.789-00
+ */
+const formatCPF = (value: string) => {
+  const numbers = value.replace(/\D/g, "").substring(0, 11);
+
+  if (numbers.length <= 3) {
+    return numbers;
+  }
+
+  if (numbers.length <= 6) {
+    return `${numbers.substring(0, 3)}.${numbers.substring(3)}`;
+  }
+
+  if (numbers.length <= 9) {
+    return `${numbers.substring(0, 3)}.${numbers.substring(
+      3,
+      6,
+    )}.${numbers.substring(6)}`;
+  }
+
+  return `${numbers.substring(0, 3)}.${numbers.substring(
+    3,
+    6,
+  )}.${numbers.substring(6, 9)}-${numbers.substring(9)}`;
+};
+
+/**
+ * CNPJ
+ * 12.345.678/0001-90
+ */
+const formatCNPJ = (value: string) => {
+  const numbers = value.replace(/\D/g, "").substring(0, 14);
+
+  if (numbers.length <= 2) {
+    return numbers;
+  }
+
+  if (numbers.length <= 5) {
+    return `${numbers.substring(0, 2)}.${numbers.substring(2)}`;
+  }
+
+  if (numbers.length <= 8) {
+    return `${numbers.substring(0, 2)}.${numbers.substring(
+      2,
+      5,
+    )}.${numbers.substring(5)}`;
+  }
+
+  if (numbers.length <= 12) {
+    return `${numbers.substring(0, 2)}.${numbers.substring(
+      2,
+      5,
+    )}.${numbers.substring(5, 8)}/${numbers.substring(8)}`;
+  }
+
+  return `${numbers.substring(0, 2)}.${numbers.substring(
+    2,
+    5,
+  )}.${numbers.substring(5, 8)}/${numbers.substring(
+    8,
+    12,
+  )}-${numbers.substring(12)}`;
+};
+
+/**
+ * CPF ou CNPJ
+ * Detecta automaticamente pelo número de dígitos.
+ */
+const formatCpfCnpj = (value: string) => {
+  const numbers = value.replace(/\D/g, "").substring(0, 14);
+
+  if (numbers.length <= 11) {
+    return formatCPF(numbers);
+  }
+
+  return formatCNPJ(numbers);
+};
+
+/**
+ * Telefone / WhatsApp
+ *
+ * 11 dígitos:
+ * (11) 99999-9999
+ *
+ * 10 dígitos:
+ * (11) 9999-9999
+ *
+ * Também permite digitação com +55.
+ */
+const formatWhatsapp = (value: string) => {
+  let numbers = value.replace(/\D/g, "");
+
+  if (numbers.startsWith("55") && numbers.length > 11) {
+    numbers = numbers.substring(0, 13);
+  } else {
+    numbers = numbers.substring(0, 11);
+  }
+
+  if (numbers.length === 0) {
+    return "";
+  }
+
+  if (numbers.startsWith("55") && numbers.length > 11) {
+    const ddd = numbers.substring(2, 4);
+    const telefone = numbers.substring(4);
+
+    if (telefone.length <= 4) {
+      return `+55 (${ddd}) ${telefone}`;
+    }
+
+    if (telefone.length <= 8) {
+      return `+55 (${ddd}) ${telefone.substring(
+        0,
+        4,
+      )}-${telefone.substring(4)}`;
+    }
+
+    return `+55 (${ddd}) ${telefone.substring(
+      0,
+      5,
+    )}-${telefone.substring(5)}`;
+  }
+
+  if (numbers.length <= 2) {
+    return `(${numbers}`;
+  }
+
+  const ddd = numbers.substring(0, 2);
+  const telefone = numbers.substring(2);
+
+  if (telefone.length === 0) {
+    return `(${ddd})`;
+  }
+
+  if (telefone.length <= 4) {
+    return `(${ddd}) ${telefone}`;
+  }
+
+  if (telefone.length <= 8) {
+    return `(${ddd}) ${telefone.substring(
+      0,
+      4,
+    )}-${telefone.substring(4)}`;
+  }
+
+  return `(${ddd}) ${telefone.substring(
+    0,
+    5,
+  )}-${telefone.substring(5)}`;
+};
+
+/**
+ * CEP
+ * 00000-000
+ */
+const formatCEP = (value: string) => {
+  const numbers = value.replace(/\D/g, "").substring(0, 8);
+
+  if (numbers.length <= 5) {
+    return numbers;
+  }
+
+  return `${numbers.substring(0, 5)}-${numbers.substring(5)}`;
+};
 
 const getInitials = (name?: string) => {
   if (!name) return "??";
@@ -164,83 +324,88 @@ const getInitials = (name?: string) => {
   ).toUpperCase();
 };
 
-const formatWhatsapp = (value: string) => {
-  const numbers = value.replace(/\D/g, "");
-
-  if (numbers.length <= 11) {
-    return numbers;
-  }
-
-  return numbers.substring(0, 11);
-};
-
-const formatCEP = (value: string) => {
-  const numbers = value.replace(/\D/g, "").substring(0, 8);
-
-  if (numbers.length <= 5) return numbers;
-
-  return `${numbers.substring(0, 5)}-${numbers.substring(5)}`;
-};
-
-const formatCpfCnpj = (value: string) => {
-  const numbers = value.replace(/\D/g, "");
-
-  if (numbers.length <= 11) {
-    return numbers.substring(0, 11);
-  }
-
-  return numbers.substring(0, 14);
-};
-
 export const RHView: React.FC = () => {
-  const [aba, setAba] = useState<AbaRH>("colaboradores");
+  const [aba, setAba] =
+    useState<AbaRH>("colaboradores");
 
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [permissoes, setPermissoes] = useState<Permissao[]>([]);
+  const [usuarios, setUsuarios] =
+    useState<Usuario[]>([]);
+
+  const [permissoes, setPermissoes] =
+    useState<Permissao[]>([]);
 
   const [search, setSearch] = useState("");
 
-  const [showModal, setShowModal] = useState(false);
-  const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
+  const [showModal, setShowModal] =
+    useState(false);
 
-  const [form, setForm] = useState<FormUsuario>(EMPTY_FORM);
+  const [editingUsuario, setEditingUsuario] =
+    useState<Usuario | null>(null);
 
-  const [selectedPermissions, setSelectedPermissions] = useState<
-    Record<string, boolean>
-  >({});
+  const [form, setForm] =
+    useState<FormUsuario>(EMPTY_FORM);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [selectedPermissions, setSelectedPermissions] =
+    useState<Record<string, boolean>>({});
 
-  const [error, setError] = useState("");
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [loadingCep, setLoadingCep] =
+    useState(false);
+
+  const [cepError, setCepError] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  /* =========================================================
+     CARREGAR DADOS
+     ========================================================= */
 
   const carregarDados = async () => {
     setLoading(true);
     setError("");
 
     try {
-      const [usuariosResponse, permissoesResponse] = await Promise.all([
-        fetch(`${API_BASE}/listar?tabela=usuarios`),
-        fetch(`${API_BASE}/listar?tabela=usuarios_permissoes`),
+      const [
+        usuariosResponse,
+        permissoesResponse,
+      ] = await Promise.all([
+        fetch(
+          `${API_BASE}/listar?tabela=usuarios`,
+        ),
+        fetch(
+          `${API_BASE}/listar?tabela=usuarios_permissoes`,
+        ),
       ]);
 
-      const usuariosData = await usuariosResponse.json();
-      const permissoesData = await permissoesResponse.json();
+      const usuariosData =
+        await usuariosResponse.json();
+
+      const permissoesData =
+        await permissoesResponse.json();
 
       setUsuarios(
         Array.isArray(usuariosData)
           ? usuariosData
-          : usuariosData?.dados || []
+          : usuariosData?.dados || [],
       );
 
       setPermissoes(
         Array.isArray(permissoesData)
           ? permissoesData
-          : permissoesData?.dados || []
+          : permissoesData?.dados || [],
       );
     } catch (err) {
       console.error(err);
-      setError("Não foi possível carregar os dados do RH.");
+      setError(
+        "Não foi possível carregar os dados do RH.",
+      );
     } finally {
       setLoading(false);
     }
@@ -250,6 +415,82 @@ export const RHView: React.FC = () => {
     carregarDados();
   }, []);
 
+  /* =========================================================
+     VIA CEP
+     ========================================================= */
+
+  const buscarCEP = async (cepDigitado: string) => {
+    const cep = cepDigitado.replace(/\D/g, "");
+
+    if (cep.length !== 8) {
+      return;
+    }
+
+    setLoadingCep(true);
+    setCepError("");
+
+    try {
+      const response = await fetch(
+        `https://viacep.com.br/ws/${cep}/json/`,
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Não foi possível consultar o CEP.",
+        );
+      }
+
+      const data = await response.json();
+
+      if (data.erro) {
+        setCepError("CEP não encontrado.");
+        return;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        cep: formatCEP(data.cep || cep),
+        endereco: data.logradouro || "",
+        bairro: data.bairro || "",
+        cidade: data.localidade || "",
+        estado: data.uf || "",
+      }));
+    } catch (err) {
+      console.error("Erro ViaCEP:", err);
+      setCepError(
+        "Não foi possível consultar o CEP.",
+      );
+    } finally {
+      setLoadingCep(false);
+    }
+  };
+
+  const handleCEPChange = (
+    value: string,
+  ) => {
+    const formatted = formatCEP(value);
+
+    setCepError("");
+
+    setForm((prev) => ({
+      ...prev,
+      cep: formatted,
+    }));
+
+    const numbers = formatted.replace(
+      /\D/g,
+      "",
+    );
+
+    if (numbers.length === 8) {
+      buscarCEP(numbers);
+    }
+  };
+
+  /* =========================================================
+     FILTRO
+     ========================================================= */
+
   const usuariosFiltrados = useMemo(() => {
     const termo = search.trim().toLowerCase();
 
@@ -257,117 +498,198 @@ export const RHView: React.FC = () => {
 
     return usuarios.filter((usuario) => {
       return (
-        usuario.nome?.toLowerCase().includes(termo) ||
-        usuario.cargo?.toLowerCase().includes(termo) ||
-        usuario.email?.toLowerCase().includes(termo) ||
-        usuario.usuario?.toLowerCase().includes(termo) ||
-        usuario.cpf_cnpj?.toLowerCase().includes(termo)
+        usuario.nome
+          ?.toLowerCase()
+          .includes(termo) ||
+        usuario.cargo
+          ?.toLowerCase()
+          .includes(termo) ||
+        usuario.email
+          ?.toLowerCase()
+          .includes(termo) ||
+        usuario.usuario
+          ?.toLowerCase()
+          .includes(termo) ||
+        usuario.cpf_cnpj
+          ?.toLowerCase()
+          .includes(termo) ||
+        usuario.whatsapp
+          ?.toLowerCase()
+          .includes(termo)
       );
     });
   }, [usuarios, search]);
 
+  /* =========================================================
+     NOVO
+     ========================================================= */
+
   const abrirNovo = () => {
     setEditingUsuario(null);
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+    });
 
-    const permissoesIniciais: Record<string, boolean> = {};
+    setCepError("");
+
+    const permissoesIniciais: Record<
+      string,
+      boolean
+    > = {};
 
     QUADROS.forEach((quadro) => {
       permissoesIniciais[quadro.id] = false;
     });
 
-    setSelectedPermissions(permissoesIniciais);
+    setSelectedPermissions(
+      permissoesIniciais,
+    );
 
     setShowModal(true);
   };
 
-  const abrirEdicao = (usuario: Usuario) => {
+  /* =========================================================
+     EDITAR
+     ========================================================= */
+
+  const abrirEdicao = (
+    usuario: Usuario,
+  ) => {
     setEditingUsuario(usuario);
 
     setForm({
       nome: usuario.nome || "",
       cpf_cnpj: usuario.cpf_cnpj || "",
       cargo: usuario.cargo || "",
-      whatsapp: usuario.whatsapp || "",
-
+      whatsapp: usuario.whatsapp
+        ? formatWhatsapp(usuario.whatsapp)
+        : "",
       endereco: usuario.endereco || "",
       numero: usuario.numero || "",
       bairro: usuario.bairro || "",
       cidade: usuario.cidade || "",
       estado: usuario.estado || "",
-      cep: usuario.cep || "",
-
-      emergencia_1_nome: usuario.emergencia_1_nome || "",
-      emergencia_1_whatsapp: usuario.emergencia_1_whatsapp || "",
-
-      emergencia_2_nome: usuario.emergencia_2_nome || "",
-      emergencia_2_whatsapp: usuario.emergencia_2_whatsapp || "",
-
+      cep: usuario.cep
+        ? formatCEP(usuario.cep)
+        : "",
+      emergencia_1_nome:
+        usuario.emergencia_1_nome || "",
+      emergencia_1_whatsapp:
+        usuario.emergencia_1_whatsapp
+          ? formatWhatsapp(
+              usuario.emergencia_1_whatsapp,
+            )
+          : "",
+      emergencia_2_nome:
+        usuario.emergencia_2_nome || "",
+      emergencia_2_whatsapp:
+        usuario.emergencia_2_whatsapp
+          ? formatWhatsapp(
+              usuario.emergencia_2_whatsapp,
+            )
+          : "",
       usuario: usuario.usuario || "",
       email: usuario.email || "",
-
-      // Não exibimos senha existente.
       senha: "",
-
       tipo: usuario.tipo || "colaborador",
-      perfil: usuario.perfil || "colaborador",
+      perfil:
+        usuario.perfil || "colaborador",
       ativo: isTrue(usuario.ativo),
     });
 
-    const permissoesDoUsuario: Record<string, boolean> = {};
+    setCepError("");
+
+    const permissoesDoUsuario: Record<
+      string,
+      boolean
+    > = {};
 
     QUADROS.forEach((quadro) => {
       const permissao = permissoes.find(
         (item) =>
-          String(item.usuario_id) === String(usuario.id) &&
-          item.quadro === quadro.id
+          String(item.usuario_id) ===
+            String(usuario.id) &&
+          item.quadro === quadro.id,
       );
 
-      permissoesDoUsuario[quadro.id] = permissao
-        ? isTrue(permissao.permitido)
-        : false;
+      permissoesDoUsuario[quadro.id] =
+        permissao
+          ? isTrue(permissao.permitido)
+          : false;
     });
 
-    setSelectedPermissions(permissoesDoUsuario);
+    setSelectedPermissions(
+      permissoesDoUsuario,
+    );
+
     setShowModal(true);
   };
+
+  /* =========================================================
+     FECHAR MODAL
+     ========================================================= */
 
   const fecharModal = () => {
     if (saving) return;
 
     setShowModal(false);
     setEditingUsuario(null);
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+    });
     setSelectedPermissions({});
+    setCepError("");
   };
 
-  const updateForm = (field: keyof FormUsuario, value: any) => {
+  /* =========================================================
+     UPDATE FORM
+     ========================================================= */
+
+  const updateForm = (
+    field: keyof FormUsuario,
+    value: any,
+  ) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const togglePermission = (quadro: string) => {
+  const togglePermission = (
+    quadro: string,
+  ) => {
     setSelectedPermissions((prev) => ({
       ...prev,
       [quadro]: !prev[quadro],
     }));
   };
 
+  /* =========================================================
+     SALVAR
+     ========================================================= */
+
   const salvarUsuario = async () => {
     if (!form.nome.trim()) {
-      alert("Informe o nome do colaborador.");
+      alert(
+        "Informe o nome do colaborador.",
+      );
       return;
     }
 
     if (!form.cargo.trim()) {
-      alert("Informe o cargo do colaborador.");
+      alert(
+        "Informe o cargo do colaborador.",
+      );
       return;
     }
 
-    if (!editingUsuario && !form.senha.trim()) {
-      alert("Informe uma senha para o colaborador.");
+    if (
+      !editingUsuario &&
+      !form.senha.trim()
+    ) {
+      alert(
+        "Informe uma senha para o colaborador.",
+      );
       return;
     }
 
@@ -376,116 +698,222 @@ export const RHView: React.FC = () => {
     try {
       const formData = new FormData();
 
-      formData.append("tabela", "usuarios");
+      formData.append(
+        "tabela",
+        "usuarios",
+      );
 
       if (editingUsuario?.id) {
-        formData.append("id", String(editingUsuario.id));
+        formData.append(
+          "id",
+          String(editingUsuario.id),
+        );
       }
 
-      formData.append("nome", form.nome.trim());
-      formData.append("cpf_cnpj", form.cpf_cnpj.trim());
-      formData.append("cargo", form.cargo.trim());
-      formData.append("whatsapp", form.whatsapp.trim());
+      formData.append(
+        "nome",
+        form.nome.trim(),
+      );
 
-      formData.append("endereco", form.endereco.trim());
-      formData.append("numero", form.numero.trim());
-      formData.append("bairro", form.bairro.trim());
-      formData.append("cidade", form.cidade.trim());
-      formData.append("estado", form.estado.trim());
-      formData.append("cep", form.cep.trim());
+      formData.append(
+        "cpf_cnpj",
+        form.cpf_cnpj.trim(),
+      );
+
+      formData.append(
+        "cargo",
+        form.cargo.trim(),
+      );
+
+      formData.append(
+        "whatsapp",
+        form.whatsapp.trim(),
+      );
+
+      formData.append(
+        "endereco",
+        form.endereco.trim(),
+      );
+
+      formData.append(
+        "numero",
+        form.numero.trim(),
+      );
+
+      formData.append(
+        "bairro",
+        form.bairro.trim(),
+      );
+
+      formData.append(
+        "cidade",
+        form.cidade.trim(),
+      );
+
+      formData.append(
+        "estado",
+        form.estado.trim(),
+      );
+
+      formData.append(
+        "cep",
+        form.cep.trim(),
+      );
 
       formData.append(
         "emergencia_1_nome",
-        form.emergencia_1_nome.trim()
+        form.emergencia_1_nome.trim(),
       );
+
       formData.append(
         "emergencia_1_whatsapp",
-        form.emergencia_1_whatsapp.trim()
+        form.emergencia_1_whatsapp.trim(),
       );
 
       formData.append(
         "emergencia_2_nome",
-        form.emergencia_2_nome.trim()
+        form.emergencia_2_nome.trim(),
       );
+
       formData.append(
         "emergencia_2_whatsapp",
-        form.emergencia_2_whatsapp.trim()
+        form.emergencia_2_whatsapp.trim(),
       );
 
-      formData.append("usuario", form.usuario.trim());
-      formData.append("email", form.email.trim());
+      formData.append(
+        "usuario",
+        form.usuario.trim(),
+      );
+
+      formData.append(
+        "email",
+        form.email.trim(),
+      );
 
       if (form.senha.trim()) {
-        formData.append("senha", form.senha.trim());
+        formData.append(
+          "senha",
+          form.senha.trim(),
+        );
       }
 
-      formData.append("tipo", form.tipo);
-      formData.append("perfil", form.perfil);
-      formData.append("ativo", form.ativo ? "1" : "0");
+      formData.append(
+        "tipo",
+        form.tipo,
+      );
+
+      formData.append(
+        "perfil",
+        form.perfil,
+      );
+
+      formData.append(
+        "ativo",
+        form.ativo ? "1" : "0",
+      );
 
       const endpoint = editingUsuario
         ? `${API_BASE}/editar`
         : `${API_BASE}/inserir`;
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        endpoint,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || data?.erro || data?.sucesso === false) {
+      if (
+        !response.ok ||
+        data?.erro ||
+        data?.sucesso === false
+      ) {
         throw new Error(
-          data?.erro || "Não foi possível salvar o colaborador."
+          data?.erro ||
+            "Não foi possível salvar o colaborador.",
         );
       }
 
-      const usuarioId = editingUsuario?.id || data.id;
+      const usuarioId =
+        editingUsuario?.id ||
+        data.id;
 
       if (!usuarioId) {
         throw new Error(
-          "O colaborador foi salvo, mas a API não retornou o ID."
+          "O colaborador foi salvo, mas a API não retornou o ID.",
         );
       }
 
-      /*
-       * Salva as permissões.
-       *
-       * A tabela usuarios_permissoes funciona como:
-       * usuario_id | quadro | permitido
-       */
       for (const quadro of QUADROS) {
-        const permitido = selectedPermissions[quadro.id] ? "1" : "0";
+        const permitido =
+          selectedPermissions[
+            quadro.id
+          ]
+            ? "1"
+            : "0";
 
-        const permissaoExistente = permissoes.find(
-          (item) =>
-            String(item.usuario_id) === String(usuarioId) &&
-            item.quadro === quadro.id
+        const permissaoExistente =
+          permissoes.find(
+            (item) =>
+              String(
+                item.usuario_id,
+              ) === String(usuarioId) &&
+              item.quadro ===
+                quadro.id,
+          );
+
+        const permissaoForm =
+          new FormData();
+
+        permissaoForm.append(
+          "tabela",
+          "usuarios_permissoes",
         );
 
-        const permissaoForm = new FormData();
+        permissaoForm.append(
+          "usuario_id",
+          String(usuarioId),
+        );
 
-        if (permissaoExistente?.id) {
-          permissaoForm.append("tabela", "usuarios_permissoes");
-          permissaoForm.append("id", String(permissaoExistente.id));
-          permissaoForm.append("usuario_id", String(usuarioId));
-          permissaoForm.append("quadro", quadro.id);
-          permissaoForm.append("permitido", permitido);
+        permissaoForm.append(
+          "quadro",
+          quadro.id,
+        );
 
-          await fetch(`${API_BASE}/editar`, {
-            method: "POST",
-            body: permissaoForm,
-          });
+        permissaoForm.append(
+          "permitido",
+          permitido,
+        );
+
+        if (
+          permissaoExistente?.id
+        ) {
+          permissaoForm.append(
+            "id",
+            String(
+              permissaoExistente.id,
+            ),
+          );
+
+          await fetch(
+            `${API_BASE}/editar`,
+            {
+              method: "POST",
+              body: permissaoForm,
+            },
+          );
         } else {
-          permissaoForm.append("tabela", "usuarios_permissoes");
-          permissaoForm.append("usuario_id", String(usuarioId));
-          permissaoForm.append("quadro", quadro.id);
-          permissaoForm.append("permitido", permitido);
-
-          await fetch(`${API_BASE}/inserir`, {
-            method: "POST",
-            body: permissaoForm,
-          });
+          await fetch(
+            `${API_BASE}/inserir`,
+            {
+              method: "POST",
+              body: permissaoForm,
+            },
+          );
         }
       }
 
@@ -496,77 +924,144 @@ export const RHView: React.FC = () => {
       alert(
         editingUsuario
           ? "Colaborador atualizado com sucesso."
-          : "Colaborador cadastrado com sucesso."
+          : "Colaborador cadastrado com sucesso.",
       );
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Erro ao salvar colaborador.");
+
+      alert(
+        err?.message ||
+          "Erro ao salvar colaborador.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const excluirUsuario = async (usuario: Usuario) => {
+  /* =========================================================
+     EXCLUIR
+     ========================================================= */
+
+  const excluirUsuario = async (
+    usuario: Usuario,
+  ) => {
     if (!usuario.id) return;
 
-    const confirmou = window.confirm(
-      `Deseja realmente excluir o colaborador "${usuario.nome}"?\n\nEssa ação não poderá ser desfeita.`
-    );
+    const confirmou =
+      window.confirm(
+        `Deseja realmente excluir o colaborador "${usuario.nome}"?\n\nEssa ação não poderá ser desfeita.`,
+      );
 
     if (!confirmou) return;
 
     try {
-      const response = await fetch(
-        `${API_BASE}/deletar?id=${encodeURIComponent(
-          usuario.id
-        )}&tabela=usuarios`
-      );
+      const response =
+        await fetch(
+          `${API_BASE}/deletar?id=${encodeURIComponent(
+            usuario.id,
+          )}&tabela=usuarios`,
+        );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
-      if (!response.ok || data?.erro || data?.sucesso === false) {
-        throw new Error(data?.erro || "Erro ao excluir colaborador.");
+      if (
+        !response.ok ||
+        data?.erro ||
+        data?.sucesso === false
+      ) {
+        throw new Error(
+          data?.erro ||
+            "Erro ao excluir colaborador.",
+        );
       }
 
       await carregarDados();
 
-      alert("Colaborador excluído com sucesso.");
+      alert(
+        "Colaborador excluído com sucesso.",
+      );
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Erro ao excluir colaborador.");
+
+      alert(
+        err?.message ||
+          "Erro ao excluir colaborador.",
+      );
     }
   };
 
-  const toggleAtivoRapido = async (usuario: Usuario) => {
+  /* =========================================================
+     ATIVO / INATIVO
+     ========================================================= */
+
+  const toggleAtivoRapido = async (
+    usuario: Usuario,
+  ) => {
     if (!usuario.id) return;
 
     try {
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
-      formData.append("tabela", "usuarios");
-      formData.append("id", String(usuario.id));
-      formData.append("ativo", isTrue(usuario.ativo) ? "0" : "1");
+      formData.append(
+        "tabela",
+        "usuarios",
+      );
 
-      const response = await fetch(`${API_BASE}/editar`, {
-        method: "POST",
-        body: formData,
-      });
+      formData.append(
+        "id",
+        String(usuario.id),
+      );
 
-      const data = await response.json();
+      formData.append(
+        "ativo",
+        isTrue(usuario.ativo)
+          ? "0"
+          : "1",
+      );
 
-      if (!response.ok || data?.erro || data?.sucesso === false) {
-        throw new Error(data?.erro || "Erro ao alterar status.");
+      const response =
+        await fetch(
+          `${API_BASE}/editar`,
+          {
+            method: "POST",
+            body: formData,
+          },
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        data?.erro ||
+        data?.sucesso === false
+      ) {
+        throw new Error(
+          data?.erro ||
+            "Erro ao alterar status.",
+        );
       }
 
       await carregarDados();
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || "Erro ao alterar status.");
+
+      alert(
+        err?.message ||
+          "Erro ao alterar status.",
+      );
     }
   };
 
+  /* =========================================================
+     RENDER
+     ========================================================= */
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+
       {/* HEADER */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
@@ -581,13 +1076,16 @@ export const RHView: React.FC = () => {
               </h1>
 
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Gerencie colaboradores, cargos, contatos e permissões.
+                Gerencie colaboradores,
+                cargos, contatos e
+                permissões.
               </p>
             </div>
           </div>
         </div>
 
-        {aba === "colaboradores" && (
+        {aba ===
+          "colaboradores" && (
           <button
             type="button"
             onClick={abrirNovo}
@@ -603,9 +1101,12 @@ export const RHView: React.FC = () => {
       <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
         <button
           type="button"
-          onClick={() => setAba("colaboradores")}
+          onClick={() =>
+            setAba("colaboradores")
+          }
           className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
-            aba === "colaboradores"
+            aba ===
+            "colaboradores"
               ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
               : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
           }`}
@@ -616,7 +1117,9 @@ export const RHView: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => setAba("squads")}
+          onClick={() =>
+            setAba("squads")
+          }
           className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
             aba === "squads"
               ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
@@ -628,7 +1131,7 @@ export const RHView: React.FC = () => {
         </button>
       </div>
 
-      {/* SQUADS - ESTRUTURA FUTURA */}
+      {/* SQUADS */}
       {aba === "squads" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 text-center shadow-sm">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
@@ -640,8 +1143,11 @@ export const RHView: React.FC = () => {
           </h2>
 
           <p className="max-w-lg mx-auto mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Área preparada para administrar squads separados, seus
-            colaboradores e a organização das equipes.
+            Área preparada para
+            administrar squads
+            separados, seus
+            colaboradores e a
+            organização das equipes.
           </p>
 
           <div className="mt-6 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500">
@@ -653,14 +1159,24 @@ export const RHView: React.FC = () => {
       {/* COLABORADORES */}
       {aba === "colaboradores" && (
         <>
-          {/* FILTRO */}
+          {/* BUSCA */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
 
               <input
-                type="text"
+                type="search"
+                name="rh-search"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 value={search}
+                onChange={(e) =>
+                  setSearch(
+                    e.target.value,
+                  )
+                }
                 placeholder="Buscar por nome, cargo, CPF/CNPJ, usuário ou e-mail..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
               />
@@ -675,6 +1191,7 @@ export const RHView: React.FC = () => {
                   <p className="text-xs font-bold text-slate-400 uppercase">
                     Colaboradores
                   </p>
+
                   <p className="text-2xl font-extrabold text-slate-900 dark:text-white mt-1">
                     {usuarios.length}
                   </p>
@@ -692,10 +1209,14 @@ export const RHView: React.FC = () => {
                   <p className="text-xs font-bold text-slate-400 uppercase">
                     Ativos
                   </p>
+
                   <p className="text-2xl font-extrabold text-emerald-600 mt-1">
                     {
-                      usuarios.filter((usuario) =>
-                        isTrue(usuario.ativo)
+                      usuarios.filter(
+                        (usuario) =>
+                          isTrue(
+                            usuario.ativo,
+                          ),
                       ).length
                     }
                   </p>
@@ -713,10 +1234,14 @@ export const RHView: React.FC = () => {
                   <p className="text-xs font-bold text-slate-400 uppercase">
                     Inativos
                   </p>
+
                   <p className="text-2xl font-extrabold text-slate-500 mt-1">
                     {
                       usuarios.filter(
-                        (usuario) => !isTrue(usuario.ativo)
+                        (usuario) =>
+                          !isTrue(
+                            usuario.ativo,
+                          ),
                       ).length
                     }
                   </p>
@@ -734,24 +1259,30 @@ export const RHView: React.FC = () => {
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center text-slate-400">
                 <Loader2 className="w-6 h-6 animate-spin mb-3" />
+
                 <span className="text-xs font-semibold">
-                  Carregando colaboradores...
+                  Carregando
+                  colaboradores...
                 </span>
               </div>
             ) : error ? (
               <div className="p-12 text-center text-rose-500 text-sm font-semibold">
                 {error}
               </div>
-            ) : usuariosFiltrados.length === 0 ? (
+            ) : usuariosFiltrados.length ===
+              0 ? (
               <div className="p-12 text-center">
                 <Users className="w-10 h-10 mx-auto text-slate-300 mb-3" />
 
                 <h3 className="font-bold text-slate-700 dark:text-slate-300">
-                  Nenhum colaborador encontrado
+                  Nenhum colaborador
+                  encontrado
                 </h3>
 
                 <p className="text-xs text-slate-400 mt-1">
-                  Cadastre o primeiro colaborador para começar.
+                  Cadastre o primeiro
+                  colaborador para
+                  começar.
                 </p>
               </div>
             ) : (
@@ -759,145 +1290,205 @@ export const RHView: React.FC = () => {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase tracking-wider text-slate-400 font-extrabold">
-                      <th className="px-5 py-4">Colaborador</th>
-                      <th className="px-5 py-4">Cargo</th>
-                      <th className="px-5 py-4">WhatsApp</th>
-                      <th className="px-5 py-4">Usuário</th>
-                      <th className="px-5 py-4">Permissões</th>
-                      <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4 text-right">Ações</th>
+                      <th className="px-5 py-4">
+                        Colaborador
+                      </th>
+
+                      <th className="px-5 py-4">
+                        Cargo
+                      </th>
+
+                      <th className="px-5 py-4">
+                        WhatsApp
+                      </th>
+
+                      <th className="px-5 py-4">
+                        Usuário
+                      </th>
+
+                      <th className="px-5 py-4">
+                        Permissões
+                      </th>
+
+                      <th className="px-5 py-4">
+                        Status
+                      </th>
+
+                      <th className="px-5 py-4 text-right">
+                        Ações
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {usuariosFiltrados.map((usuario) => {
-                      const permissoesUsuario = permissoes.filter(
-                        (item) =>
-                          String(item.usuario_id) ===
-                          String(usuario.id)
-                      );
+                    {usuariosFiltrados.map(
+                      (usuario) => {
+                        const permissoesUsuario =
+                          permissoes.filter(
+                            (item) =>
+                              String(
+                                item.usuario_id,
+                              ) ===
+                              String(
+                                usuario.id,
+                              ),
+                          );
 
-                      const quantidadePermissoes =
-                        permissoesUsuario.filter((item) =>
-                          isTrue(item.permitido)
-                        ).length;
+                        const quantidadePermissoes =
+                          permissoesUsuario.filter(
+                            (item) =>
+                              isTrue(
+                                item.permitido,
+                              ),
+                          ).length;
 
-                      const ativo = isTrue(usuario.ativo);
+                        const ativo =
+                          isTrue(
+                            usuario.ativo,
+                          );
 
-                      return (
-                        <tr
-                          key={usuario.id}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-extrabold shrink-0">
-                                {getInitials(usuario.nome)}
-                              </div>
-
-                              <div className="min-w-0">
-                                <div className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                                  {usuario.nome || "Sem nome"}
+                        return (
+                          <tr
+                            key={
+                              usuario.id
+                            }
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-extrabold shrink-0">
+                                  {getInitials(
+                                    usuario.nome,
+                                  )}
                                 </div>
 
-                                <div className="text-[10px] text-slate-400 mt-0.5">
-                                  {usuario.email ||
-                                    usuario.cpf_cnpj ||
-                                    "Sem informação"}
+                                <div className="min-w-0">
+                                  <div className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                                    {usuario.nome ||
+                                      "Sem nome"}
+                                  </div>
+
+                                  <div className="text-[10px] text-slate-400 mt-0.5">
+                                    {usuario.email ||
+                                      usuario.cpf_cnpj ||
+                                      "Sem informação"}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                              <BriefcaseBusiness className="w-3.5 h-3.5 text-slate-400" />
-                              {usuario.cargo || "Não informado"}
-                            </div>
-                          </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                <BriefcaseBusiness className="w-3.5 h-3.5 text-slate-400" />
 
-                          <td className="px-5 py-4">
-                            <span className="text-xs text-slate-600 dark:text-slate-300">
-                              {usuario.whatsapp || "-"}
-                            </span>
-                          </td>
+                                {usuario.cargo ||
+                                  "Não informado"}
+                              </div>
+                            </td>
 
-                          <td className="px-5 py-4">
-                            <div>
-                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                {usuario.usuario || "-"}
+                            <td className="px-5 py-4">
+                              <span className="text-xs text-slate-600 dark:text-slate-300">
+                                {usuario.whatsapp
+                                  ? formatWhatsapp(
+                                      usuario.whatsapp,
+                                    )
+                                  : "-"}
                               </span>
+                            </td>
 
-                              {usuario.perfil && (
-                                <span className="block text-[10px] text-slate-400 mt-0.5">
-                                  {usuario.perfil}
+                            <td className="px-5 py-4">
+                              <div>
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                  {usuario.usuario ||
+                                    "-"}
                                 </span>
-                              )}
-                            </div>
-                          </td>
 
-                          <td className="px-5 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-extrabold">
-                              <ShieldCheck className="w-3 h-3" />
-                              {quantidadePermissoes} quadro
-                              {quantidadePermissoes !== 1 ? "s" : ""}
-                            </span>
-                          </td>
+                                {usuario.perfil && (
+                                  <span className="block text-[10px] text-slate-400 mt-0.5">
+                                    {
+                                      usuario.perfil
+                                    }
+                                  </span>
+                                )}
+                              </div>
+                            </td>
 
-                          <td className="px-5 py-4">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toggleAtivoRapido(usuario)
-                              }
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold ${
-                                ativo
-                                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                  : "bg-slate-100 text-slate-500 dark:bg-slate-800"
-                              }`}
-                            >
-                              {ativo ? (
-                                <>
-                                  <UserCheck className="w-3 h-3" />
-                                  Ativo
-                                </>
-                              ) : (
-                                <>
-                                  <UserX className="w-3 h-3" />
-                                  Inativo
-                                </>
-                              )}
-                            </button>
-                          </td>
+                            <td className="px-5 py-4">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-extrabold">
+                                <ShieldCheck className="w-3 h-3" />
 
-                          <td className="px-5 py-4">
-                            <div className="flex justify-end items-center gap-1">
+                                {
+                                  quantidadePermissoes
+                                }{" "}
+                                quadro
+                                {quantidadePermissoes !==
+                                1
+                                  ? "s"
+                                  : ""}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4">
                               <button
                                 type="button"
                                 onClick={() =>
-                                  abrirEdicao(usuario)
+                                  toggleAtivoRapido(
+                                    usuario,
+                                  )
                                 }
-                                title="Editar colaborador"
-                                className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold ${
+                                  ativo
+                                    ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                    : "bg-slate-100 text-slate-500 dark:bg-slate-800"
+                                }`}
                               >
-                                <Pencil className="w-4 h-4" />
+                                {ativo ? (
+                                  <>
+                                    <UserCheck className="w-3 h-3" />
+                                    Ativo
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserX className="w-3 h-3" />
+                                    Inativo
+                                  </>
+                                )}
                               </button>
+                            </td>
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  excluirUsuario(usuario)
-                                }
-                                title="Excluir colaborador"
-                                className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <td className="px-5 py-4">
+                              <div className="flex justify-end items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirEdicao(
+                                      usuario,
+                                    )
+                                  }
+                                  title="Editar colaborador"
+                                  className="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    excluirUsuario(
+                                      usuario,
+                                    )
+                                  }
+                                  title="Excluir colaborador"
+                                  className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      },
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -906,7 +1497,9 @@ export const RHView: React.FC = () => {
         </>
       )}
 
-      {/* MODAL */}
+      {/* =====================================================
+          MODAL
+          ===================================================== */}
       {showModal && (
         <div
           className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-4 pt-8 overflow-y-auto"
@@ -914,9 +1507,11 @@ export const RHView: React.FC = () => {
         >
           <div
             className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
-            {/* MODAL HEADER */}
+            {/* HEADER MODAL */}
             <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-5 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -936,7 +1531,9 @@ export const RHView: React.FC = () => {
                     </h2>
 
                     <p className="text-[11px] text-slate-400">
-                      Cadastro e permissões de acesso
+                      Cadastro e
+                      permissões de
+                      acesso
                     </p>
                   </div>
                 </div>
@@ -953,26 +1550,36 @@ export const RHView: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-6">
+
               {/* DADOS PRINCIPAIS */}
               <section className="space-y-4">
                 <div>
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
                     Dados do colaborador
                   </h3>
+
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Informações principais, cargo e documento.
+                    Informações
+                    principais,
+                    cargo e
+                    documento.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
                   <div className="lg:col-span-2">
                     <label className="field-label">
                       Nome completo *
                     </label>
+
                     <input
                       value={form.nome}
                       onChange={(e) =>
-                        updateForm("nome", e.target.value)
+                        updateForm(
+                          "nome",
+                          e.target.value,
+                        )
                       }
                       placeholder="Nome do colaborador"
                       className="field-input"
@@ -983,15 +1590,21 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       CPF / CNPJ
                     </label>
+
                     <input
-                      value={form.cpf_cnpj}
+                      inputMode="numeric"
+                      value={
+                        form.cpf_cnpj
+                      }
                       onChange={(e) =>
                         updateForm(
                           "cpf_cnpj",
-                          formatCpfCnpj(e.target.value)
+                          formatCpfCnpj(
+                            e.target.value,
+                          ),
                         )
                       }
-                      placeholder="CPF ou CNPJ"
+                      placeholder="000.000.000-00"
                       className="field-input"
                     />
                   </div>
@@ -1000,10 +1613,14 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       Cargo *
                     </label>
+
                     <input
                       value={form.cargo}
                       onChange={(e) =>
-                        updateForm("cargo", e.target.value)
+                        updateForm(
+                          "cargo",
+                          e.target.value,
+                        )
                       }
                       placeholder="Ex.: Designer"
                       className="field-input"
@@ -1014,12 +1631,19 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       WhatsApp
                     </label>
+
                     <input
-                      value={form.whatsapp}
+                      type="tel"
+                      inputMode="tel"
+                      value={
+                        form.whatsapp
+                      }
                       onChange={(e) =>
                         updateForm(
                           "whatsapp",
-                          formatWhatsapp(e.target.value)
+                          formatWhatsapp(
+                            e.target.value,
+                          ),
                         )
                       }
                       placeholder="(11) 99999-9999"
@@ -1031,11 +1655,15 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       E-mail
                     </label>
+
                     <input
                       type="email"
                       value={form.email}
                       onChange={(e) =>
-                        updateForm("email", e.target.value)
+                        updateForm(
+                          "email",
+                          e.target.value,
+                        )
                       }
                       placeholder="email@empresa.com"
                       className="field-input"
@@ -1046,12 +1674,17 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       Usuário / Login
                     </label>
+
                     <input
                       value={form.usuario}
                       onChange={(e) =>
-                        updateForm("usuario", e.target.value)
+                        updateForm(
+                          "usuario",
+                          e.target.value,
+                        )
                       }
                       placeholder="usuario.login"
+                      autoComplete="off"
                       className="field-input"
                     />
                   </div>
@@ -1067,18 +1700,89 @@ export const RHView: React.FC = () => {
                     <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
                       Endereço
                     </h3>
+
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Digite o CEP para
+                      preencher
+                      automaticamente o
+                      endereço.
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+
+                  {/* CEP PRIMEIRO */}
+                  <div className="md:col-span-2">
+                    <label className="field-label">
+                      CEP
+                    </label>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={9}
+                        value={form.cep}
+                        onChange={(e) =>
+                          handleCEPChange(
+                            e.target.value,
+                          )
+                        }
+                        onBlur={() => {
+                          const cep =
+                            form.cep.replace(
+                              /\D/g,
+                              "",
+                            );
+
+                          if (
+                            cep.length ===
+                            8
+                          ) {
+                            buscarCEP(
+                              cep,
+                            );
+                          }
+                        }}
+                        placeholder="00000-000"
+                        className="field-input pr-10"
+                      />
+
+                      {loadingCep && (
+                        <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 animate-spin" />
+                      )}
+                    </div>
+
+                    {cepError && (
+                      <p className="text-[10px] text-rose-500 mt-1 font-semibold">
+                        {cepError}
+                      </p>
+                    )}
+
+                    {!cepError &&
+                      loadingCep && (
+                        <p className="text-[10px] text-indigo-500 mt-1 font-semibold">
+                          Buscando
+                          endereço...
+                        </p>
+                      )}
+                  </div>
+
                   <div className="md:col-span-4">
                     <label className="field-label">
-                      Endereço
+                      Endereço / Rua
                     </label>
+
                     <input
-                      value={form.endereco}
+                      value={
+                        form.endereco
+                      }
                       onChange={(e) =>
-                        updateForm("endereco", e.target.value)
+                        updateForm(
+                          "endereco",
+                          e.target.value,
+                        )
                       }
                       placeholder="Rua, avenida..."
                       className="field-input"
@@ -1089,29 +1793,18 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       Número
                     </label>
-                    <input
-                      value={form.numero}
-                      onChange={(e) =>
-                        updateForm("numero", e.target.value)
-                      }
-                      placeholder="123"
-                      className="field-input"
-                    />
-                  </div>
 
-                  <div>
-                    <label className="field-label">
-                      CEP
-                    </label>
                     <input
-                      value={form.cep}
+                      value={
+                        form.numero
+                      }
                       onChange={(e) =>
                         updateForm(
-                          "cep",
-                          formatCEP(e.target.value)
+                          "numero",
+                          e.target.value,
                         )
                       }
-                      placeholder="00000-000"
+                      placeholder="123"
                       className="field-input"
                     />
                   </div>
@@ -1120,11 +1813,18 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       Bairro
                     </label>
+
                     <input
-                      value={form.bairro}
-                      onChange={(e) =>
-                        updateForm("bairro", e.target.value)
+                      value={
+                        form.bairro
                       }
+                      onChange={(e) =>
+                        updateForm(
+                          "bairro",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Bairro"
                       className="field-input"
                     />
                   </div>
@@ -1133,25 +1833,45 @@ export const RHView: React.FC = () => {
                     <label className="field-label">
                       Cidade
                     </label>
+
                     <input
-                      value={form.cidade}
-                      onChange={(e) =>
-                        updateForm("cidade", e.target.value)
+                      value={
+                        form.cidade
                       }
+                      onChange={(e) =>
+                        updateForm(
+                          "cidade",
+                          e.target.value,
+                        )
+                      }
+                      placeholder="Cidade"
                       className="field-input"
                     />
                   </div>
 
                   <div>
                     <label className="field-label">
-                      Estado
+                      Estado / UF
                     </label>
+
                     <input
-                      value={form.estado}
+                      maxLength={2}
+                      value={
+                        form.estado
+                      }
                       onChange={(e) =>
                         updateForm(
                           "estado",
-                          e.target.value.toUpperCase().substring(0, 2)
+                          e.target.value
+                            .replace(
+                              /[^a-zA-Z]/g,
+                              "",
+                            )
+                            .toUpperCase()
+                            .substring(
+                              0,
+                              2,
+                            ),
                         )
                       }
                       placeholder="SP"
@@ -1168,27 +1888,35 @@ export const RHView: React.FC = () => {
 
                   <div>
                     <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                      Contatos de emergência
+                      Contatos de
+                      emergência
                     </h3>
 
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Cadastre até dois contatos para situações de emergência.
+                      Cadastre até dois
+                      contatos para
+                      situações de
+                      emergência.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                  {/* CONTATO 1 */}
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
                       Contato 01
                     </div>
 
                     <input
-                      value={form.emergencia_1_nome}
+                      value={
+                        form.emergencia_1_nome
+                      }
                       onChange={(e) =>
                         updateForm(
                           "emergencia_1_nome",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="Nome do contato"
@@ -1196,29 +1924,38 @@ export const RHView: React.FC = () => {
                     />
 
                     <input
-                      value={form.emergencia_1_whatsapp}
+                      type="tel"
+                      inputMode="tel"
+                      value={
+                        form.emergencia_1_whatsapp
+                      }
                       onChange={(e) =>
                         updateForm(
                           "emergencia_1_whatsapp",
-                          formatWhatsapp(e.target.value)
+                          formatWhatsapp(
+                            e.target.value,
+                          ),
                         )
                       }
-                      placeholder="WhatsApp"
+                      placeholder="(11) 99999-9999"
                       className="field-input"
                     />
                   </div>
 
+                  {/* CONTATO 2 */}
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
                       Contato 02
                     </div>
 
                     <input
-                      value={form.emergencia_2_nome}
+                      value={
+                        form.emergencia_2_nome
+                      }
                       onChange={(e) =>
                         updateForm(
                           "emergencia_2_nome",
-                          e.target.value
+                          e.target.value,
                         )
                       }
                       placeholder="Nome do contato"
@@ -1226,14 +1963,20 @@ export const RHView: React.FC = () => {
                     />
 
                     <input
-                      value={form.emergencia_2_whatsapp}
+                      type="tel"
+                      inputMode="tel"
+                      value={
+                        form.emergencia_2_whatsapp
+                      }
                       onChange={(e) =>
                         updateForm(
                           "emergencia_2_whatsapp",
-                          formatWhatsapp(e.target.value)
+                          formatWhatsapp(
+                            e.target.value,
+                          ),
                         )
                       }
-                      placeholder="WhatsApp"
+                      placeholder="(11) 99999-9999"
                       className="field-input"
                     />
                   </div>
@@ -1251,27 +1994,44 @@ export const RHView: React.FC = () => {
                     </h3>
 
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Dados utilizados para autenticação do colaborador.
+                      Dados utilizados
+                      para
+                      autenticação do
+                      colaborador.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
                   <div>
                     <label className="field-label">
-                      Senha {editingUsuario ? "(deixe vazio para manter)" : "*"}
+                      Senha{" "}
+                      {editingUsuario
+                        ? "(deixe vazio para manter)"
+                        : "*"}
                     </label>
 
                     <input
                       type="password"
-                      value={form.senha}
+                      value={
+                        form.senha
+                      }
                       onChange={(e) =>
-                        updateForm("senha", e.target.value)
+                        updateForm(
+                          "senha",
+                          e.target.value,
+                        )
                       }
                       placeholder={
                         editingUsuario
                           ? "Manter senha atual"
                           : "Senha de acesso"
+                      }
+                      autoComplete={
+                        editingUsuario
+                          ? "new-password"
+                          : "new-password"
                       }
                       className="field-input"
                     />
@@ -1283,16 +2043,25 @@ export const RHView: React.FC = () => {
                     </label>
 
                     <select
-                      value={form.perfil}
+                      value={
+                        form.perfil
+                      }
                       onChange={(e) =>
-                        updateForm("perfil", e.target.value)
+                        updateForm(
+                          "perfil",
+                          e.target.value,
+                        )
                       }
                       className="field-input"
                     >
                       <option value="colaborador">
                         Colaborador
                       </option>
-                      <option value="gestor">Gestor</option>
+
+                      <option value="gestor">
+                        Gestor
+                      </option>
+
                       <option value="administrador">
                         Administrador
                       </option>
@@ -1307,15 +2076,24 @@ export const RHView: React.FC = () => {
                     <select
                       value={form.tipo}
                       onChange={(e) =>
-                        updateForm("tipo", e.target.value)
+                        updateForm(
+                          "tipo",
+                          e.target.value,
+                        )
                       }
                       className="field-input"
                     >
                       <option value="colaborador">
                         Colaborador
                       </option>
-                      <option value="gestor">Gestor</option>
-                      <option value="admin">Administrador</option>
+
+                      <option value="gestor">
+                        Gestor
+                      </option>
+
+                      <option value="admin">
+                        Administrador
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -1325,18 +2103,26 @@ export const RHView: React.FC = () => {
                     type="checkbox"
                     checked={form.ativo}
                     onChange={(e) =>
-                      updateForm("ativo", e.target.checked)
+                      updateForm(
+                        "ativo",
+                        e.target.checked,
+                      )
                     }
                     className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                   />
 
                   <div>
                     <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Colaborador ativo
+                      Colaborador
+                      ativo
                     </div>
 
                     <div className="text-[10px] text-slate-400">
-                      Permite que o colaborador continue utilizando o sistema.
+                      Permite que o
+                      colaborador
+                      continue
+                      utilizando o
+                      sistema.
                     </div>
                   </div>
                 </label>
@@ -1349,67 +2135,83 @@ export const RHView: React.FC = () => {
 
                   <div>
                     <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                      Permissões de quadros
+                      Permissões de
+                      quadros
                     </h3>
 
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Defina quais áreas do sistema este colaborador poderá acessar.
+                      Defina quais áreas
+                      do sistema este
+                      colaborador poderá
+                      acessar.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {QUADROS.map((quadro) => {
-                    const permitido =
-                      selectedPermissions[quadro.id] === true;
+                  {QUADROS.map(
+                    (quadro) => {
+                      const permitido =
+                        selectedPermissions[
+                          quadro.id
+                        ] === true;
 
-                    return (
-                      <button
-                        type="button"
-                        key={quadro.id}
-                        onClick={() =>
-                          togglePermission(quadro.id)
-                        }
-                        className={`text-left p-4 rounded-2xl border transition-all ${
-                          permitido
-                            ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
-                            : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div
-                              className={`text-xs font-extrabold ${
-                                permitido
-                                  ? "text-indigo-700 dark:text-indigo-300"
-                                  : "text-slate-800 dark:text-slate-200"
-                              }`}
-                            >
-                              {quadro.nome}
+                      return (
+                        <button
+                          type="button"
+                          key={
+                            quadro.id
+                          }
+                          onClick={() =>
+                            togglePermission(
+                              quadro.id,
+                            )
+                          }
+                          className={`text-left p-4 rounded-2xl border transition-all ${
+                            permitido
+                              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30"
+                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div
+                                className={`text-xs font-extrabold ${
+                                  permitido
+                                    ? "text-indigo-700 dark:text-indigo-300"
+                                    : "text-slate-800 dark:text-slate-200"
+                                }`}
+                              >
+                                {
+                                  quadro.nome
+                                }
+                              </div>
+
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {
+                                  quadro.descricao
+                                }
+                              </p>
                             </div>
 
-                            <p className="text-[10px] text-slate-400 mt-1">
-                              {quadro.descricao}
-                            </p>
+                            <div
+                              className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                                permitido
+                                  ? "bg-indigo-600 border-indigo-600 text-white"
+                                  : "border-slate-300 dark:border-slate-600"
+                              }`}
+                            >
+                              {permitido && (
+                                <span className="text-[11px] font-black">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
                           </div>
-
-                          <div
-                            className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
-                              permitido
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "border-slate-300 dark:border-slate-600"
-                            }`}
-                          >
-                            {permitido && (
-                              <span className="text-[11px] font-black">
-                                ✓
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    },
+                  )}
                 </div>
               </section>
             </div>
@@ -1427,8 +2229,13 @@ export const RHView: React.FC = () => {
 
               <button
                 type="button"
-                onClick={salvarUsuario}
-                disabled={saving}
+                onClick={
+                  salvarUsuario
+                }
+                disabled={
+                  saving ||
+                  loadingCep
+                }
                 className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm"
               >
                 {saving ? (
@@ -1439,6 +2246,7 @@ export const RHView: React.FC = () => {
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
+
                     {editingUsuario
                       ? "Salvar Alterações"
                       : "Cadastrar Colaborador"}
@@ -1450,7 +2258,7 @@ export const RHView: React.FC = () => {
         </div>
       )}
 
-      {/* ESTILOS LOCAIS */}
+      {/* ESTILOS */}
       <style>{`
         .field-label {
           display: block;

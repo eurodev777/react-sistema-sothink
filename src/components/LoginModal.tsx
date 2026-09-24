@@ -48,6 +48,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
       form.append("usuario", usuario);
       form.append("senha", senha);
+      form.append("tipo_login", activeTab);
 
       const response = await fetch("https://sothink.com.br/app/api/login", {
         method: "POST",

@@ -6,7 +6,8 @@ import {
   BarChart2,
   ArrowRight,
   ShieldCheck,
-  Megaphone, // <-- Ícone novo importado
+  Megaphone,
+  Headset, // <-- Ícone novo importado
 } from "lucide-react";
 import { EmpresaCliente, AtaReuniao, Job } from "../types";
 
@@ -24,7 +25,8 @@ interface DashboardViewProps {
       | "atas"
       | "jobs"
       | "relatorios"
-      | "trafego",
+      | "trafego"
+      | "leads",
   ) => boolean;
 
   onOpenNewCliente: () => void;
@@ -33,7 +35,14 @@ interface DashboardViewProps {
   onSelectJob: (job: Job) => void;
 
   onNavigateTab: (
-    tab: "clientes" | "rh" | "atas" | "jobs" | "relatorios" | "trafego",
+    tab:
+      | "clientes"
+      | "rh"
+      | "atas"
+      | "jobs"
+      | "relatorios"
+      | "trafego"
+      | "leads",
   ) => void;
 }
 
@@ -78,38 +87,6 @@ export const DashboardView = ({
               <div className="space-y-3 flex-1">
                 <h2 className="text-2xl font-bold dark:text-white text-slate-900">
                   Clientes
-                </h2>
-              </div>
-
-              <div className="pt-2">
-                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
-                  Acessar Módulo
-                  <ArrowRight className="w-4 h-4" />
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Card: RH */}
-          {podeAcessarAba("rh") && (
-            <div
-              onClick={() => onNavigateTab("rh")}
-              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
-            >
-              <div className="flex items-start justify-between">
-                <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                  <ShieldCheck className="w-7 h-7 text-white" />
-                </div>
-                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
-                  <span className="text-xs font-medium dark:text-white text-slate-600">
-                    {users.length} Recursos Humanos
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-3 flex-1">
-                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                  RH
                 </h2>
               </div>
 
@@ -242,6 +219,71 @@ export const DashboardView = ({
               <div className="space-y-3 flex-1">
                 <h2 className="text-2xl font-bold dark:text-white text-slate-900">
                   Tráfego Pago
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Card: Tráfego Pago */}
+          {podeAcessarAba("leads") && (
+            <div
+              onClick={() => onNavigateTab("leads")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-cyan-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                  <Headset className="w-7 h-7 text-white" />
+                </div>
+
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    Leads Sothink
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Controle de Leads
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Card: RH */}
+          {podeAcessarAba("rh") && (
+            <div
+              onClick={() => onNavigateTab("rh")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                  <ShieldCheck className="w-7 h-7 text-white" />
+                </div>
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    {users.length} Recursos Humanos
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  RH
                 </h2>
               </div>
 

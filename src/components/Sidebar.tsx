@@ -11,6 +11,7 @@ import {
   Sparkles,
   TrendingUp,
   Megaphone,
+  Headset,
 } from "lucide-react";
 import { User } from "../types";
 import logo from "../assets/logo.jpeg";
@@ -24,6 +25,7 @@ export type ActiveTab =
   | "templates"
   | "relatorios"
   | "trafego"
+  | "leads"
   | "portal"
   | "api-docs";
 
@@ -95,16 +97,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ]
           : []),
 
-        ...(pode("rh")
-          ? [
-              {
-                id: "rh" as ActiveTab,
-                label: "RH",
-                icon: <ShieldCheck className="w-5 h-5" />,
-              },
-            ]
-          : []),
-
         ...(pode("jobs")
           ? [
               {
@@ -144,6 +136,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 label: "Tráfego",
                 icon: <Megaphone className="w-5 h-5" />,
                 badge: 0,
+              },
+            ]
+          : []),
+
+        ...(pode("leads")
+          ? [
+              {
+                id: "leads" as ActiveTab,
+                label: "Leads",
+                icon: <Headset className="w-5 h-5" />,
+                badge: 0,
+              },
+            ]
+          : []),
+
+        ...(pode("rh")
+          ? [
+              {
+                id: "rh" as ActiveTab,
+                label: "RH",
+                icon: <ShieldCheck className="w-5 h-5" />,
               },
             ]
           : []),

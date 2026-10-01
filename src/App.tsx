@@ -26,6 +26,7 @@ import { Menu, Plus, X } from "lucide-react";
 import { TrafegoView } from "./components/TrafegoView";
 import { DashboardTrafego } from "./components/DashboardTrafego";
 import { RHView } from "./components/RHView";
+import { Leads } from "./components/Leads";
 
 export function App() {
   // Theme state
@@ -39,7 +40,7 @@ export function App() {
 
   // Active Tab State
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "clientes" | "rh" | "atas" | "jobs" | "relatorios" | "trafego"
+    "dashboard" | "clientes" | "rh" | "atas" | "jobs" | "relatorios" | "trafego" | "leads"
   >("dashboard");
 
   // Toast Notification State
@@ -174,7 +175,8 @@ export function App() {
       | "atas"
       | "jobs"
       | "relatorios"
-      | "trafego",
+      | "trafego"
+      | "leads"
   ) => {
     switch (tab) {
       case "dashboard":
@@ -197,6 +199,9 @@ export function App() {
 
       case "trafego":
         return temPermissao("trafego");
+
+      case "leads":
+        return temPermissao("leads");
 
       default:
         return false;
@@ -660,6 +665,8 @@ export function App() {
           )}
 
           {activeTab === "trafego" && <DashboardTrafego />}
+
+          {activeTab === "leads" && <Leads />}
         </main>
       </div>
 

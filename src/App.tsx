@@ -1,13 +1,23 @@
 import React, { useState, useEffect } from "react";
+
 import { Header } from "./components/Header";
+
 import { Sidebar } from "./components/Sidebar";
+
 import { Toast, ToastType } from "./components/Toast";
+
 import { DashboardView } from "./components/DashboardView";
+
 import { ClientsView } from "./components/ClientsView";
+
 import { AtasView } from "./components/AtasView";
-import { JobsKanbanView, KANBAN_COLUMNS } from "./components/JobsKanbanView";
+
+import { JobsKanbanView } from "./components/JobsKanbanView";
+
 import { RelatoriosView } from "./components/RelatoriosView";
+
 import { ClientPortalView } from "./components/ClientPortalView";
+
 import { LoginModal } from "./components/LoginModal";
 
 import {
@@ -16,81 +26,125 @@ import {
   Job,
   ChecklistTemplate,
   User,
-  JobStatus,
   JobUrgencia,
   Relatorio,
-  Anexo,
 } from "./types";
+
 import { apiService } from "./services/apiService";
+
 import { Menu, Plus, X } from "lucide-react";
-import { TrafegoView } from "./components/TrafegoView";
+
 import { DashboardTrafego } from "./components/DashboardTrafego";
+
 import { RHView } from "./components/RHView";
+
 import { Leads } from "./components/Leads";
 
 export function App() {
   // Theme state
+
   const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   // Authentication State
+
   const [user, setUser] = useState<User | null>(null);
+
   const [clientPortalObj, setClientPortalObj] = useState<EmpresaCliente | null>(
     null,
   );
 
   // Active Tab State
+
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "clientes" | "rh" | "atas" | "jobs" | "relatorios" | "trafego" | "leads"
+    | "dashboard"
+    | "clientes"
+    | "rh"
+    | "atas"
+    | "jobs"
+    | "relatorios"
+    | "trafego"
+    | "leads"
   >("dashboard");
 
   // Toast Notification State
+
   const [toast, setToast] = useState<{
     show: boolean;
+
     type: ToastType;
+
     title: string;
+
     desc?: string;
   }>({
     show: false,
+
     type: "success",
+
     title: "",
   });
 
   const showToast = (type: ToastType, title: string, desc?: string) => {
     setToast({ show: true, type, title, desc });
   };
+
   const [permissoes, setPermissoes] = useState<any[]>([]);
+
+  // Enquanto as permissões não terminarem de carregar,
+  // nenhuma área protegida é liberada.
+  const [permissoesCarregadas, setPermissoesCarregadas] = useState(false);
+
   // Main Data States - INICIANDO 100% VAZIOS (SEM MOCK)
+
   const [atas, setAtas] = useState<AtaReuniao[]>([]);
+
   const [users, setUsers] = useState<User[]>([]);
+
   const [jobs, setJobs] = useState<Job[]>([]);
+
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
+
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
+
   const [clientes, setClientes] = useState<EmpresaCliente[]>([]);
 
   // Navigation Deep Links / Pre-selections
+
   const [preSelectedClientForAta, setPreSelectedClientForAta] =
     useState<EmpresaCliente | null>(null);
+
   const [selectedJobForKanbanModal, setSelectedJobForKanbanModal] =
     useState<Job | null>(null);
 
   // Quick Create Job Modal State
+
   const [newJobModalOpen, setNewJobModalOpen] = useState(false);
+
   const [newJobData, setNewJobData] = useState<Partial<Job>>({
     cliente_id: "",
+
     titulo_job: "",
+
     urgencia: "Médio",
+
     responsavel: "",
+
     data_inicio: new Date().toISOString().split("T")[0],
+
     data_entrega: "",
+
     briefing: "",
+
     etiquetas: ["SOCIAL"],
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Verificar se já existe uma sessão salva no localStorage ao iniciar
+
   useEffect(() => {
     const savedUser = localStorage.getItem("@d2r:user");
+
     const savedClientPortal = localStorage.getItem("@d2r:clientPortal");
 
     if (savedClientPortal) {
@@ -112,111 +166,102 @@ export function App() {
     const carregarPermissoes = async () => {
       if (!user?.id) {
         setPermissoes([]);
+        setPermissoesCarregadas(false);
         return;
       }
+
+      setPermissoesCarregadas(false);
 
       try {
         const response = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=usuarios_permissoes",
         );
 
-        const data = await response.json();
-        console.log(data);
-
-        if (Array.isArray(data)) {
-          setPermissoes(data);
-        } else if (Array.isArray(data?.dados)) {
-          setPermissoes(data.dados);
-        } else {
-          setPermissoes([]);
+        if (!response.ok) {
+          throw new Error(
+            "Não foi possível carregar as permissões do usuário.",
+          );
         }
+
+        const data = await response.json();
+
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.dados)
+            ? data.dados
+            : [];
+
+        // Guarda somente as permissões do usuário logado.
+        const permissoesDoUsuario = lista.filter(
+          (p: any) => String(p.usuario_id) === String(user.id),
+        );
+
+        setPermissoes(permissoesDoUsuario);
       } catch (error) {
         console.error("Erro ao carregar permissões:", error);
 
+        // Falha segura: se der erro, não libera módulos protegidos.
         setPermissoes([]);
+      } finally {
+        setPermissoesCarregadas(true);
       }
     };
 
     carregarPermissoes();
-  }, [user]);
+  }, [user?.id]);
 
   const temPermissao = (quadro: string) => {
-    if (!user) return false;
+    if (!user || !permissoesCarregadas) return false;
 
-    // Administrador tem acesso total
-    if (
-      user.tipo === "admin" ||
-      user.role === "admin" ||
-      user.perfil === "admin" ||
-      user.perfil === "administrador"
-    ) {
-      return true;
-    }
-
+    // IMPORTANTE:
+    // Não existe mais bypass de admin/administrador.
+    // Todo usuário interno respeita exatamente o que foi marcado no RH.
     const permissao = permissoes.find(
-      (p) =>
-        String(p.usuario_id) === String(user.id) &&
-        String(p.quadro) === String(quadro),
+      (p) => String(p.quadro) === String(quadro),
     );
+
+    if (!permissao) return false;
 
     return (
-      permissao?.permitido === true ||
-      permissao?.permitido === 1 ||
-      permissao?.permitido === "1" ||
-      permissao?.permitido === "true"
+      permissao.permitido === true ||
+      permissao.permitido === 1 ||
+      permissao.permitido === "1" ||
+      permissao.permitido === "true"
     );
   };
 
-  const podeAcessarAba = (
-    tab:
-      | "dashboard"
-      | "clientes"
-      | "rh"
-      | "atas"
-      | "jobs"
-      | "relatorios"
-      | "trafego"
-      | "leads"
-  ) => {
-    switch (tab) {
-      case "dashboard":
-        return true;
+  const podeAcessarAba = (tab: string) => {
+    if (tab === "dashboard") return true;
 
-      case "clientes":
-        return temPermissao("clientes");
+    const mapaPermissoes: Record<string, string> = {
+      clientes: "clientes",
+      rh: "usuarios",
+      atas: "atas_reuniao",
+      jobs: "jobs",
+      relatorios: "relatorios_performance",
+      trafego: "trafego",
+      leads: "leads",
+    };
 
-      case "rh":
-        return temPermissao("usuarios");
+    const quadro = mapaPermissoes[tab];
 
-      case "atas":
-        return temPermissao("atas_reuniao");
+    if (!quadro) return false;
 
-      case "jobs":
-        return temPermissao("jobs");
-
-      case "relatorios":
-        return temPermissao("relatorios_performance");
-
-      case "trafego":
-        return temPermissao("trafego");
-
-      case "leads":
-        return temPermissao("leads");
-
-      default:
-        return false;
-    }
+    return temPermissao(quadro);
   };
 
+  // Se o usuário estiver numa aba que perdeu permissão,
+  // volta imediatamente para o Dashboard.
   useEffect(() => {
-    if (!user) return;
+    if (!user || !permissoesCarregadas) return;
 
-    if (!podeAcessarAba(activeTab)) {
+    if (activeTab !== "dashboard" && !podeAcessarAba(activeTab)) {
       setActiveTab("dashboard");
     }
-  }, [activeTab, user, permissoes]);
+  }, [activeTab, user, permissoes, permissoesCarregadas]);
 
   // Apply Dark Mode Class to HTML
+
   useEffect(() => {
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
@@ -226,39 +271,52 @@ export function App() {
   }, [theme]);
 
   // CARREGAMENTO ÚNICO DE DADOS DIRETAMENTE DO BANCO DE DADOS (SEM API MOCKADA)
+
   useEffect(() => {
     const carregarTudoDoBanco = async () => {
       try {
         // Clientes
+
         const resClientes = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=clientes",
         );
+
         const dataClientes = await resClientes.json();
+
         if (Array.isArray(dataClientes)) setClientes(dataClientes);
 
         // Jobs
+
         const resJobs = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=jobs",
         );
+
         const dataJobs = await resJobs.json();
+
         if (Array.isArray(dataJobs)) setJobs(dataJobs);
 
         // Atas
+
         const resAtas = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=atas_reuniao",
         );
+
         const dataAtas = await resAtas.json();
+
         if (Array.isArray(dataAtas)) setAtas(dataAtas);
 
         // Relatorios
+
         const resRelat = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=relatorios",
         );
+
         const dataRelat = await resRelat.json();
 
         if (Array.isArray(dataRelat)) setRelatorios(dataRelat);
 
         // Colaboradores
+
         const resUsers = await fetch(
           "https://sothink.com.br/app/api/listar?tabela=usuarios",
         );
@@ -276,11 +334,14 @@ export function App() {
         }
 
         // Templates (tentativa de buscar real, se der erro ignora para não quebrar)
+
         try {
           const resTemp = await fetch(
             "https://sothink.com.br/app/api/listar?tabela=templates",
           );
+
           const dataTemp = await resTemp.json();
+
           if (Array.isArray(dataTemp)) setTemplates(dataTemp);
         } catch (e) {}
       } catch (error) {
@@ -289,18 +350,22 @@ export function App() {
     };
 
     // Só carrega os dados se houver um usuário ou cliente logado para otimizar
+
     if (user || clientPortalObj) {
       carregarTudoDoBanco();
     }
   }, [user, clientPortalObj]); // Recarrega os dados ao logar
 
   // Função auxiliar para recarregar apenas os jobs após criar um novo
+
   const fetchAllJobsApp = async () => {
     try {
       const response = await fetch(
         "https://sothink.com.br/app/api/listar?tabela=jobs",
       );
+
       const data = await response.json();
+
       if (Array.isArray(data)) setJobs(data);
     } catch (error) {
       console.error("Erro ao atualizar jobs:", error);
@@ -308,8 +373,10 @@ export function App() {
   };
 
   // CRUD Handlers for Relatorios
+
   const handleSaveRelatorio = async (relatorioData: Partial<Relatorio>) => {
     const res = await apiService.saveRelatorio(relatorioData);
+
     if (res.success && res.data) {
       if (relatorioData.id) {
         setRelatorios((prev) =>
@@ -323,14 +390,17 @@ export function App() {
 
   const handleDeleteRelatorio = async (id: string) => {
     const res = await apiService.deleteRelatorio(id);
+
     if (res.success) {
       setRelatorios((prev) => prev.filter((r) => r.id !== id));
     }
   };
 
   // CRUD Handlers for Clients
+
   const handleSaveCliente = async (clienteData: Partial<EmpresaCliente>) => {
     const res = await apiService.saveCliente(clienteData);
+
     if (res.success && res.data) {
       if (clienteData.id) {
         setClientes((prev) =>
@@ -344,14 +414,17 @@ export function App() {
 
   const handleDeleteCliente = async (id: string) => {
     const res = await apiService.deleteCliente(id);
+
     if (res.success) {
       setClientes((prev) => prev.filter((c) => c.id !== id));
     }
   };
 
   // CRUD Handlers for Atas
+
   const handleSaveAta = async (ataData: Partial<AtaReuniao>) => {
     const res = await apiService.saveAta(ataData);
+
     if (res.success && res.data) {
       if (ataData.id) {
         setAtas((prev) =>
@@ -365,15 +438,19 @@ export function App() {
 
   const handleDeleteAta = async (id: string) => {
     const res = await apiService.deleteAta(id);
+
     if (res.success) {
       setAtas((prev) => prev.filter((a) => a.id !== id));
     }
   };
 
   // CRUD Handlers for Jobs
+
   const handleSaveJob = async (jobData: Partial<Job>) => {
     // Quando o Kanban salva internamente, ele já chama a API.
+
     // Para manter a tela sincronizada, nós podemos simplesmente atualizar o estado aqui também.
+
     setJobs((prev) =>
       prev.map((j) => (j.id === jobData.id ? { ...j, ...jobData } : j)),
     );
@@ -381,55 +458,74 @@ export function App() {
 
   const handleDeleteJob = async (id: string) => {
     // Já é deletado no banco pelo componente JobsKanbanView, aqui só atualizamos a UI
+
     setJobs((prev) => prev.filter((j) => j.id !== id));
   };
 
   // Quick Create Job Submit
+
   const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newJobData.cliente_id || !newJobData.titulo_job) {
       showToast(
         "error",
+
         "Campos Obrigatórios",
+
         "Selecione o cliente e informe o título do job.",
       );
+
       return;
     }
 
     try {
       const cliente = clientes.find((c) => c.id === newJobData.cliente_id);
+
       const form = new FormData();
 
       form.append("tabela", "jobs");
+
       form.append("cliente_id", newJobData.cliente_id);
+
       form.append("titulo", newJobData.titulo_job || "");
+
       form.append("briefing", newJobData.briefing || "");
+
       form.append("descricao", "");
+
       form.append("prioridade", newJobData.urgencia || "Médio");
+
       form.append("status", "Novos Jobs (Análise)");
 
       form.append("data_criacao", new Date().toISOString().slice(0, 10));
+
       form.append("data_inicio", newJobData.data_inicio || "");
+
       form.append("data_entrega", newJobData.data_entrega || "");
 
       const responsavelParaSalvar = newJobData.responsavel
         ? newJobData.responsavel
         : user?.nome || "";
+
       form.append("responsavel", responsavelParaSalvar);
 
       form.append("etiquetas", JSON.stringify(["SOCIAL"]));
+
       form.append("permitir_acesso_cliente", "0");
 
       const response = await fetch(
         "https://sothink.com.br/app/api/inserir?tabela=jobs",
+
         {
           method: "POST",
+
           body: form,
         },
       );
 
       const texto = await response.text();
+
       let result;
 
       try {
@@ -445,24 +541,35 @@ export function App() {
       setNewJobModalOpen(false);
 
       // Resetando formulário
+
       setNewJobData({
         cliente_id: "",
+
         titulo_job: "",
+
         urgencia: "Médio",
+
         data_inicio: new Date().toISOString().split("T")[0],
+
         data_entrega: "",
+
         briefing: "",
+
         etiquetas: ["SOCIAL"],
       });
 
       showToast(
         "success",
+
         "Novo Job Criado!",
+
         `${cliente?.nome_fantasia || cliente?.razao_social} adicionado no Kanban.`,
       );
 
       // Atualiza a lista em segundo plano puxando as infos fresquinhas do banco
+
       await fetchAllJobsApp();
+
       setActiveTab("jobs");
     } catch (err: any) {
       showToast("error", "Erro ao criar Job", err.message);
@@ -470,6 +577,7 @@ export function App() {
   };
 
   // Render Portal do Cliente view if logged in as a Client
+
   if (clientPortalObj) {
     return (
       <ClientPortalView
@@ -478,9 +586,13 @@ export function App() {
         relatorios={relatorios}
         onLogoutClient={() => {
           localStorage.removeItem("@d2r:user");
+
           localStorage.removeItem("@d2r:clientPortal");
+
           setClientPortalObj(null);
+
           setUser(null);
+
           showToast("info", "Sessão Encerrada");
         }}
         onSaveJob={handleSaveJob}
@@ -490,6 +602,7 @@ export function App() {
   }
 
   // Não logado -> mostra apenas a tela de login
+
   if (!user && !clientPortalObj) {
     return (
       <LoginModal
@@ -509,18 +622,28 @@ export function App() {
     switch (activeTab) {
       case "dashboard":
         return "Dashboard Geral";
+
       case "clientes":
         return "CRM de Clientes";
+
       case "rh":
         return "RH";
+
       case "atas":
         return "Atas de Reunião";
+
       case "jobs":
         return "Controle de Jobs";
+
       case "relatorios":
         return "Relatórios de Tráfego";
+
       case "trafego":
         return "Gestão de Tráfego Pago";
+
+      case "leads":
+        return "Leads / CRM";
+
       default:
         return "Controle de Jobs";
     }
@@ -542,9 +665,16 @@ export function App() {
         currentUser={user}
         onLogout={() => {
           localStorage.removeItem("@d2r:user");
+
           localStorage.removeItem("@d2r:clientPortal");
+
           setUser(null);
+
           setClientPortalObj(null);
+
+          setPermissoes([]);
+
+          setPermissoesCarregadas(false);
         }}
         showToast={showToast}
         activeTabTitle={getTabTitle()}
@@ -560,7 +690,11 @@ export function App() {
         >
           <Sidebar
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={(tab) => {
+              if (tab === "dashboard" || podeAcessarAba(tab)) {
+                setActiveTab(tab as typeof activeTab);
+              }
+            }}
             clientesCount={clientes.length}
             atasCount={atas.length}
             jobsCount={jobs.length}
@@ -576,6 +710,7 @@ export function App() {
             className="mb-4 cursor-pointer flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors"
           >
             <Menu className="w-5 h-5 text-slate-900 dark:text-white" />
+
             <span className="text-sm font-bold text-slate-900 dark:text-white">
               {isSidebarOpen ? "Ocultar Menu" : "Mostrar Menu"}
             </span>
@@ -590,20 +725,27 @@ export function App() {
               onOpenNewCliente={() => setActiveTab("clientes")}
               onOpenNewAta={() => {
                 setPreSelectedClientForAta(null);
+
                 setActiveTab("atas");
               }}
               onOpenNewJob={() => setNewJobModalOpen(true)}
               onSelectJob={(j) => {
                 setSelectedJobForKanbanModal(j);
+
                 setActiveTab("jobs");
               }}
-              onNavigateTab={setActiveTab}
+              onNavigateTab={(tab) => {
+                if (podeAcessarAba(tab)) {
+                  setActiveTab(tab);
+                }
+              }}
               // currentUser={user}
+
               podeAcessarAba={podeAcessarAba}
             />
           )}
 
-          {activeTab === "clientes" && (
+          {activeTab === "clientes" && podeAcessarAba("clientes") && (
             <ClientsView
               clientes={clientes}
               atas={atas}
@@ -612,23 +754,26 @@ export function App() {
               onDeleteCliente={handleDeleteCliente}
               onSelectJob={(j) => {
                 setSelectedJobForKanbanModal(j);
+
                 setActiveTab("jobs");
               }}
               onOpenNewAtaForClient={(comp) => {
                 setPreSelectedClientForAta(comp);
+
                 setActiveTab("atas");
               }}
               onOpenNewJobForClient={(comp) => {
                 setNewJobData((prev) => ({ ...prev, cliente_id: comp.id }));
+
                 setNewJobModalOpen(true);
               }}
               showToast={showToast}
             />
           )}
 
-          {activeTab === "rh" && <RHView />}
+          {activeTab === "rh" && podeAcessarAba("rh") && <RHView />}
 
-          {activeTab === "atas" && (
+          {activeTab === "atas" && podeAcessarAba("atas") && (
             <AtasView
               atas={atas}
               clientes={clientes}
@@ -639,7 +784,7 @@ export function App() {
             />
           )}
 
-          {activeTab === "jobs" && (
+          {activeTab === "jobs" && podeAcessarAba("jobs") && (
             <JobsKanbanView
               jobs={jobs}
               clientes={clientes}
@@ -654,7 +799,7 @@ export function App() {
             />
           )}
 
-          {activeTab === "relatorios" && (
+          {activeTab === "relatorios" && podeAcessarAba("relatorios") && (
             <RelatoriosView
               relatorios={relatorios}
               clientes={clientes}
@@ -664,9 +809,11 @@ export function App() {
             />
           )}
 
-          {activeTab === "trafego" && <DashboardTrafego />}
+          {activeTab === "trafego" && podeAcessarAba("trafego") && (
+            <DashboardTrafego />
+          )}
 
-          {activeTab === "leads" && <Leads />}
+          {activeTab === "leads" && podeAcessarAba("leads") && <Leads />}
         </main>
       </div>
 
@@ -678,6 +825,7 @@ export function App() {
                 <Plus className="w-5 h-5 text-indigo-600" />
                 Criar Novo Job no Kanban
               </h3>
+
               <button
                 onClick={() => setNewJobModalOpen(false)}
                 className="p-1 text-slate-400"
@@ -694,6 +842,7 @@ export function App() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Cliente Solicitante *
                 </label>
+
                 <select
                   required
                   value={newJobData.cliente_id}
@@ -703,6 +852,7 @@ export function App() {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
                 >
                   <option value="">Selecione a empresa cliente...</option>
+
                   {clientes.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.nome_fantasia || c.razao_social}
@@ -715,6 +865,7 @@ export function App() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Título do Job *
                 </label>
+
                 <input
                   type="text"
                   required
@@ -732,19 +883,24 @@ export function App() {
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Grau de Urgência
                   </label>
+
                   <select
                     value={newJobData.urgencia}
                     onChange={(e) =>
                       setNewJobData({
                         ...newJobData,
+
                         urgencia: e.target.value as JobUrgencia,
                       })
                     }
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                   >
                     <option value="Baixo">Baixo</option>
+
                     <option value="Médio">Médio</option>
+
                     <option value="Alto">Alto</option>
+
                     <option value="Crítico">Crítico</option>
                   </select>
                 </div>
@@ -753,12 +909,14 @@ export function App() {
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Data de Início
                   </label>
+
                   <input
                     type="date"
                     value={newJobData.data_inicio}
                     onChange={(e) =>
                       setNewJobData({
                         ...newJobData,
+
                         data_inicio: e.target.value,
                       })
                     }
@@ -770,12 +928,14 @@ export function App() {
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Data de Entrega
                   </label>
+
                   <input
                     type="date"
                     value={newJobData.data_entrega}
                     onChange={(e) =>
                       setNewJobData({
                         ...newJobData,
+
                         data_entrega: e.target.value,
                       })
                     }
@@ -788,6 +948,7 @@ export function App() {
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Briefing Inicial
                 </label>
+
                 <textarea
                   rows={3}
                   value={newJobData.briefing}
@@ -807,6 +968,7 @@ export function App() {
                 >
                   Cancelar
                 </button>
+
                 <button
                   type="submit"
                   className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30"

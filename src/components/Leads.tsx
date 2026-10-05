@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   CalendarClock,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Clock3,
   Download,
@@ -18,6 +20,7 @@ import {
   Plus,
   Search,
   Target,
+  Trash2,
   Upload,
   Users,
   X,
@@ -71,6 +74,35 @@ interface InteracaoLead {
   responsavel_nome: string | null;
 }
 
+interface AgendamentoLead {
+  id: number;
+  lead_id: number;
+  lead_empresa?: string | null;
+  lead_contato_nome?: string | null;
+  titulo: string;
+  data_reuniao: string;
+  hora_reuniao: string;
+  duracao_minutos: number | string | null;
+  tipo_reuniao: string | null;
+  local_reuniao: string | null;
+  responsavel_id: string | null;
+  responsavel_nome: string | null;
+  participantes: string | null;
+  objetivo: string | null;
+  observacoes: string | null;
+  status: string;
+  data_criacao?: string | null;
+  data_atualizacao?: string | null;
+}
+
+interface UsuarioAgenda {
+  id: string;
+  nome: string;
+  email?: string | null;
+  cargo?: string | null;
+  ativo?: string | number | boolean | null;
+}
+
 interface Notice {
   type: "success" | "error" | "info";
   text: string;
@@ -84,6 +116,23 @@ interface InteractionForm {
   interesse: string;
   proxima_acao: string;
   observacao: string;
+}
+
+interface MeetingForm {
+  id?: number;
+  lead_id: string;
+  titulo: string;
+  data_reuniao: string;
+  hora_reuniao: string;
+  duracao_minutos: string;
+  tipo_reuniao: string;
+  local_reuniao: string;
+  responsavel_id: string;
+  responsavel_nome: string;
+  participantes: string;
+  objetivo: string;
+  observacoes: string;
+  status: string;
 }
 
 const API_URL = "https://sothink.com.br/app/api/controleads";
@@ -174,6 +223,24 @@ const RETORNO_OPTIONS = [
 
 const INTERESSE_OPTIONS = ["NÃO AVALIADO", "BAIXO", "MÉDIO", "ALTO"];
 
+const MEETING_STATUS_OPTIONS = ["AGENDADA", "REALIZADA", "CANCELADA"];
+const MEETING_TYPE_OPTIONS = ["Online", "Presencial", "Telefone", "Híbrida"];
+const MONTH_NAMES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
 const safe = (value: unknown) =>
   value === null || value === undefined || value === "null" ? "" : String(value);
 
@@ -181,6 +248,29 @@ const nowForInput = () => {
   const date = new Date();
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
+};
+
+const todayForInput = () => {
+  const date = new Date();
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+};
+
+const formatCalendarDate = (year: number, monthIndex: number, day: number) =>
+  `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+const formatMeetingDate = (dateValue?: string | null, timeValue?: string | null) => {
+  if (!dateValue) return "—";
+  const normalized = `${dateValue}T${(timeValue || "00:00").slice(0, 5)}`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return `${dateValue} ${timeValue || ""}`.trim();
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const toInputDateTime = (value?: string | null) => {
@@ -274,6 +364,29 @@ export const ControleLeadsView: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [history, setHistory] = useState<InteracaoLead[]>([]);
+  const [agendaOpen, setAgendaOpen] = useState(false);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [meetingsLoading, setMeetingsLoading] = useState(false);
+  const [savingMeeting, setSavingMeeting] = useState(false);
+  const [agendamentos, setAgendamentos] = useState<AgendamentoLead[]>([]);
+  const [meetingUsers, setMeetingUsers] = useState<UsuarioAgenda[]>([]);
+  const [agendaMonth, setAgendaMonth] = useState(new Date().getMonth());
+  const [agendaYear, setAgendaYear] = useState(new Date().getFullYear());
+  const [meetingForm, setMeetingForm] = useState<MeetingForm>({
+    lead_id: "",
+    titulo: "",
+    data_reuniao: todayForInput(),
+    hora_reuniao: "10:00",
+    duracao_minutos: "60",
+    tipo_reuniao: "Online",
+    local_reuniao: "Google Meet",
+    responsavel_id: "",
+    responsavel_nome: "",
+    participantes: "",
+    objetivo: "",
+    observacoes: "",
+    status: "AGENDADA",
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [interaction, setInteraction] = useState<InteractionForm>({
@@ -636,6 +749,231 @@ export const ControleLeadsView: React.FC = () => {
     }
   };
 
+  const fetchMeetingUsers = async () => {
+    try {
+      const response = await fetch(`${API_URL}?action=users`);
+      const data = await parseJsonResponse(response);
+      setMeetingUsers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Erro ao carregar usuários da agenda:", error);
+      setMeetingUsers([]);
+    }
+  };
+
+  const fetchMeetings = async () => {
+    setMeetingsLoading(true);
+    try {
+      const response = await fetch(`${API_URL}?action=meeting_list`);
+      const data = await parseJsonResponse(response);
+      if (!response.ok) {
+        throw new Error(data.erro || "Erro ao carregar agendamentos.");
+      }
+      setAgendamentos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Erro ao carregar agenda:", error);
+      setAgendamentos([]);
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Não foi possível carregar os agendamentos.",
+      });
+    } finally {
+      setMeetingsLoading(false);
+    }
+  };
+
+  const openAgenda = async () => {
+    setAgendaOpen(true);
+    await Promise.all([fetchMeetings(), fetchMeetingUsers()]);
+  };
+
+  const buildDefaultMeetingForm = (
+    lead?: LeadProspeccao | null,
+    selectedDate?: string
+  ): MeetingForm => {
+    const loggedUser = getLoggedUser();
+    const company = safe(lead?.empresa).trim();
+    const contact = safe(lead?.contato_nome).trim();
+
+    return {
+      lead_id: lead ? String(lead.id) : "",
+      titulo: company ? `Reunião comercial — ${company}` : "Reunião comercial",
+      data_reuniao: selectedDate || todayForInput(),
+      hora_reuniao: "10:00",
+      duracao_minutos: "60",
+      tipo_reuniao: "Online",
+      local_reuniao: "Google Meet",
+      responsavel_id: String(loggedUser?.id || loggedUser?.usuario_id || ""),
+      responsavel_nome: safe(loggedUser?.nome || loggedUser?.name),
+      participantes: contact || "",
+      objetivo: "Apresentação e alinhamento comercial",
+      observacoes: "",
+      status: "AGENDADA",
+    };
+  };
+
+  const openMeetingForLead = async (
+    lead: LeadProspeccao,
+    selectedDate?: string
+  ) => {
+    setSelectedLead(lead);
+    setMeetingForm(buildDefaultMeetingForm(lead, selectedDate));
+    if (meetingUsers.length === 0) {
+      await fetchMeetingUsers();
+    }
+    setMeetingOpen(true);
+  };
+
+  const openNewMeetingFromAgenda = async (selectedDate?: string) => {
+    setSelectedLead(null);
+    setMeetingForm(buildDefaultMeetingForm(null, selectedDate));
+    if (meetingUsers.length === 0) {
+      await fetchMeetingUsers();
+    }
+    setMeetingOpen(true);
+  };
+
+  const openMeetingEdit = (meeting: AgendamentoLead) => {
+    const lead = leads.find((item) => Number(item.id) === Number(meeting.lead_id)) || null;
+    setSelectedLead(lead);
+    setMeetingForm({
+      id: Number(meeting.id),
+      lead_id: String(meeting.lead_id),
+      titulo: safe(meeting.titulo),
+      data_reuniao: safe(meeting.data_reuniao),
+      hora_reuniao: safe(meeting.hora_reuniao).slice(0, 5),
+      duracao_minutos: String(meeting.duracao_minutos || 60),
+      tipo_reuniao: safe(meeting.tipo_reuniao) || "Online",
+      local_reuniao: safe(meeting.local_reuniao),
+      responsavel_id: safe(meeting.responsavel_id),
+      responsavel_nome: safe(meeting.responsavel_nome),
+      participantes: safe(meeting.participantes),
+      objetivo: safe(meeting.objetivo),
+      observacoes: safe(meeting.observacoes),
+      status: safe(meeting.status) || "AGENDADA",
+    });
+    setMeetingOpen(true);
+  };
+
+  const saveMeeting = async () => {
+    if (!meetingForm.lead_id) {
+      showNotice({ type: "error", text: "Selecione o lead da reunião." });
+      return;
+    }
+    if (!meetingForm.data_reuniao || !meetingForm.hora_reuniao) {
+      showNotice({ type: "error", text: "Informe data e horário da reunião." });
+      return;
+    }
+
+    setSavingMeeting(true);
+    try {
+      const form = new FormData();
+      form.append("action", "meeting_save");
+      if (meetingForm.id) form.append("id", String(meetingForm.id));
+      form.append("lead_id", meetingForm.lead_id);
+      form.append("titulo", meetingForm.titulo);
+      form.append("data_reuniao", meetingForm.data_reuniao);
+      form.append("hora_reuniao", meetingForm.hora_reuniao);
+      form.append("duracao_minutos", meetingForm.duracao_minutos || "60");
+      form.append("tipo_reuniao", meetingForm.tipo_reuniao);
+      form.append("local_reuniao", meetingForm.local_reuniao);
+      form.append("responsavel_id", meetingForm.responsavel_id);
+      form.append("responsavel_nome", meetingForm.responsavel_nome);
+      form.append("participantes", meetingForm.participantes);
+      form.append("objetivo", meetingForm.objetivo);
+      form.append("observacoes", meetingForm.observacoes);
+      form.append("status", meetingForm.status);
+
+      const response = await fetch(API_URL, { method: "POST", body: form });
+      const data = await parseJsonResponse(response);
+      if (!response.ok || !data.sucesso) {
+        throw new Error(data.erro || "Erro ao salvar reunião.");
+      }
+
+      setMeetingOpen(false);
+      await Promise.all([fetchMeetings(), fetchLeads()]);
+      showNotice({
+        type: "success",
+        text: meetingForm.id ? "Reunião atualizada com sucesso." : "Reunião agendada com sucesso.",
+      });
+    } catch (error) {
+      console.error(error);
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Erro ao salvar reunião.",
+      });
+    } finally {
+      setSavingMeeting(false);
+    }
+  };
+
+  const deleteMeeting = async (meeting: AgendamentoLead) => {
+    if (!window.confirm(`Excluir a reunião "${meeting.titulo}"?`)) return;
+
+    try {
+      const form = new FormData();
+      form.append("action", "meeting_delete");
+      form.append("id", String(meeting.id));
+
+      const response = await fetch(API_URL, { method: "POST", body: form });
+      const data = await parseJsonResponse(response);
+      if (!response.ok || !data.sucesso) {
+        throw new Error(data.erro || "Erro ao excluir reunião.");
+      }
+
+      await fetchMeetings();
+      showNotice({ type: "success", text: "Reunião removida da agenda." });
+    } catch (error) {
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Erro ao excluir reunião.",
+      });
+    }
+  };
+
+  const handlePrevAgendaMonth = () => {
+    if (agendaMonth === 0) {
+      setAgendaMonth(11);
+      setAgendaYear((year) => year - 1);
+    } else {
+      setAgendaMonth((month) => month - 1);
+    }
+  };
+
+  const handleNextAgendaMonth = () => {
+    if (agendaMonth === 11) {
+      setAgendaMonth(0);
+      setAgendaYear((year) => year + 1);
+    } else {
+      setAgendaMonth((month) => month + 1);
+    }
+  };
+
+  const getMeetingsForDay = (day: number) => {
+    const date = formatCalendarDate(agendaYear, agendaMonth, day);
+    return agendamentos
+      .filter((meeting) => meeting.data_reuniao === date)
+      .sort((a, b) => safe(a.hora_reuniao).localeCompare(safe(b.hora_reuniao)));
+  };
+
+  const agendaDaysInMonth = new Date(agendaYear, agendaMonth + 1, 0).getDate();
+  const agendaFirstDayIndex = new Date(agendaYear, agendaMonth, 1).getDay();
+
+  const upcomingMeetings = useMemo(() => {
+    const now = new Date();
+    return [...agendamentos]
+      .filter((meeting) => {
+        if (meeting.status === "CANCELADA") return false;
+        const date = new Date(`${meeting.data_reuniao}T${safe(meeting.hora_reuniao).slice(0, 5) || "00:00"}`);
+        return !Number.isNaN(date.getTime()) && date.getTime() >= now.getTime() - 60 * 60 * 1000;
+      })
+      .sort((a, b) =>
+        `${a.data_reuniao} ${safe(a.hora_reuniao)}`.localeCompare(
+          `${b.data_reuniao} ${safe(b.hora_reuniao)}`
+        )
+      )
+      .slice(0, 8);
+  }, [agendamentos]);
+
   const sortLeadsByOrder = (items: LeadProspeccao[]) =>
     [...items].sort((a, b) => {
       const orderA = Number(a.ordem);
@@ -931,7 +1269,7 @@ export const ControleLeadsView: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+    <div className="space-y-5 pb-12 animate-in fade-in duration-300">
       {notice && (
         <div
           className={`rounded-xl border px-4 py-3 text-sm font-medium ${
@@ -946,7 +1284,7 @@ export const ControleLeadsView: React.FC = () => {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 border-b border-slate-300 pb-4 dark:border-slate-700 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Controle de Leads
@@ -981,6 +1319,14 @@ export const ControleLeadsView: React.FC = () => {
               Lista
             </button>
           </div>
+
+          <button
+            onClick={openAgenda}
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 shadow-sm transition hover:bg-indigo-100 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-300 dark:hover:bg-indigo-950/50"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Agenda
+          </button>
 
           <input
             ref={fileInputRef}
@@ -1038,7 +1384,7 @@ export const ControleLeadsView: React.FC = () => {
         />
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-slate-300 bg-slate-100 p-3 dark:border-slate-700 dark:bg-slate-900 lg:grid-cols-[1fr_180px_160px_180px]">
+      <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-[1fr_180px_160px_180px]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -1103,7 +1449,7 @@ export const ControleLeadsView: React.FC = () => {
                     event.dataTransfer.dropEffect = "move";
                   }}
                   onDrop={(event) => handleDropColumn(event, column.id)}
-                  className={`flex w-[320px] flex-none flex-col overflow-hidden rounded-2xl border border-slate-300 border-t-4 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-900 ${column.color}`}
+                  className={`flex w-[320px] flex-none flex-col overflow-hidden rounded-2xl border border-slate-200 border-t-4 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900 ${column.color}`}
                 >
                   <div className="border-b border-slate-200 bg-white/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
                     <div className="flex items-start justify-between gap-3">
@@ -1286,6 +1632,16 @@ export const ControleLeadsView: React.FC = () => {
                                     <button
                                       onClick={(event) => {
                                         event.stopPropagation();
+                                        openMeetingForLead(lead);
+                                      }}
+                                      title="Agendar reunião"
+                                      className="cursor-pointer rounded-lg p-1.5 text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-slate-800"
+                                    >
+                                      <CalendarClock className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={(event) => {
+                                        event.stopPropagation();
                                         openHistory(lead);
                                       }}
                                       title="Histórico"
@@ -1308,8 +1664,8 @@ export const ControleLeadsView: React.FC = () => {
           </div>
         </div>
       ) : (
-      <div className="overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800">
           <div>
             <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
               Funil de Prospecção
@@ -1477,6 +1833,13 @@ export const ControleLeadsView: React.FC = () => {
                           <MessageSquarePlus className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => openMeetingForLead(lead)}
+                          title="Agendar reunião"
+                          className="cursor-pointer rounded p-1.5 text-emerald-600 transition hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-slate-800"
+                        >
+                          <CalendarClock className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => openHistory(lead)}
                           title="Ver histórico"
                           className="cursor-pointer rounded p-1.5 text-slate-500 transition hover:bg-white dark:text-slate-400 dark:hover:bg-slate-800"
@@ -1500,6 +1863,493 @@ export const ControleLeadsView: React.FC = () => {
         </div>
       </div>
 
+      )}
+
+      {agendaOpen && (
+        <WideModal
+          title="Agenda comercial de Leads"
+          subtitle="Visualize e organize reuniões do funil comercial."
+          onClose={() => setAgendaOpen(false)}
+        >
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    {MONTH_NAMES[agendaMonth]} {agendaYear}
+                  </h4>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    Clique em um dia para criar uma reunião.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrevAgendaMonth}
+                    className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                    title="Mês anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const now = new Date();
+                      setAgendaMonth(now.getMonth());
+                      setAgendaYear(now.getFullYear());
+                    }}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Hoje
+                  </button>
+                  <button
+                    onClick={handleNextAgendaMonth}
+                    className="rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                    title="Próximo mês"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => openNewMeetingFromAgenda()}
+                    className="ml-1 flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-[11px] font-bold text-white transition hover:bg-indigo-700"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Nova reunião
+                  </button>
+                </div>
+              </div>
+
+              {meetingsLoading ? (
+                <div className="flex min-h-[440px] items-center justify-center">
+                  <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[760px]">
+                    <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+                      {WEEK_DAYS.map((day) => (
+                        <div
+                          key={day}
+                          className="px-2 py-2 text-center text-[10px] font-black uppercase tracking-wide text-slate-400"
+                        >
+                          {day}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7">
+                      {Array.from({ length: agendaFirstDayIndex }).map((_, index) => (
+                        <div
+                          key={`empty-${index}`}
+                          className="min-h-[118px] border-b border-r border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30"
+                        />
+                      ))}
+
+                      {Array.from({ length: agendaDaysInMonth }).map((_, index) => {
+                        const day = index + 1;
+                        const date = formatCalendarDate(agendaYear, agendaMonth, day);
+                        const meetings = getMeetingsForDay(day);
+                        const now = new Date();
+                        const isToday =
+                          day === now.getDate() &&
+                          agendaMonth === now.getMonth() &&
+                          agendaYear === now.getFullYear();
+
+                        return (
+                          <div
+                            key={day}
+                            onClick={() => openNewMeetingFromAgenda(date)}
+                            className="group min-h-[118px] cursor-pointer border-b border-r border-slate-100 bg-white p-2 transition hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-indigo-950/10"
+                          >
+                            <div className="mb-2 flex items-center justify-between">
+                              <span
+                                className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+                                  isToday
+                                    ? "bg-indigo-600 text-white"
+                                    : "text-slate-500 dark:text-slate-400"
+                                }`}
+                              >
+                                {day}
+                              </span>
+                              <Plus className="h-3.5 w-3.5 text-indigo-500 opacity-0 transition group-hover:opacity-100" />
+                            </div>
+
+                            <div className="space-y-1">
+                              {meetings.slice(0, 3).map((meeting) => (
+                                <button
+                                  type="button"
+                                  key={meeting.id}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openMeetingEdit(meeting);
+                                  }}
+                                  className={`block w-full truncate rounded-md border px-2 py-1 text-left text-[9px] font-bold transition ${
+                                    meeting.status === "CANCELADA"
+                                      ? "border-slate-200 bg-slate-100 text-slate-400 line-through dark:border-slate-800 dark:bg-slate-900"
+                                      : meeting.status === "REALIZADA"
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                      : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:border-indigo-300 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300"
+                                  }`}
+                                  title={`${meeting.hora_reuniao} • ${meeting.lead_empresa || meeting.titulo}`}
+                                >
+                                  {safe(meeting.hora_reuniao).slice(0, 5)} •{" "}
+                                  {meeting.lead_empresa || meeting.titulo}
+                                </button>
+                              ))}
+                              {meetings.length > 3 && (
+                                <div className="text-[9px] font-bold text-slate-400">
+                                  +{meetings.length - 3} reunião(ões)
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Próximas reuniões
+                  </h4>
+                  <p className="mt-0.5 text-[10px] text-slate-500">
+                    Agenda comercial mais próxima.
+                  </p>
+                </div>
+                <CalendarClock className="h-5 w-5 text-indigo-500" />
+              </div>
+
+              <div className="space-y-2">
+                {upcomingMeetings.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-xs text-slate-400 dark:border-slate-700">
+                    Nenhuma reunião futura.
+                  </div>
+                ) : (
+                  upcomingMeetings.map((meeting) => (
+                    <div
+                      key={meeting.id}
+                      className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openMeetingEdit(meeting)}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <div className="truncate text-xs font-extrabold text-slate-900 dark:text-white">
+                            {meeting.lead_empresa || meeting.titulo}
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-300">
+                            <Clock3 className="h-3.5 w-3.5" />
+                            {formatMeetingDate(meeting.data_reuniao, meeting.hora_reuniao)}
+                          </div>
+                          {meeting.responsavel_nome && (
+                            <div className="mt-1 truncate text-[10px] text-slate-500">
+                              Responsável: {meeting.responsavel_nome}
+                            </div>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteMeeting(meeting)}
+                          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-slate-800"
+                          title="Excluir reunião"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {meeting.local_reuniao && (
+                        <div className="mt-2 flex items-center gap-1.5 truncate text-[10px] text-slate-500">
+                          <MapPin className="h-3.5 w-3.5 shrink-0" />
+                          {meeting.local_reuniao}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </aside>
+          </div>
+        </WideModal>
+      )}
+
+      {meetingOpen && (
+        <Modal
+          title={`${meetingForm.id ? "Editar reunião" : "Agendar reunião"}${
+            selectedLead?.empresa ? ` — ${safe(selectedLead.empresa)}` : ""
+          }`}
+          onClose={() => setMeetingOpen(false)}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <FormField label="Lead *">
+                <select
+                  value={meetingForm.lead_id}
+                  onChange={(event) => {
+                    const nextLead = leads.find(
+                      (lead) => String(lead.id) === event.target.value
+                    );
+                    setSelectedLead(nextLead || null);
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      lead_id: event.target.value,
+                      titulo:
+                        previous.titulo && previous.lead_id
+                          ? previous.titulo
+                          : nextLead?.empresa
+                          ? `Reunião comercial — ${nextLead.empresa}`
+                          : "Reunião comercial",
+                      participantes:
+                        previous.participantes ||
+                        safe(nextLead?.contato_nome),
+                    }));
+                  }}
+                  className="field-input"
+                >
+                  <option value="">Selecione o lead...</option>
+                  {leads.map((lead) => (
+                    <option key={lead.id} value={lead.id}>
+                      {safe(lead.empresa) || `Lead #${lead.id}`}
+                      {lead.contato_nome ? ` — ${lead.contato_nome}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+
+            <div className="md:col-span-2">
+              <FormField label="Título">
+                <input
+                  value={meetingForm.titulo}
+                  onChange={(event) =>
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      titulo: event.target.value,
+                    }))
+                  }
+                  placeholder="Ex.: Apresentação comercial"
+                  className="field-input"
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Data *">
+              <input
+                type="date"
+                value={meetingForm.data_reuniao}
+                onChange={(event) =>
+                  setMeetingForm((previous) => ({
+                    ...previous,
+                    data_reuniao: event.target.value,
+                  }))
+                }
+                className="field-input"
+              />
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-2">
+              <FormField label="Horário *">
+                <input
+                  type="time"
+                  value={meetingForm.hora_reuniao}
+                  onChange={(event) =>
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      hora_reuniao: event.target.value,
+                    }))
+                  }
+                  className="field-input"
+                />
+              </FormField>
+              <FormField label="Duração">
+                <select
+                  value={meetingForm.duracao_minutos}
+                  onChange={(event) =>
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      duracao_minutos: event.target.value,
+                    }))
+                  }
+                  className="field-input"
+                >
+                  <option value="30">30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 hora</option>
+                  <option value="90">1h30</option>
+                  <option value="120">2 horas</option>
+                </select>
+              </FormField>
+            </div>
+
+            <FormField label="Tipo de reunião">
+              <select
+                value={meetingForm.tipo_reuniao}
+                onChange={(event) =>
+                  setMeetingForm((previous) => ({
+                    ...previous,
+                    tipo_reuniao: event.target.value,
+                  }))
+                }
+                className="field-input"
+              >
+                {MEETING_TYPE_OPTIONS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Status">
+              <select
+                value={meetingForm.status}
+                onChange={(event) =>
+                  setMeetingForm((previous) => ({
+                    ...previous,
+                    status: event.target.value,
+                  }))
+                }
+                className="field-input"
+              >
+                {MEETING_STATUS_OPTIONS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </FormField>
+
+            <div className="md:col-span-2">
+              <FormField label="Local / Link">
+                <input
+                  value={meetingForm.local_reuniao}
+                  onChange={(event) =>
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      local_reuniao: event.target.value,
+                    }))
+                  }
+                  placeholder="Google Meet, endereço, telefone..."
+                  className="field-input"
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Responsável">
+              <select
+                value={meetingForm.responsavel_id}
+                onChange={(event) => {
+                  const user = meetingUsers.find(
+                    (item) => String(item.id) === event.target.value
+                  );
+                  setMeetingForm((previous) => ({
+                    ...previous,
+                    responsavel_id: event.target.value,
+                    responsavel_nome: user?.nome || "",
+                  }));
+                }}
+                className="field-input"
+              >
+                <option value="">Selecione...</option>
+                {meetingUsers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.nome}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Participantes">
+              <input
+                value={meetingForm.participantes}
+                onChange={(event) =>
+                  setMeetingForm((previous) => ({
+                    ...previous,
+                    participantes: event.target.value,
+                  }))
+                }
+                placeholder="Ex.: João, Maria, Comercial"
+                className="field-input"
+              />
+            </FormField>
+
+            <div className="md:col-span-2">
+              <FormField label="Objetivo">
+                <textarea
+                  rows={3}
+                  value={meetingForm.objetivo}
+                  onChange={(event) =>
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      objetivo: event.target.value,
+                    }))
+                  }
+                  placeholder="Objetivo principal da reunião..."
+                  className="field-input resize-none"
+                />
+              </FormField>
+            </div>
+
+            <div className="md:col-span-2">
+              <FormField label="Observações">
+                <textarea
+                  rows={3}
+                  value={meetingForm.observacoes}
+                  onChange={(event) =>
+                    setMeetingForm((previous) => ({
+                      ...previous,
+                      observacoes: event.target.value,
+                    }))
+                  }
+                  placeholder="Informações extras, pauta, orientações..."
+                  className="field-input resize-none"
+                />
+              </FormField>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap justify-between gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+            <div>
+              {meetingForm.id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const meeting = agendamentos.find(
+                      (item) => Number(item.id) === Number(meetingForm.id)
+                    );
+                    if (meeting) {
+                      deleteMeeting(meeting);
+                      setMeetingOpen(false);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Excluir
+                </button>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMeetingOpen(false)}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveMeeting}
+                disabled={savingMeeting}
+                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {savingMeeting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {meetingForm.id ? "Salvar alterações" : "Agendar reunião"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {interactionOpen && selectedLead && (
@@ -1709,7 +2559,7 @@ const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: number }>
   label,
   value,
 }) => (
-  <div className="rounded-2xl border border-slate-300 bg-slate-100 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
     <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
       {icon}
       {label}
@@ -1725,13 +2575,38 @@ const FormField: React.FC<{ label: string; children: React.ReactNode }> = ({ lab
   </label>
 );
 
+const WideModal: React.FC<{
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}> = ({ title, subtitle, onClose, children }) => (
+  <div className="fixed inset-0 z-[55] flex items-center justify-center bg-slate-950/65 p-3 backdrop-blur-sm md:p-5">
+    <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
+        <div>
+          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p>}
+        </div>
+        <button
+          onClick={onClose}
+          className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="overflow-y-auto p-4 md:p-5">{children}</div>
+    </div>
+  </div>
+);
+
 const Modal: React.FC<{
   title: string;
   onClose: () => void;
   children: React.ReactNode;
 }> = ({ title, onClose, children }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-    <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+  <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+    <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
         <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</h3>
         <button
@@ -1741,7 +2616,7 @@ const Modal: React.FC<{
           <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="overflow-y-auto p-5">{children}</div>
     </div>
   </div>
 );

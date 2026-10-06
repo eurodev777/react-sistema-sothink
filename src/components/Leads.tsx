@@ -59,6 +59,10 @@ export interface LeadProspeccao {
   responsavel_nome: string | null;
   data_criacao: string;
   data_atualizacao: string;
+  ultima_observacao?: string | null;
+  ultima_observacao_data?: string | null;
+  ultima_observacao_autor?: string | null;
+  total_observacoes?: number | string | null;
 }
 
 interface InteracaoLead {
@@ -72,6 +76,16 @@ interface InteracaoLead {
   observacao: string | null;
   proxima_acao: string | null;
   responsavel_nome: string | null;
+}
+
+interface ObservacaoLead {
+  id: number;
+  lead_id: number;
+  observacao: string;
+  autor_id: string | null;
+  autor_nome: string | null;
+  data_observacao: string;
+  data_criacao?: string | null;
 }
 
 interface AgendamentoLead {
@@ -378,6 +392,11 @@ export const ControleLeadsView: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [history, setHistory] = useState<InteracaoLead[]>([]);
+  const [observationsOpen, setObservationsOpen] = useState(false);
+  const [observationsLoading, setObservationsLoading] = useState(false);
+  const [savingObservation, setSavingObservation] = useState(false);
+  const [observations, setObservations] = useState<ObservacaoLead[]>([]);
+  const [observationText, setObservationText] = useState("");
   const [agendaOpen, setAgendaOpen] = useState(false);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [meetingsLoading, setMeetingsLoading] = useState(false);
@@ -625,6 +644,32 @@ export const ControleLeadsView: React.FC = () => {
 
       if (!updateResponse.ok || !updateData.sucesso) {
         throw new Error(updateData.erro || "Erro ao salvar os dados do lead.");
+      }
+
+      // Se o lead já nasceu com uma observação, registra também no histórico permanente.
+      if (newLeadForm.observacoes.trim()) {
+        const observationForm = new FormData();
+        observationForm.append("action", "observation_add");
+        observationForm.append("lead_id", String(createdId));
+        observationForm.append("observacao", newLeadForm.observacoes.trim());
+        observationForm.append(
+          "autor_id",
+          String(loggedUser?.id || loggedUser?.usuario_id || "")
+        );
+        observationForm.append(
+          "autor_nome",
+          String(loggedUser?.nome || loggedUser?.name || "")
+        );
+
+        const observationResponse = await fetch(API_URL, {
+          method: "POST",
+          body: observationForm,
+        });
+        const observationData = await parseJsonResponse(observationResponse);
+
+        if (!observationResponse.ok || !observationData?.sucesso) {
+          throw new Error(observationData?.erro || "Erro ao registrar a observação inicial do lead.");
+        }
       }
 
       // 3. Novo lead fica no topo da primeira coluna, não no final com ordem 999.
@@ -886,6 +931,16 @@ export const ControleLeadsView: React.FC = () => {
       form.append("proxima_acao", interaction.proxima_acao);
       form.append("observacao", interaction.observacao);
 
+      const loggedUser = getLoggedUser();
+      form.append(
+        "responsavel_id",
+        String(loggedUser?.id || loggedUser?.usuario_id || "")
+      );
+      form.append(
+        "responsavel_nome",
+        String(loggedUser?.nome || loggedUser?.name || "")
+      );
+
       const response = await fetch(API_URL, { method: "POST", body: form });
       const data = await parseJsonResponse(response);
       if (!response.ok || !data.sucesso) {
@@ -921,6 +976,84 @@ export const ControleLeadsView: React.FC = () => {
       showNotice({ type: "error", text: "Não foi possível carregar o histórico." });
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const loadObservations = async (leadId: number) => {
+    setObservationsLoading(true);
+    try {
+      const response = await fetch(
+        `${API_URL}?action=observation_list&lead_id=${leadId}`,
+        { cache: "no-store" }
+      );
+      const data = await parseJsonResponse(response);
+      if (!response.ok) {
+        throw new Error(data?.erro || "Não foi possível carregar as observações.");
+      }
+      setObservations(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      setObservations([]);
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Não foi possível carregar as observações.",
+      });
+    } finally {
+      setObservationsLoading(false);
+    }
+  };
+
+  const openObservations = async (lead: LeadProspeccao) => {
+    setSelectedLead(lead);
+    setObservationText("");
+    setObservations([]);
+    setObservationsOpen(true);
+    await loadObservations(Number(lead.id));
+  };
+
+  const saveObservation = async () => {
+    if (!selectedLead) return;
+
+    const text = observationText.trim();
+    if (!text) {
+      showNotice({ type: "info", text: "Digite uma observação antes de salvar." });
+      return;
+    }
+
+    setSavingObservation(true);
+    try {
+      const loggedUser = getLoggedUser();
+      const form = new FormData();
+      form.append("action", "observation_add");
+      form.append("lead_id", String(selectedLead.id));
+      form.append("observacao", text);
+      form.append(
+        "autor_id",
+        String(loggedUser?.id || loggedUser?.usuario_id || "")
+      );
+      form.append(
+        "autor_nome",
+        String(loggedUser?.nome || loggedUser?.name || "")
+      );
+
+      const response = await fetch(API_URL, { method: "POST", body: form });
+      const data = await parseJsonResponse(response);
+
+      if (!response.ok || !data?.sucesso) {
+        throw new Error(data?.erro || "Não foi possível salvar a observação.");
+      }
+
+      setObservationText("");
+      await Promise.all([loadObservations(Number(selectedLead.id)), fetchLeads()]);
+      showNotice({ type: "success", text: "Observação adicionada ao histórico do lead." });
+    } catch (error) {
+      console.error(error);
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Não foi possível salvar a observação.",
+      });
+    } finally {
+      setSavingObservation(false);
     }
   };
 
@@ -1779,6 +1912,39 @@ export const ControleLeadsView: React.FC = () => {
                                   )}
                                 </div>
 
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openObservations(lead);
+                                  }}
+                                  className="mt-3 w-full rounded-lg border border-amber-200 bg-amber-50/80 px-2.5 py-2 text-left transition hover:border-amber-300 hover:bg-amber-100/70 dark:border-amber-900/60 dark:bg-amber-950/20 dark:hover:bg-amber-950/35"
+                                  title="Abrir histórico de observações deste lead"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                                      <MessageSquarePlus className="h-3.5 w-3.5" />
+                                      Observações
+                                    </div>
+                                    <span className="rounded-full bg-white/80 px-2 py-0.5 text-[9px] font-black text-amber-700 dark:bg-slate-900/80 dark:text-amber-300">
+                                      {Number(lead.total_observacoes || 0)}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1.5 line-clamp-2 whitespace-normal text-[10px] leading-relaxed text-slate-600 dark:text-slate-300">
+                                    {safe(lead.ultima_observacao) ||
+                                      safe(lead.observacoes) ||
+                                      "Clique para adicionar a primeira observação."}
+                                  </div>
+                                  {lead.ultima_observacao_data && (
+                                    <div className="mt-1 text-[9px] text-slate-400">
+                                      {formatDateTime(lead.ultima_observacao_data)}
+                                      {lead.ultima_observacao_autor
+                                        ? ` · ${lead.ultima_observacao_autor}`
+                                        : ""}
+                                    </div>
+                                  )}
+                                </button>
+
                                 <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                                   <div className="min-w-0 text-[9px] text-slate-400">
                                     <div className="truncate">
@@ -1989,13 +2155,27 @@ export const ControleLeadsView: React.FC = () => {
                     </td>
 
                     <td className="p-1">
-                      <input
-                        value={safe(lead.observacoes)}
-                        onChange={(event) => patchLocalLead(lead.id, "observacoes", event.target.value)}
-                        onBlur={(event) => saveField(lead.id, "observacoes", event.target.value)}
-                        placeholder="Observação geral..."
-                        className="w-full rounded bg-transparent px-2 py-1.5 outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => openObservations(lead)}
+                        className="w-full rounded-lg border border-amber-200 bg-amber-50/70 px-2.5 py-2 text-left transition hover:border-amber-300 hover:bg-amber-100/70 dark:border-amber-900/60 dark:bg-amber-950/20 dark:hover:bg-amber-950/35"
+                        title="Abrir histórico de observações"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300">
+                            <MessageSquarePlus className="h-3.5 w-3.5" />
+                            Histórico
+                          </span>
+                          <span className="text-[9px] font-black text-amber-700 dark:text-amber-300">
+                            {Number(lead.total_observacoes || 0)}
+                          </span>
+                        </div>
+                        <div className="mt-1 max-w-[260px] truncate text-[10px] text-slate-600 dark:text-slate-300">
+                          {safe(lead.ultima_observacao) ||
+                            safe(lead.observacoes) ||
+                            "Adicionar observação"}
+                        </div>
+                      </button>
                     </td>
 
                     <td className="p-1 text-center">
@@ -2867,8 +3047,106 @@ export const ControleLeadsView: React.FC = () => {
         </Modal>
       )}
 
+      {observationsOpen && selectedLead && (
+        <Modal
+          title={`Observações — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`}
+          onClose={() => !savingObservation && setObservationsOpen(false)}
+        >
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/60 dark:bg-amber-950/20">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-amber-600 shadow-sm dark:bg-slate-900 dark:text-amber-300">
+                <MessageSquarePlus className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  Nova observação
+                </div>
+                <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  Registre responsável pelo marketing, pessoa contatada, comentários, pendências,
+                  retornos combinados e qualquer informação importante. As observações anteriores
+                  nunca são substituídas.
+                </p>
+              </div>
+            </div>
+
+            <textarea
+              rows={5}
+              value={observationText}
+              onChange={(event) => setObservationText(event.target.value)}
+              placeholder="Ex.: Conversado com Maria, responsável pelo marketing. Pediu retorno na próxima semana..."
+              className="field-input mt-3 resize-none"
+              autoFocus
+            />
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                Próxima ação atual: <strong>{formatDateTime(selectedLead.proxima_acao)}</strong>
+              </div>
+              <button
+                type="button"
+                onClick={saveObservation}
+                disabled={savingObservation || !observationText.trim()}
+                className="flex cursor-pointer items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-black text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingObservation ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                Adicionar ao histórico
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  Histórico de observações
+                </h4>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {observations.length} registro(s) deste lead
+                </p>
+              </div>
+            </div>
+
+            {observationsLoading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+              </div>
+            ) : observations.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400 dark:border-slate-700">
+                Ainda não há observações registradas para este lead.
+              </div>
+            ) : (
+              <div className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
+                {observations.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-black text-slate-800 dark:text-slate-100">
+                        <Clock3 className="h-4 w-4 text-amber-500" />
+                        {formatDateTime(item.data_observacao)}
+                      </div>
+                      <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        {safe(item.autor_nome) || "Equipe"}
+                      </div>
+                    </div>
+                    <div className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                      {item.observacao}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
       {historyOpen && selectedLead && (
-        <Modal title={`Histórico — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`} onClose={() => setHistoryOpen(false)}>
+        <Modal title={`Histórico de contatos — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`} onClose={() => setHistoryOpen(false)}>
           {historyLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />

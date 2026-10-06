@@ -118,6 +118,20 @@ interface InteractionForm {
   observacao: string;
 }
 
+interface NewLeadForm {
+  empresa: string;
+  contato_nome: string;
+  contato_cargo: string;
+  cidade: string;
+  estado: string;
+  segmento: string;
+  site: string;
+  whatsapp: string;
+  email: string;
+  interesse: string;
+  observacoes: string;
+}
+
 interface MeetingForm {
   id?: number;
   lead_id: string;
@@ -399,6 +413,22 @@ export const ControleLeadsView: React.FC = () => {
     observacao: "",
   });
 
+  const [newLeadOpen, setNewLeadOpen] = useState(false);
+  const [savingNewLead, setSavingNewLead] = useState(false);
+  const [newLeadForm, setNewLeadForm] = useState<NewLeadForm>({
+    empresa: "",
+    contato_nome: "",
+    contato_cargo: "",
+    cidade: "",
+    estado: "",
+    segmento: "",
+    site: "",
+    whatsapp: "",
+    email: "",
+    interesse: "NÃO AVALIADO",
+    observacoes: "",
+  });
+
   const showNotice = (next: Notice) => {
     setNotice(next);
     window.setTimeout(() => setNotice(null), 5000);
@@ -503,22 +533,167 @@ export const ControleLeadsView: React.FC = () => {
     }
   };
 
-  const handleAddLead = async () => {
-    const form = new FormData();
-    form.append("action", "create");
-    form.append("fonte", "Manual");
+  const handleAddLead = () => {
+    setNewLeadForm({
+      empresa: "",
+      contato_nome: "",
+      contato_cargo: "",
+      cidade: "",
+      estado: "",
+      segmento: "",
+      site: "",
+      whatsapp: "",
+      email: "",
+      interesse: "NÃO AVALIADO",
+      observacoes: "",
+    });
+    setNewLeadOpen(true);
+  };
+
+  const saveNewLead = async () => {
+    const empresa = newLeadForm.empresa.trim();
+    const whatsapp = newLeadForm.whatsapp.trim();
+    const email = newLeadForm.email.trim();
+
+    if (!empresa && !whatsapp && !email) {
+      showNotice({
+        type: "error",
+        text: "Informe pelo menos Empresa, WhatsApp ou E-mail para criar o lead.",
+      });
+      return;
+    }
+
+    setSavingNewLead(true);
+    let createdId: number | null = null;
 
     try {
-      const response = await fetch(API_URL, { method: "POST", body: form });
-      const data = await parseJsonResponse(response);
-      if (!response.ok || !data.sucesso) throw new Error(data.erro || "Erro ao criar lead.");
+      // 1. Cria o registro e recebe o ID usando a API que já existe.
+      const createForm = new FormData();
+      createForm.append("action", "create");
+      createForm.append("fonte", "Manual");
+
+      const loggedUser = getLoggedUser();
+      if (loggedUser?.id || loggedUser?.usuario_id) {
+        createForm.append(
+          "responsavel_id",
+          String(loggedUser?.id || loggedUser?.usuario_id || "")
+        );
+      }
+      if (loggedUser?.nome || loggedUser?.name) {
+        createForm.append(
+          "responsavel_nome",
+          String(loggedUser?.nome || loggedUser?.name || "")
+        );
+      }
+
+      const createResponse = await fetch(API_URL, {
+        method: "POST",
+        body: createForm,
+      });
+      const createData = await parseJsonResponse(createResponse);
+
+      if (!createResponse.ok || !createData.sucesso || !createData.id) {
+        throw new Error(createData.erro || "Erro ao criar lead.");
+      }
+
+      createdId = Number(createData.id);
+
+      // 2. Grava todos os dados preenchidos no modal.
+      const updateForm = new FormData();
+      updateForm.append("action", "update");
+      updateForm.append("id", String(createdId));
+      updateForm.append("empresa", newLeadForm.empresa.trim());
+      updateForm.append("contato_nome", newLeadForm.contato_nome.trim());
+      updateForm.append("contato_cargo", newLeadForm.contato_cargo.trim());
+      updateForm.append("cidade", newLeadForm.cidade.trim());
+      updateForm.append("estado", newLeadForm.estado.trim().toUpperCase().slice(0, 2));
+      updateForm.append("segmento", newLeadForm.segmento.trim());
+      updateForm.append("site", newLeadForm.site.trim());
+      updateForm.append("whatsapp", newLeadForm.whatsapp.trim());
+      updateForm.append("email", newLeadForm.email.trim());
+      updateForm.append("interesse", newLeadForm.interesse || "NÃO AVALIADO");
+      updateForm.append("observacoes", newLeadForm.observacoes.trim());
+      updateForm.append("etapa_funil", "CONTATO");
+      updateForm.append("status", "NOVO");
+      updateForm.append("retorno", "SEM CONTATO");
+
+      const updateResponse = await fetch(API_URL, {
+        method: "POST",
+        body: updateForm,
+      });
+      const updateData = await parseJsonResponse(updateResponse);
+
+      if (!updateResponse.ok || !updateData.sucesso) {
+        throw new Error(updateData.erro || "Erro ao salvar os dados do lead.");
+      }
+
+      // 3. Novo lead fica no topo da primeira coluna, não no final com ordem 999.
+      const currentContactLeads = sortLeadsByOrder(
+        leads.filter(
+          (lead) =>
+            Number(lead.id) !== createdId &&
+            normalizeEtapa(lead.etapa_funil) === "CONTATO"
+        )
+      );
+
+      const reorderForm = new FormData();
+      reorderForm.append("action", "kanban_reorder");
+      reorderForm.append(
+        "items",
+        JSON.stringify([
+          { id: createdId, etapa_funil: "CONTATO", ordem: 1 },
+          ...currentContactLeads.map((lead, index) => ({
+            id: Number(lead.id),
+            etapa_funil: "CONTATO",
+            ordem: index + 2,
+          })),
+        ])
+      );
+      reorderForm.append(
+        "responsavel_id",
+        String(loggedUser?.id || loggedUser?.usuario_id || "")
+      );
+      reorderForm.append(
+        "responsavel_nome",
+        String(loggedUser?.nome || loggedUser?.name || "")
+      );
+
+      const reorderResponse = await fetch(API_URL, {
+        method: "POST",
+        body: reorderForm,
+      });
+      const reorderData = await parseJsonResponse(reorderResponse);
+
+      if (!reorderResponse.ok || !reorderData.sucesso) {
+        throw new Error(reorderData.erro || "Lead criado, mas não foi possível ordenar o Kanban.");
+      }
+
+      setNewLeadOpen(false);
       await fetchLeads();
-      showNotice({ type: "success", text: "Nova linha criada. Preencha os dados do lead." });
+      showNotice({
+        type: "success",
+        text: "Lead criado com sucesso e colocado no topo de Contato.",
+      });
     } catch (error) {
+      // Se a criação começou e algo depois falhou, evita deixar uma linha vazia perdida.
+      if (createdId) {
+        try {
+          const cleanupForm = new FormData();
+          cleanupForm.append("action", "delete");
+          cleanupForm.append("id", String(createdId));
+          await fetch(API_URL, { method: "POST", body: cleanupForm });
+        } catch (cleanupError) {
+          console.error("Erro ao limpar lead provisório:", cleanupError);
+        }
+      }
+
+      console.error(error);
       showNotice({
         type: "error",
         text: error instanceof Error ? error.message : "Erro ao criar lead.",
       });
+    } finally {
+      setSavingNewLead(false);
     }
   };
 
@@ -1863,6 +2038,231 @@ export const ControleLeadsView: React.FC = () => {
         </div>
       </div>
 
+      )}
+
+      {newLeadOpen && (
+        <Modal title="Novo lead" onClose={() => !savingNewLead && setNewLeadOpen(false)}>
+          <div className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 dark:border-indigo-900/60 dark:bg-indigo-950/20">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400">
+                <Plus className="h-4 w-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  Cadastrar novo lead
+                </h4>
+                <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
+                  O lead será criado somente ao salvar e entrará no topo da etapa Contato com status Novo.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <FormField label="Empresa">
+                <input
+                  autoFocus
+                  value={newLeadForm.empresa}
+                  onChange={(event) =>
+                    setNewLeadForm((previous) => ({
+                      ...previous,
+                      empresa: event.target.value,
+                    }))
+                  }
+                  placeholder="Nome da empresa"
+                  className="field-input"
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Nome do contato">
+              <input
+                value={newLeadForm.contato_nome}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    contato_nome: event.target.value,
+                  }))
+                }
+                placeholder="Ex.: João Silva"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="Cargo do contato">
+              <input
+                value={newLeadForm.contato_cargo}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    contato_cargo: event.target.value,
+                  }))
+                }
+                placeholder="Ex.: Diretor comercial"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="WhatsApp">
+              <input
+                value={newLeadForm.whatsapp}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    whatsapp: event.target.value,
+                  }))
+                }
+                placeholder="(13) 99999-9999"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="E-mail">
+              <input
+                type="email"
+                value={newLeadForm.email}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    email: event.target.value,
+                  }))
+                }
+                placeholder="contato@empresa.com.br"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="Cidade">
+              <input
+                value={newLeadForm.cidade}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    cidade: event.target.value,
+                  }))
+                }
+                placeholder="Cidade"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="Estado">
+              <input
+                maxLength={2}
+                value={newLeadForm.estado}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    estado: event.target.value.toUpperCase().slice(0, 2),
+                  }))
+                }
+                placeholder="SP"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="Segmento">
+              <input
+                value={newLeadForm.segmento}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    segmento: event.target.value,
+                  }))
+                }
+                placeholder="Ex.: Indústria, varejo, clínica..."
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="Site">
+              <input
+                value={newLeadForm.site}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    site: event.target.value,
+                  }))
+                }
+                placeholder="https://empresa.com.br"
+                className="field-input"
+              />
+            </FormField>
+
+            <FormField label="Interesse inicial">
+              <select
+                value={newLeadForm.interesse}
+                onChange={(event) =>
+                  setNewLeadForm((previous) => ({
+                    ...previous,
+                    interesse: event.target.value,
+                  }))
+                }
+                className="field-input"
+              >
+                {INTERESSE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <div className="flex items-end">
+              <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                <strong className="text-slate-700 dark:text-slate-200">Entrada automática:</strong>{" "}
+                Contato • Novo • Sem contato
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <FormField label="Observações">
+                <textarea
+                  rows={4}
+                  value={newLeadForm.observacoes}
+                  onChange={(event) =>
+                    setNewLeadForm((previous) => ({
+                      ...previous,
+                      observacoes: event.target.value,
+                    }))
+                  }
+                  placeholder="Informações iniciais, origem do contato, contexto comercial..."
+                  className="field-input resize-none"
+                />
+              </FormField>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setNewLeadOpen(false)}
+              disabled={savingNewLead}
+              className="rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={saveNewLead}
+              disabled={savingNewLead}
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savingNewLead ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Criar lead
+                </>
+              )}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {agendaOpen && (

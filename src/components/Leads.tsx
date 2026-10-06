@@ -163,6 +163,24 @@ interface MeetingForm {
   status: string;
 }
 
+interface MeetingAvailabilitySlot {
+  hora: string;
+  disponivel: boolean;
+  tipo?: string | null;
+  motivo?: string | null;
+}
+
+interface AgendaBlock {
+  id: number;
+  data_bloqueio: string;
+  hora_inicio: string;
+  hora_fim: string;
+  motivo: string | null;
+  autor_id: string | null;
+  autor_nome: string | null;
+  data_criacao?: string | null;
+}
+
 const API_URL = "https://sothink.com.br/app/api/controleads";
 
 const KANBAN_COLUMNS: {
@@ -253,6 +271,7 @@ const INTERESSE_OPTIONS = ["NÃO AVALIADO", "BAIXO", "MÉDIO", "ALTO"];
 
 const MEETING_STATUS_OPTIONS = ["AGENDADA", "REALIZADA", "CANCELADA"];
 const MEETING_TYPE_OPTIONS = ["Online", "Presencial", "Telefone", "Híbrida"];
+const MEETING_HOURS = Array.from({ length: 9 }, (_, index) => `${String(index + 9).padStart(2, "0")}:00`);
 const MONTH_NAMES = [
   "Janeiro",
   "Fevereiro",
@@ -405,6 +424,16 @@ export const ControleLeadsView: React.FC = () => {
   const [meetingUsers, setMeetingUsers] = useState<UsuarioAgenda[]>([]);
   const [agendaMonth, setAgendaMonth] = useState(new Date().getMonth());
   const [agendaYear, setAgendaYear] = useState(new Date().getFullYear());
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [meetingSlots, setMeetingSlots] = useState<MeetingAvailabilitySlot[]>([]);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockDate, setBlockDate] = useState(todayForInput());
+  const [blockReason, setBlockReason] = useState("");
+  const [selectedBlockSlots, setSelectedBlockSlots] = useState<string[]>([]);
+  const [agendaBlocks, setAgendaBlocks] = useState<AgendaBlock[]>([]);
+  const [blockAvailability, setBlockAvailability] = useState<MeetingAvailabilitySlot[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
+  const [savingBlocks, setSavingBlocks] = useState(false);
   const [meetingForm, setMeetingForm] = useState<MeetingForm>({
     lead_id: "",
     titulo: "",
@@ -1089,6 +1118,291 @@ export const ControleLeadsView: React.FC = () => {
     }
   };
 
+  const fetchMeetingAvailability = async (
+    dateValue: string,
+    durationValue: string,
+    excludeId?: number
+  ) => {
+    if (!dateValue) {
+      setMeetingSlots([]);
+      return [];
+    }
+
+    setAvailabilityLoading(true);
+    try {
+      const params = new URLSearchParams({
+        action: "meeting_availability",
+        data: dateValue,
+        duracao_minutos: durationValue || "60",
+      });
+      if (excludeId) params.set("exclude_id", String(excludeId));
+
+      const response = await fetch(`${API_URL}?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const data = await parseJsonResponse(response);
+      if (!response.ok || !data?.sucesso) {
+        throw new Error(data?.erro || "Não foi possível consultar os horários.");
+      }
+
+      const slots: MeetingAvailabilitySlot[] = Array.isArray(data.slots)
+        ? data.slots
+        : [];
+      setMeetingSlots(slots);
+
+      // Ao abrir uma reunião nova, se o horário padrão estiver ocupado,
+      // seleciona automaticamente o primeiro horário realmente disponível.
+      setMeetingForm((previous) => {
+        if (
+          previous.id ||
+          previous.data_reuniao !== dateValue ||
+          previous.duracao_minutos !== durationValue
+        ) {
+          return previous;
+        }
+
+        const selected = slots.find(
+          (slot) => slot.hora === previous.hora_reuniao
+        );
+        if (selected?.disponivel) return previous;
+
+        const firstAvailable = slots.find((slot) => slot.disponivel);
+        return {
+          ...previous,
+          hora_reuniao: firstAvailable?.hora || "",
+        };
+      });
+
+      return slots;
+    } catch (error) {
+      console.error("Erro ao consultar disponibilidade:", error);
+      setMeetingSlots([]);
+      showNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível consultar os horários disponíveis.",
+      });
+      return [];
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!meetingOpen || !meetingForm.data_reuniao) return;
+
+    fetchMeetingAvailability(
+      meetingForm.data_reuniao,
+      meetingForm.duracao_minutos || "60",
+      meetingForm.id
+    );
+  }, [
+    meetingOpen,
+    meetingForm.data_reuniao,
+    meetingForm.duracao_minutos,
+    meetingForm.id,
+  ]);
+
+  const loadBlockDay = async (dateValue: string) => {
+    if (!dateValue) return;
+
+    setBlocksLoading(true);
+    try {
+      const [blocksResponse, availabilityResponse] = await Promise.all([
+        fetch(
+          `${API_URL}?action=block_list&data=${encodeURIComponent(dateValue)}`,
+          { cache: "no-store" }
+        ),
+        fetch(
+          `${API_URL}?action=meeting_availability&data=${encodeURIComponent(
+            dateValue
+          )}&duracao_minutos=60`,
+          { cache: "no-store" }
+        ),
+      ]);
+
+      const [blocksData, availabilityData] = await Promise.all([
+        parseJsonResponse(blocksResponse),
+        parseJsonResponse(availabilityResponse),
+      ]);
+
+      if (!blocksResponse.ok) {
+        throw new Error(blocksData?.erro || "Erro ao carregar bloqueios.");
+      }
+      if (!availabilityResponse.ok || !availabilityData?.sucesso) {
+        throw new Error(
+          availabilityData?.erro || "Erro ao carregar disponibilidade."
+        );
+      }
+
+      setAgendaBlocks(Array.isArray(blocksData) ? blocksData : []);
+      setBlockAvailability(
+        Array.isArray(availabilityData.slots) ? availabilityData.slots : []
+      );
+      setSelectedBlockSlots([]);
+    } catch (error) {
+      console.error("Erro ao carregar bloqueios:", error);
+      setAgendaBlocks([]);
+      setBlockAvailability([]);
+      showNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar os bloqueios.",
+      });
+    } finally {
+      setBlocksLoading(false);
+    }
+  };
+
+  const openBlockModal = async () => {
+    const date = todayForInput();
+    setBlockDate(date);
+    setBlockReason("");
+    setSelectedBlockSlots([]);
+    setBlockOpen(true);
+    await loadBlockDay(date);
+  };
+
+  useEffect(() => {
+    if (!blockOpen || !blockDate) return;
+    loadBlockDay(blockDate);
+  }, [blockOpen, blockDate]);
+
+  const toggleBlockSlot = (hour: string) => {
+    const slot = blockAvailability.find((item) => item.hora === hour);
+    if (slot && !slot.disponivel) return;
+
+    setSelectedBlockSlots((previous) =>
+      previous.includes(hour)
+        ? previous.filter((item) => item !== hour)
+        : [...previous, hour]
+    );
+  };
+
+  const selectAllFreeBlockSlots = () => {
+    setSelectedBlockSlots(
+      blockAvailability
+        .filter((slot) => slot.disponivel)
+        .map((slot) => slot.hora)
+    );
+  };
+
+  const saveBlocks = async () => {
+    if (!blockDate) {
+      showNotice({ type: "error", text: "Selecione a data do bloqueio." });
+      return;
+    }
+    if (selectedBlockSlots.length === 0) {
+      showNotice({
+        type: "error",
+        text: "Selecione pelo menos um horário para bloquear.",
+      });
+      return;
+    }
+
+    const loggedUser = getLoggedUser();
+    setSavingBlocks(true);
+    try {
+      const form = new FormData();
+      form.append("action", "block_save");
+      form.append("data", blockDate);
+      form.append("horarios", JSON.stringify(selectedBlockSlots));
+      form.append("motivo", blockReason);
+      form.append(
+        "autor_id",
+        String(loggedUser?.id || loggedUser?.usuario_id || "")
+      );
+      form.append(
+        "autor_nome",
+        safe(loggedUser?.nome || loggedUser?.name || loggedUser?.usuario)
+      );
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: form,
+      });
+      const data = await parseJsonResponse(response);
+      if (!response.ok || !data?.sucesso) {
+        throw new Error(data?.erro || "Erro ao bloquear horários.");
+      }
+
+      await loadBlockDay(blockDate);
+
+      if (meetingOpen && meetingForm.data_reuniao === blockDate) {
+        await fetchMeetingAvailability(
+          meetingForm.data_reuniao,
+          meetingForm.duracao_minutos || "60",
+          meetingForm.id
+        );
+      }
+
+      const ignoredCount = Array.isArray(data.ignorados)
+        ? data.ignorados.length
+        : 0;
+      showNotice({
+        type: ignoredCount > 0 ? "info" : "success",
+        text:
+          ignoredCount > 0
+            ? `${data.bloqueados || 0} horário(s) bloqueado(s). ${ignoredCount} já estavam ocupados ou bloqueados.`
+            : `${data.bloqueados || 0} horário(s) bloqueado(s) com sucesso.`,
+      });
+    } catch (error) {
+      console.error(error);
+      showNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível bloquear os horários.",
+      });
+    } finally {
+      setSavingBlocks(false);
+    }
+  };
+
+  const deleteBlock = async (block: AgendaBlock) => {
+    if (
+      !window.confirm(
+        `Liberar o horário ${safe(block.hora_inicio).slice(0, 5)} de ${formatMeetingDate(
+          block.data_bloqueio,
+          block.hora_inicio
+        ).slice(0, 10)}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const form = new FormData();
+      form.append("action", "block_delete");
+      form.append("id", String(block.id));
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: form,
+      });
+      const data = await parseJsonResponse(response);
+      if (!response.ok || !data?.sucesso) {
+        throw new Error(data?.erro || "Erro ao liberar horário.");
+      }
+
+      await loadBlockDay(blockDate);
+      showNotice({ type: "success", text: "Horário liberado novamente." });
+    } catch (error) {
+      showNotice({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível liberar o horário.",
+      });
+    }
+  };
+
   const openAgenda = async () => {
     setAgendaOpen(true);
     await Promise.all([fetchMeetings(), fetchMeetingUsers()]);
@@ -1168,8 +1482,21 @@ export const ControleLeadsView: React.FC = () => {
       return;
     }
     if (!meetingForm.data_reuniao || !meetingForm.hora_reuniao) {
-      showNotice({ type: "error", text: "Informe data e horário da reunião." });
+      showNotice({ type: "error", text: "Informe data e selecione um horário disponível." });
       return;
+    }
+
+    if (meetingForm.status === "AGENDADA") {
+      const selectedSlot = meetingSlots.find(
+        (slot) => slot.hora === meetingForm.hora_reuniao
+      );
+      if (!selectedSlot?.disponivel) {
+        showNotice({
+          type: "error",
+          text: selectedSlot?.motivo || "Este horário não está mais disponível.",
+        });
+        return;
+      }
     }
 
     setSavingMeeting(true);
@@ -1634,6 +1961,15 @@ export const ControleLeadsView: React.FC = () => {
           >
             <CalendarClock className="h-4 w-4" />
             Agenda
+          </button>
+
+          <button
+            onClick={openBlockModal}
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 shadow-sm transition hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+            title="Bloquear horários da agenda comercial"
+          >
+            <Clock3 className="h-4 w-4" />
+            Bloquear horários
           </button>
 
           <input
@@ -2659,6 +2995,193 @@ export const ControleLeadsView: React.FC = () => {
         </WideModal>
       )}
 
+      {blockOpen && (
+        <Modal
+          title="Bloquear horários da agenda"
+          onClose={() => setBlockOpen(false)}
+        >
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+              Use esta tela quando quiser impedir novos agendamentos de leads em um dia ou horário.
+              Reuniões já existentes de clientes e leads também aparecem como ocupadas e não podem ser bloqueadas por cima.
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField label="Dia">
+                <input
+                  type="date"
+                  value={blockDate}
+                  min={todayForInput()}
+                  onChange={(event) => setBlockDate(event.target.value)}
+                  className="field-input"
+                />
+              </FormField>
+
+              <FormField label="Motivo do bloqueio (opcional)">
+                <input
+                  value={blockReason}
+                  onChange={(event) => setBlockReason(event.target.value)}
+                  placeholder="Ex.: compromisso externo, treinamento..."
+                  className="field-input"
+                />
+              </FormField>
+            </div>
+
+            <div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    Horários de 09:00 às 17:00
+                  </h4>
+                  <p className="text-[10px] text-slate-500">
+                    Clique nos horários livres que deseja travar.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllFreeBlockSlots}
+                    disabled={blocksLoading}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-300"
+                  >
+                    Bloquear todos livres
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBlockSlots([])}
+                    className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Limpar seleção
+                  </button>
+                </div>
+              </div>
+
+              {blocksLoading ? (
+                <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-xs text-slate-500 dark:border-slate-800">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Carregando agenda do dia...
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-9">
+                  {MEETING_HOURS.map((hour) => {
+                    const slot = blockAvailability.find(
+                      (item) => item.hora === hour
+                    );
+                    const existingBlock = agendaBlocks.find(
+                      (block) => safe(block.hora_inicio).slice(0, 5) === hour
+                    );
+                    const selected = selectedBlockSlots.includes(hour);
+                    const free = Boolean(slot?.disponivel);
+
+                    return (
+                      <button
+                        key={hour}
+                        type="button"
+                        disabled={!free}
+                        onClick={() => toggleBlockSlot(hour)}
+                        title={
+                          existingBlock
+                            ? existingBlock.motivo || "Horário já bloqueado"
+                            : free
+                            ? `Selecionar ${hour} para bloquear`
+                            : slot?.motivo || "Horário ocupado"
+                        }
+                        className={`min-h-[58px] rounded-xl border px-2 py-2 text-center transition ${
+                          selected
+                            ? "border-amber-500 bg-amber-500 text-white shadow-sm"
+                            : existingBlock
+                            ? "cursor-not-allowed border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300"
+                            : free
+                            ? "border-emerald-200 bg-white text-emerald-700 hover:border-amber-400 hover:bg-amber-50 dark:border-emerald-900/60 dark:bg-slate-900 dark:text-emerald-300"
+                            : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-600"
+                        }`}
+                      >
+                        <span className="block text-xs font-extrabold">
+                          {hour}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[8px] font-bold uppercase tracking-wide">
+                          {selected
+                            ? "Selecionado"
+                            : existingBlock
+                            ? "Bloqueado"
+                            : free
+                            ? "Livre"
+                            : slot?.tipo === "CLIENTE"
+                            ? "Cliente"
+                            : slot?.tipo === "LEAD"
+                            ? "Lead"
+                            : "Ocupado"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {agendaBlocks.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    Bloqueios deste dia
+                  </h4>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {agendaBlocks.map((block) => (
+                    <div
+                      key={block.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
+                          {safe(block.hora_inicio).slice(0, 5)} às{" "}
+                          {safe(block.hora_fim).slice(0, 5)}
+                        </p>
+                        <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                          {safe(block.motivo) || "Sem motivo informado"}
+                          {block.autor_nome
+                            ? ` · por ${safe(block.autor_nome)}`
+                            : ""}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteBlock(block)}
+                        className="flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Liberar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setBlockOpen(false)}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                onClick={saveBlocks}
+                disabled={savingBlocks || selectedBlockSlots.length === 0}
+                className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-white transition hover:bg-amber-600 disabled:opacity-50"
+              >
+                {savingBlocks && <Loader2 className="h-4 w-4 animate-spin" />}
+                Bloquear selecionados
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {meetingOpen && (
         <Modal
           title={`${meetingForm.id ? "Editar reunião" : "Agendar reunião"}${
@@ -2727,43 +3250,118 @@ export const ControleLeadsView: React.FC = () => {
                   setMeetingForm((previous) => ({
                     ...previous,
                     data_reuniao: event.target.value,
+                    hora_reuniao: "",
                   }))
                 }
                 className="field-input"
               />
             </FormField>
 
-            <div className="grid grid-cols-2 gap-2">
-              <FormField label="Horário *">
-                <input
-                  type="time"
-                  value={meetingForm.hora_reuniao}
-                  onChange={(event) =>
-                    setMeetingForm((previous) => ({
-                      ...previous,
-                      hora_reuniao: event.target.value,
-                    }))
-                  }
-                  className="field-input"
-                />
-              </FormField>
-              <FormField label="Duração">
-                <select
-                  value={meetingForm.duracao_minutos}
-                  onChange={(event) =>
-                    setMeetingForm((previous) => ({
-                      ...previous,
-                      duracao_minutos: event.target.value,
-                    }))
-                  }
-                  className="field-input"
-                >
-                  <option value="30">30 min</option>
-                  <option value="45">45 min</option>
-                  <option value="60">1 hora</option>
-                  <option value="90">1h30</option>
-                  <option value="120">2 horas</option>
-                </select>
+            <FormField label="Duração">
+              <select
+                value={meetingForm.duracao_minutos}
+                onChange={(event) =>
+                  setMeetingForm((previous) => ({
+                    ...previous,
+                    duracao_minutos: event.target.value,
+                    hora_reuniao: "",
+                  }))
+                }
+                className="field-input"
+              >
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hora</option>
+                <option value="90">1h30</option>
+                <option value="120">2 horas</option>
+              </select>
+            </FormField>
+
+            <div className="md:col-span-2">
+              <FormField label="Horários disponíveis *">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+                  {availabilityLoading ? (
+                    <div className="flex items-center gap-2 py-3 text-xs font-semibold text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Verificando agenda de leads, clientes e bloqueios...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-9">
+                        {MEETING_HOURS.map((hour) => {
+                          const slot = meetingSlots.find(
+                            (item) => item.hora === hour
+                          );
+                          const available = Boolean(slot?.disponivel);
+                          const selected =
+                            meetingForm.hora_reuniao === hour;
+
+                          return (
+                            <button
+                              key={hour}
+                              type="button"
+                              disabled={!available}
+                              onClick={() =>
+                                setMeetingForm((previous) => ({
+                                  ...previous,
+                                  hora_reuniao: hour,
+                                }))
+                              }
+                              title={
+                                available
+                                  ? `Selecionar ${hour}`
+                                  : slot?.motivo || "Horário indisponível"
+                              }
+                              className={`min-h-[58px] rounded-xl border px-2 py-2 text-center transition ${
+                                selected
+                                  ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                                  : available
+                                  ? "border-emerald-200 bg-white text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50 dark:border-emerald-900/60 dark:bg-slate-900 dark:text-emerald-300"
+                                  : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-600"
+                              }`}
+                            >
+                              <span className="block text-xs font-extrabold">
+                                {hour}
+                              </span>
+                              <span className="mt-0.5 block truncate text-[8px] font-bold uppercase tracking-wide">
+                                {available
+                                  ? "Livre"
+                                  : slot?.tipo === "CLIENTE"
+                                  ? "Cliente"
+                                  : slot?.tipo === "LEAD"
+                                  ? "Lead"
+                                  : slot?.tipo === "BLOQUEIO"
+                                  ? "Bloqueado"
+                                  : "Indisponível"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>
+                          <strong className="text-emerald-600">Livre</strong> = pode agendar
+                        </span>
+                        <span>
+                          <strong className="text-slate-600 dark:text-slate-300">Cliente</strong> = reunião do Atas
+                        </span>
+                        <span>
+                          <strong className="text-slate-600 dark:text-slate-300">Lead</strong> = reunião já agendada
+                        </span>
+                        <span>
+                          <strong className="text-amber-600">Bloqueado</strong> = trava manual
+                        </span>
+                      </div>
+
+                      {!meetingForm.hora_reuniao && (
+                        <p className="mt-2 text-[10px] font-semibold text-rose-500">
+                          Selecione um dos horários livres acima.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
               </FormField>
             </div>
 

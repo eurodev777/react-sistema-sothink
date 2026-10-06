@@ -981,7 +981,7 @@ const ClientLeadsTable: React.FC<{
                         className={`w-12 px-1.5 py-1.5 rounded-lg text-center bg-slate-950 border text-emerald-300 font-black outline-none focus:ring-1 focus:ring-emerald-500 ${isSaving ? 'border-emerald-500 animate-pulse' : 'border-slate-800'}`}
 
                       />
-
+ 
                     </td>
 
                   );

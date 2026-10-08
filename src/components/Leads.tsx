@@ -53,6 +53,8 @@ export interface LeadProspeccao {
   retorno: string;
   interesse: string;
   proxima_acao: string | null;
+  followup_tarefa?: string | null;
+  followup_status?: string | null;
   observacoes: string | null;
   fonte: string | null;
   responsavel_id: string | null;
@@ -130,6 +132,12 @@ interface InteractionForm {
   interesse: string;
   proxima_acao: string;
   observacao: string;
+}
+
+interface FollowupForm {
+  tarefa: string;
+  data: string;
+  hora: string;
 }
 
 interface NewLeadForm {
@@ -269,6 +277,18 @@ const RETORNO_OPTIONS = [
 
 const INTERESSE_OPTIONS = ["NÃO AVALIADO", "BAIXO", "MÉDIO", "ALTO"];
 
+const FOLLOWUP_TASK_OPTIONS = [
+  "Retornar contato",
+  "Enviar WhatsApp",
+  "Fazer ligação",
+  "Enviar e-mail",
+  "Enviar apresentação",
+  "Enviar proposta",
+  "Cobrar retorno",
+  "Reunião",
+  "Outro",
+];
+
 const MEETING_STATUS_OPTIONS = ["AGENDADA", "REALIZADA", "CANCELADA"];
 const MEETING_TYPE_OPTIONS = ["Online", "Presencial", "Telefone", "Híbrida"];
 const MEETING_HOURS = Array.from({ length: 9 }, (_, index) => `${String(index + 9).padStart(2, "0")}:00`);
@@ -290,6 +310,109 @@ const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const safe = (value: unknown) =>
   value === null || value === undefined || value === "null" ? "" : String(value);
+
+type FollowupVisualState = "none" | "future" | "today" | "soon" | "late" | "done";
+
+const getFollowupVisual = (
+  lead: Pick<LeadProspeccao, "proxima_acao" | "followup_status">,
+  nowMs: number
+): {
+  state: FollowupVisualState;
+  label: string;
+  containerClass: string;
+  iconClass: string;
+  textClass: string;
+} => {
+  const status = safe(lead.followup_status).toUpperCase();
+
+  if (status === "CONCLUIDO") {
+    return {
+      state: "done",
+      label: "Concluído",
+      containerClass:
+        "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900",
+      iconClass: "text-slate-500",
+      textClass: "text-slate-600 dark:text-slate-300",
+    };
+  }
+
+  if (!lead.proxima_acao) {
+    return {
+      state: "none",
+      label: "Sem follow-up",
+      containerClass:
+        "border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/60 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20",
+      iconClass: "text-indigo-500",
+      textClass: "text-slate-500 dark:text-slate-400",
+    };
+  }
+
+  const normalized = lead.proxima_acao.includes("T")
+    ? lead.proxima_acao
+    : lead.proxima_acao.replace(" ", "T");
+  const due = new Date(normalized);
+
+  if (Number.isNaN(due.getTime())) {
+    return {
+      state: "future",
+      label: "Agendado",
+      containerClass:
+        "border-indigo-200 bg-indigo-50/70 dark:border-indigo-900/70 dark:bg-indigo-950/20",
+      iconClass: "text-indigo-500",
+      textClass: "text-indigo-700 dark:text-indigo-300",
+    };
+  }
+
+  const diff = due.getTime() - nowMs;
+
+  if (diff < 0) {
+    return {
+      state: "late",
+      label: "Atrasado",
+      containerClass:
+        "border-rose-300 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/30",
+      iconClass: "text-rose-600 dark:text-rose-400",
+      textClass: "text-rose-700 dark:text-rose-300",
+    };
+  }
+
+  const now = new Date(nowMs);
+  const sameDay =
+    due.getFullYear() === now.getFullYear() &&
+    due.getMonth() === now.getMonth() &&
+    due.getDate() === now.getDate();
+
+  if (sameDay && diff <= 2 * 60 * 60 * 1000) {
+    return {
+      state: "soon",
+      label: "Próximo do horário",
+      containerClass:
+        "border-amber-300 bg-amber-50 dark:border-amber-900/70 dark:bg-amber-950/30",
+      iconClass: "text-amber-600 dark:text-amber-400",
+      textClass: "text-amber-800 dark:text-amber-300",
+    };
+  }
+
+  if (sameDay) {
+    return {
+      state: "today",
+      label: "Hoje",
+      containerClass:
+        "border-emerald-300 bg-emerald-50 dark:border-emerald-900/70 dark:bg-emerald-950/25",
+      iconClass: "text-emerald-600 dark:text-emerald-400",
+      textClass: "text-emerald-800 dark:text-emerald-300",
+    };
+  }
+
+  return {
+    state: "future",
+    label: "Agendado",
+    containerClass:
+      "border-indigo-200 bg-indigo-50/60 dark:border-indigo-900/70 dark:bg-indigo-950/20",
+    iconClass: "text-indigo-500",
+    textClass: "text-indigo-700 dark:text-indigo-300",
+  };
+};
 
 const nowForInput = () => {
   const date = new Date();
@@ -461,6 +584,15 @@ export const ControleLeadsView: React.FC = () => {
     observacao: "",
   });
 
+  const [followupOpen, setFollowupOpen] = useState(false);
+  const [savingFollowup, setSavingFollowup] = useState(false);
+  const [followupClock, setFollowupClock] = useState(Date.now());
+  const [followupForm, setFollowupForm] = useState<FollowupForm>({
+    tarefa: "Retornar contato",
+    data: todayForInput(),
+    hora: "10:00",
+  });
+
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [savingNewLead, setSavingNewLead] = useState(false);
   const [newLeadForm, setNewLeadForm] = useState<NewLeadForm>({
@@ -499,6 +631,11 @@ export const ControleLeadsView: React.FC = () => {
 
   useEffect(() => {
     fetchLeads();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setFollowupClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const cities = useMemo<string[]>(() => {
@@ -928,6 +1065,100 @@ export const ControleLeadsView: React.FC = () => {
     anchor.download = "controle_de_leads.csv";
     anchor.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openFollowup = (lead: LeadProspeccao) => {
+    setSelectedLead(lead);
+
+    const current = toInputDateTime(lead.proxima_acao);
+    const [currentDate, currentTime] = current
+      ? current.split("T")
+      : [todayForInput(), "10:00"];
+
+    setFollowupForm({
+      tarefa: safe(lead.followup_tarefa) || "Retornar contato",
+      data: currentDate || todayForInput(),
+      hora: (currentTime || "10:00").slice(0, 5),
+    });
+
+    setFollowupOpen(true);
+  };
+
+  const saveFollowup = async () => {
+    if (!selectedLead) return;
+
+    if (!followupForm.tarefa.trim()) {
+      showNotice({ type: "error", text: "Selecione uma tarefa para o follow-up." });
+      return;
+    }
+
+    if (!followupForm.data || !followupForm.hora) {
+      showNotice({ type: "error", text: "Informe a data e o horário do follow-up." });
+      return;
+    }
+
+    setSavingFollowup(true);
+    try {
+      const form = new FormData();
+      form.append("action", "update");
+      form.append("id", String(selectedLead.id));
+      form.append("followup_tarefa", followupForm.tarefa);
+      form.append("followup_status", "PENDENTE");
+      form.append("proxima_acao", `${followupForm.data}T${followupForm.hora}`);
+
+      const response = await fetch(API_URL, { method: "POST", body: form });
+      const data = await parseJsonResponse(response);
+
+      if (!response.ok || !data?.sucesso) {
+        throw new Error(data?.erro || "Não foi possível salvar o follow-up.");
+      }
+
+      await fetchLeads();
+      setFollowupClock(Date.now());
+      setFollowupOpen(false);
+      setSelectedLead(null);
+      showNotice({ type: "success", text: "Follow-up agendado com sucesso." });
+    } catch (error) {
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Erro ao salvar follow-up.",
+      });
+    } finally {
+      setSavingFollowup(false);
+    }
+  };
+
+  const completeFollowup = async () => {
+    if (!selectedLead) return;
+
+    setSavingFollowup(true);
+    try {
+      const form = new FormData();
+      form.append("action", "update");
+      form.append("id", String(selectedLead.id));
+      form.append("followup_status", "CONCLUIDO");
+      form.append("proxima_acao", "");
+
+      const response = await fetch(API_URL, { method: "POST", body: form });
+      const data = await parseJsonResponse(response);
+
+      if (!response.ok || !data?.sucesso) {
+        throw new Error(data?.erro || "Não foi possível concluir o follow-up.");
+      }
+
+      await fetchLeads();
+      setFollowupClock(Date.now());
+      setFollowupOpen(false);
+      setSelectedLead(null);
+      showNotice({ type: "success", text: "Follow-up concluído." });
+    } catch (error) {
+      showNotice({
+        type: "error",
+        text: error instanceof Error ? error.message : "Erro ao concluir follow-up.",
+      });
+    } finally {
+      setSavingFollowup(false);
+    }
   };
 
   const openInteraction = (lead: LeadProspeccao) => {
@@ -1889,12 +2120,6 @@ export const ControleLeadsView: React.FC = () => {
     return digits ? `https://wa.me/${digits}` : "";
   };
 
-  const isFollowupLate = (value?: string | null) => {
-    if (!value) return false;
-    const date = new Date(value.includes("T") ? value : value.replace(" ", "T"));
-    return !Number.isNaN(date.getTime()) && date.getTime() < Date.now();
-  };
-
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -2120,7 +2345,7 @@ export const ControleLeadsView: React.FC = () => {
                       </div>
                     ) : (
                       columnLeads.map((lead) => {
-                        const late = isFollowupLate(lead.proxima_acao);
+                        const followupVisual = getFollowupVisual(lead, followupClock);
                         const dragging = draggedLeadId === Number(lead.id);
                         const isDragOver = dragOverLeadId === Number(lead.id);
 
@@ -2224,29 +2449,33 @@ export const ControleLeadsView: React.FC = () => {
                                   )}
                                 </div>
 
-                                <div
-                                  className={`mt-3 rounded-lg border px-2.5 py-2 ${
-                                    late
-                                      ? "border-rose-200 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/25"
-                                      : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
-                                  }`}
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openFollowup(lead);
+                                  }}
+                                  className={`mt-3 w-full rounded-lg border px-2.5 py-2 text-left transition ${followupVisual.containerClass}`}
+                                  title="Abrir tarefa de follow-up"
                                 >
-                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                    <CalendarClock
-                                      className={`h-3.5 w-3.5 ${
-                                        late ? "text-rose-500" : "text-indigo-500"
-                                      }`}
-                                    />
-                                    {lead.proxima_acao
-                                      ? `Follow-up: ${formatDateTime(lead.proxima_acao)}`
-                                      : "Sem próximo follow-up"}
+                                  <div className={`flex items-center gap-1.5 text-[10px] font-black ${followupVisual.textClass}`}>
+                                    <CalendarClock className={`h-3.5 w-3.5 ${followupVisual.iconClass}`} />
+                                    <span className="truncate">
+                                      {safe(lead.followup_tarefa) ||
+                                        (lead.proxima_acao ? "Follow-up" : "Adicionar follow-up")}
+                                    </span>
                                   </div>
-                                  {late && (
-                                    <div className="mt-1 text-[9px] font-black uppercase tracking-wide text-rose-600 dark:text-rose-400">
-                                      Ação atrasada
-                                    </div>
-                                  )}
-                                </div>
+                                  <div className={`mt-1 flex items-center justify-between gap-2 text-[9px] font-bold ${followupVisual.textClass}`}>
+                                    <span>
+                                      {lead.proxima_acao
+                                        ? formatDateTime(lead.proxima_acao)
+                                        : followupVisual.label}
+                                    </span>
+                                    <span className="rounded-full bg-white/70 px-2 py-0.5 uppercase tracking-wide dark:bg-slate-950/50">
+                                      {followupVisual.label}
+                                    </span>
+                                  </div>
+                                </button>
 
                                 <button
                                   type="button"
@@ -2370,7 +2599,7 @@ export const ControleLeadsView: React.FC = () => {
                 <th className="px-3 py-3 w-32">Meio</th>
                 <th className="px-3 py-3 w-44">Retorno</th>
                 <th className="px-3 py-3 w-36">Interesse</th>
-                <th className="px-3 py-3 w-44">Próxima ação</th>
+                <th className="px-3 py-3 w-52">Follow-up</th>
                 <th className="px-3 py-3 w-72">Observações</th>
                 <th className="px-3 py-3 w-28 text-center">Ações</th>
               </tr>
@@ -2481,13 +2710,39 @@ export const ControleLeadsView: React.FC = () => {
                     </td>
 
                     <td className="p-1">
-                      <input
-                        type="datetime-local"
-                        value={toInputDateTime(lead.proxima_acao)}
-                        onChange={(event) => patchLocalLead(lead.id, "proxima_acao", event.target.value)}
-                        onBlur={(event) => saveField(lead.id, "proxima_acao", event.target.value)}
-                        className="w-full rounded bg-transparent px-2 py-1.5 outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => openFollowup(lead)}
+                        className={`w-full rounded-lg border px-2.5 py-2 text-left transition ${
+                          getFollowupVisual(lead, followupClock).containerClass
+                        }`}
+                        title="Abrir tarefa de follow-up"
+                      >
+                        <div
+                          className={`flex items-center gap-1.5 text-[10px] font-black ${
+                            getFollowupVisual(lead, followupClock).textClass
+                          }`}
+                        >
+                          <CalendarClock
+                            className={`h-3.5 w-3.5 ${
+                              getFollowupVisual(lead, followupClock).iconClass
+                            }`}
+                          />
+                          <span className="max-w-[150px] truncate">
+                            {safe(lead.followup_tarefa) ||
+                              (lead.proxima_acao ? "Follow-up" : "Adicionar follow-up")}
+                          </span>
+                        </div>
+                        <div
+                          className={`mt-1 text-[9px] font-bold ${
+                            getFollowupVisual(lead, followupClock).textClass
+                          }`}
+                        >
+                          {lead.proxima_acao
+                            ? formatDateTime(lead.proxima_acao)
+                            : getFollowupVisual(lead, followupClock).label}
+                        </div>
+                      </button>
                     </td>
 
                     <td className="p-1">
@@ -3524,6 +3779,165 @@ export const ControleLeadsView: React.FC = () => {
               >
                 {savingMeeting && <Loader2 className="h-4 w-4 animate-spin" />}
                 {meetingForm.id ? "Salvar alterações" : "Agendar reunião"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {followupOpen && selectedLead && (
+        <Modal
+          title={`Follow-up — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`}
+          onClose={() => !savingFollowup && setFollowupOpen(false)}
+        >
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900/60 dark:bg-indigo-950/20">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400">
+                  <CalendarClock className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Tarefa de follow-up
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                    Escolha a tarefa e defina quando ela precisa ser executada.
+                  </p>
+                </div>
+              </div>
+
+              {selectedLead.proxima_acao && (
+                <div
+                  className={`mt-3 rounded-xl border px-3 py-2 ${
+                    getFollowupVisual(selectedLead, followupClock).containerClass
+                  }`}
+                >
+                  <div
+                    className={`flex flex-wrap items-center justify-between gap-2 text-[10px] font-black ${
+                      getFollowupVisual(selectedLead, followupClock).textClass
+                    }`}
+                  >
+                    <span>
+                      Atual: {safe(selectedLead.followup_tarefa) || "Follow-up"}
+                    </span>
+                    <span className="rounded-full bg-white/70 px-2 py-0.5 uppercase tracking-wide dark:bg-slate-950/50">
+                      {getFollowupVisual(selectedLead, followupClock).label}
+                    </span>
+                  </div>
+                  <div
+                    className={`mt-1 text-xs font-bold ${
+                      getFollowupVisual(selectedLead, followupClock).textClass
+                    }`}
+                  >
+                    {formatDateTime(selectedLead.proxima_acao)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2 text-xs font-extrabold text-slate-800 dark:text-slate-100">
+                Selecione a tarefa
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {FOLLOWUP_TASK_OPTIONS.map((task) => {
+                  const selected = followupForm.tarefa === task;
+                  return (
+                    <button
+                      type="button"
+                      key={task}
+                      onClick={() =>
+                        setFollowupForm((previous) => ({
+                          ...previous,
+                          tarefa: task,
+                        }))
+                      }
+                      className={`rounded-xl border px-3 py-2.5 text-left text-[11px] font-bold transition ${
+                        selected
+                          ? "border-indigo-500 bg-indigo-600 text-white shadow-sm"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-indigo-800 dark:hover:bg-indigo-950/20"
+                      }`}
+                    >
+                      {task}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField label="Data">
+                <input
+                  type="date"
+                  value={followupForm.data}
+                  onChange={(event) =>
+                    setFollowupForm((previous) => ({
+                      ...previous,
+                      data: event.target.value,
+                    }))
+                  }
+                  className="field-input"
+                />
+              </FormField>
+
+              <FormField label="Horário">
+                <input
+                  type="time"
+                  value={followupForm.hora}
+                  onChange={(event) =>
+                    setFollowupForm((previous) => ({
+                      ...previous,
+                      hora: event.target.value,
+                    }))
+                  }
+                  className="field-input"
+                />
+              </FormField>
+            </div>
+
+            <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-[10px] font-bold dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-3">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300">
+                Verde: tarefa para hoje
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300">
+                Amarelo: faltam até 2 horas
+              </div>
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-300">
+                Vermelho: horário atrasado
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+              {selectedLead.proxima_acao &&
+                safe(selectedLead.followup_status).toUpperCase() !== "CONCLUIDO" && (
+                  <button
+                    type="button"
+                    onClick={completeFollowup}
+                    disabled={savingFollowup}
+                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-300"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Concluir tarefa
+                  </button>
+                )}
+
+              <button
+                type="button"
+                onClick={saveFollowup}
+                disabled={
+                  savingFollowup ||
+                  !followupForm.tarefa ||
+                  !followupForm.data ||
+                  !followupForm.hora
+                }
+                className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingFollowup ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CalendarClock className="h-4 w-4" />
+                )}
+                Salvar follow-up
               </button>
             </div>
           </div>

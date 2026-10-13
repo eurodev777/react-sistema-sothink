@@ -32,7 +32,7 @@ import {
 
 import { apiService } from "./services/apiService";
 
-import { Menu, Plus, X } from "lucide-react";
+import { Link2, Menu, Paperclip, Plus, Trash2, X } from "lucide-react";
 
 import { DashboardTrafego } from "./components/DashboardTrafego";
 
@@ -119,6 +119,9 @@ export function App() {
   // Quick Create Job Modal State
 
   const [newJobModalOpen, setNewJobModalOpen] = useState(false);
+
+  const [newJobFiles, setNewJobFiles] = useState<File[]>([]);
+  const [newJobLinksText, setNewJobLinksText] = useState("");
 
   const [newJobData, setNewJobData] = useState<Partial<Job>>({
     cliente_id: "",
@@ -462,6 +465,19 @@ export function App() {
     setJobs((prev) => prev.filter((j) => j.id !== id));
   };
 
+  const normalizeJobLinks = (value: string) =>
+    Array.from(
+      new Set(
+        value
+          .split(/\r?\n|,/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .map((item) =>
+            /^https?:\/\//i.test(item) ? item : `https://${item}`,
+          ),
+      ),
+    );
+
   // Quick Create Job Submit
 
   const handleCreateNewJobSubmit = async (e: React.FormEvent) => {
@@ -513,6 +529,11 @@ export function App() {
       form.append("etiquetas", JSON.stringify(["SOCIAL"]));
 
       form.append("permitir_acesso_cliente", "0");
+      form.append("links", JSON.stringify(normalizeJobLinks(newJobLinksText)));
+
+      newJobFiles.forEach((file) => {
+        form.append("arquivos[]", file);
+      });
 
       const response = await fetch(
         "https://sothink.com.br/app/api/inserir?tabela=jobs",
@@ -557,6 +578,8 @@ export function App() {
 
         etiquetas: ["SOCIAL"],
       });
+      setNewJobFiles([]);
+      setNewJobLinksText("");
 
       showToast(
         "success",
@@ -958,6 +981,69 @@ export function App() {
                   placeholder="Resumo das necessidades e especificações do cliente..."
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
                 />
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                <div className="mb-2 flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200">
+                  <Paperclip className="h-4 w-4 text-indigo-500" />
+                  Arquivos / anexos
+                </div>
+                <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-xs font-bold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                  Selecionar arquivos
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) =>
+                      setNewJobFiles(Array.from(e.target.files || []))
+                    }
+                  />
+                </label>
+                {newJobFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {newJobFiles.map((file, index) => (
+                      <div
+                        key={`${file.name}-${file.size}-${index}`}
+                        className="flex items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 text-[11px] dark:bg-slate-900"
+                      >
+                        <span className="truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNewJobFiles((previous) =>
+                              previous.filter(
+                                (_, fileIndex) => fileIndex !== index,
+                              ),
+                            )
+                          }
+                          className="shrink-0 text-slate-400 hover:text-rose-500"
+                          title="Remover arquivo"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1 flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
+                  <Link2 className="h-4 w-4 text-indigo-500" />
+                  Links / referências
+                </label>
+                <textarea
+                  rows={3}
+                  value={newJobLinksText}
+                  onChange={(e) => setNewJobLinksText(e.target.value)}
+                  placeholder={
+                    "Cole um ou mais links, um por linha.\nEx.: drive.google.com/...\nhttps://figma.com/..."
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-800"
+                />
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Pode informar vários links, um por linha.
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">

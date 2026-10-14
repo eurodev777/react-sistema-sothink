@@ -40,6 +40,7 @@ interface DashboardViewProps {
       | "rh"
       | "atas"
       | "jobs"
+      | "operacional"
       | "relatorios"
       | "trafego"
       | "leads",
@@ -165,6 +166,39 @@ export const DashboardView = ({
             </div>
           )}
 
+                    {/* Card: Operacional */}
+          {podeAcessarAba("operacional") && (
+            <div
+              onClick={() => onNavigateTab("operacional")}
+              className="flex flex-col dark:bg-slate-900 bg-white rounded-2xl p-8 border dark:border-slate-800 border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-indigo-500 transition-all cursor-pointer group space-y-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="w-14 h-14 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <ClipboardList className="w-7 h-7 text-white" />
+                </div>
+
+                <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
+                  <span className="text-xs font-medium dark:text-white text-slate-600">
+                    Quadro Geral
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-3 flex-1">
+                <h2 className="text-2xl font-bold dark:text-white text-slate-900">
+                  Operacional
+                </h2>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-sm font-semibold text-blue-600 flex items-center gap-2 group-hover:text-blue-700 transition-colors">
+                  Acessar Módulo
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Card: Relatórios */}
           {podeAcessarAba("relatorios") && (
             <div
@@ -251,7 +285,7 @@ export const DashboardView = ({
 
               <div className="space-y-3 flex-1">
                 <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                  Controle de Leads
+                  Comercial
                 </h2>
               </div>
 

@@ -29,6 +29,7 @@ import * as XLSX from "xlsx";
 
 export type EtapaFunil =
   | "CONTATO"
+  | "CONTATO_REALIZADO"
   | "APRESENTACAO"
   | "AQUECIMENTO"
   | "NEGOCIACAO"
@@ -200,35 +201,42 @@ const KANBAN_COLUMNS: {
 }[] = [
   {
     id: "CONTATO",
-    title: "1. Contato",
-    description: "Primeira abordagem e conexão",
+    title: "1. Leads",
+    description: "Leads ainda não contatados",
     color: "border-sky-500",
     badge: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
   },
   {
+    id: "CONTATO_REALIZADO",
+    title: "2. Contato",
+    description: "Contato realizado com a empresa",
+    color: "border-cyan-500",
+    badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300",
+  },
+  {
     id: "APRESENTACAO",
-    title: "2. Apresentação",
+    title: "3. Apresentação",
     description: "Empresa e solução apresentadas",
     color: "border-indigo-500",
     badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300",
   },
   {
     id: "AQUECIMENTO",
-    title: "3. Aquecimento",
+    title: "4. Aquecimento",
     description: "Nutrição e construção de interesse",
     color: "border-amber-500",
     badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
   },
   {
     id: "NEGOCIACAO",
-    title: "4. Negociação",
+    title: "5. Negociação",
     description: "Proposta, objeções e condições",
     color: "border-violet-500",
     badge: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
   },
   {
     id: "FECHAMENTO",
-    title: "5. Fechamento",
+    title: "6. Fechamento",
     description: "Decisão final e conversão",
     color: "border-emerald-500",
     badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
@@ -237,6 +245,7 @@ const KANBAN_COLUMNS: {
 
 const normalizeEtapa = (value?: string | null): EtapaFunil => {
   const stage = safe(value).toUpperCase();
+  if (stage === "CONTATO_REALIZADO") return "CONTATO_REALIZADO";
   if (stage === "APRESENTACAO") return "APRESENTACAO";
   if (stage === "AQUECIMENTO") return "AQUECIMENTO";
   if (stage === "NEGOCIACAO") return "NEGOCIACAO";
@@ -883,7 +892,7 @@ export const ControleLeadsView: React.FC = () => {
       await fetchLeads();
       showNotice({
         type: "success",
-        text: "Lead criado com sucesso e colocado no topo de Contato.",
+        text: "Lead criado com sucesso e colocado no topo de Leads.",
       });
     } catch (error) {
       // Se a criação começou e algo depois falhou, evita deixar uma linha vazia perdida.
@@ -2147,7 +2156,7 @@ export const ControleLeadsView: React.FC = () => {
       <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Controle de Leads
+            Comercial
           </h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             CRM comercial com Kanban, histórico de contatos, follow-up e importação de Excel.

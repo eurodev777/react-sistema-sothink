@@ -27,6 +27,7 @@ export type ActiveTab =
   | "trafego"
   | "leads"
   | "portal"
+  | "operacional"
   | "api-docs";
 
 interface SidebarProps {
@@ -104,6 +105,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 label: "Jobs",
                 icon: <Kanban className="w-5 h-5" />,
                 badge: jCount,
+              },
+            ]
+          : []),
+
+        ...(pode("operacional")
+          ? [
+              {
+                id: "operacional" as ActiveTab,
+                label: "Operacional",
+                icon: <Headset className="w-5 h-5" />,
+                badge: 0,
               },
             ]
           : []),

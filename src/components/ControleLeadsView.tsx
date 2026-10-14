@@ -26,6 +26,7 @@ import * as XLSX from "xlsx";
 
 export type EtapaFunil =
   | "CONTATO"
+  | "CONTATO_REALIZADO"
   | "APRESENTACAO"
   | "AQUECIMENTO"
   | "NEGOCIACAO"
@@ -97,43 +98,55 @@ const KANBAN_COLUMNS: {
 }[] = [
   {
     id: "CONTATO",
-    title: "1. Contato",
-    description: "Primeira abordagem e conexão",
+    title: "1. Leads",
+    description: "Todos os leads ainda sem contato realizado",
     color: "border-sky-500",
     badge: "bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300",
   },
   {
+    id: "CONTATO_REALIZADO",
+    title: "2. Contato",
+    description: "Empresas em que o contato já foi realizado",
+    color: "border-cyan-500",
+    badge: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300",
+  },
+  {
     id: "APRESENTACAO",
-    title: "2. Apresentação",
+    title: "3. Apresentação",
     description: "Empresa e solução apresentadas",
     color: "border-indigo-500",
-    badge: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300",
+    badge:
+      "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300",
   },
   {
     id: "AQUECIMENTO",
-    title: "3. Aquecimento",
+    title: "4. Aquecimento",
     description: "Nutrição e construção de interesse",
     color: "border-amber-500",
-    badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    badge:
+      "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
   },
   {
     id: "NEGOCIACAO",
-    title: "4. Negociação",
+    title: "5. Negociação",
     description: "Proposta, objeções e condições",
     color: "border-violet-500",
-    badge: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+    badge:
+      "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
   },
   {
     id: "FECHAMENTO",
-    title: "5. Fechamento",
+    title: "6. Fechamento",
     description: "Decisão final e conversão",
     color: "border-emerald-500",
-    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    badge:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
   },
 ];
 
 const normalizeEtapa = (value?: string | null): EtapaFunil => {
   const stage = safe(value).toUpperCase();
+  if (stage === "CONTATO_REALIZADO") return "CONTATO_REALIZADO";
   if (stage === "APRESENTACAO") return "APRESENTACAO";
   if (stage === "AQUECIMENTO") return "AQUECIMENTO";
   if (stage === "NEGOCIACAO") return "NEGOCIACAO";
@@ -175,7 +188,9 @@ const RETORNO_OPTIONS = [
 const INTERESSE_OPTIONS = ["NÃO AVALIADO", "BAIXO", "MÉDIO", "ALTO"];
 
 const safe = (value: unknown) =>
-  value === null || value === undefined || value === "null" ? "" : String(value);
+  value === null || value === undefined || value === "null"
+    ? ""
+    : String(value);
 
 const nowForInput = () => {
   const date = new Date();
@@ -300,7 +315,10 @@ export const ControleLeadsView: React.FC = () => {
     } catch (error) {
       console.error("Erro ao carregar leads:", error);
       setLeads([]);
-      showNotice({ type: "error", text: "Não foi possível carregar os leads." });
+      showNotice({
+        type: "error",
+        text: "Não foi possível carregar os leads.",
+      });
     } finally {
       setLoading(false);
     }
@@ -347,25 +365,35 @@ export const ControleLeadsView: React.FC = () => {
   const kpis = useMemo(() => {
     const total = leads.length;
     const novos = leads.filter((lead) => lead.status === "NOVO").length;
-    const contatados = leads.filter((lead) => Boolean(lead.ultimo_contato)).length;
-    const interessados = leads.filter((lead) =>
-      ["INTERESSADO", "REUNIÃO AGENDADA", "CONVERTIDO"].includes(lead.status)
+    const contatados = leads.filter((lead) =>
+      Boolean(lead.ultimo_contato),
     ).length;
-    const convertidos = leads.filter((lead) => lead.status === "CONVERTIDO").length;
+    const interessados = leads.filter((lead) =>
+      ["INTERESSADO", "REUNIÃO AGENDADA", "CONVERTIDO"].includes(lead.status),
+    ).length;
+    const convertidos = leads.filter(
+      (lead) => lead.status === "CONVERTIDO",
+    ).length;
 
     return { total, novos, contatados, interessados, convertidos };
   }, [leads]);
 
-  const patchLocalLead = (id: number, field: keyof LeadProspeccao, value: string) => {
+  const patchLocalLead = (
+    id: number,
+    field: keyof LeadProspeccao,
+    value: string,
+  ) => {
     setLeads((previous) =>
-      previous.map((lead) => (lead.id === id ? { ...lead, [field]: value } : lead))
+      previous.map((lead) =>
+        lead.id === id ? { ...lead, [field]: value } : lead,
+      ),
     );
   };
 
   const saveField = async (
     id: number,
     field: keyof LeadProspeccao,
-    value: string
+    value: string,
   ) => {
     patchLocalLead(id, field, value);
 
@@ -384,7 +412,8 @@ export const ControleLeadsView: React.FC = () => {
       console.error(error);
       showNotice({
         type: "error",
-        text: error instanceof Error ? error.message : "Erro ao salvar alteração.",
+        text:
+          error instanceof Error ? error.message : "Erro ao salvar alteração.",
       });
       fetchLeads();
     }
@@ -398,9 +427,13 @@ export const ControleLeadsView: React.FC = () => {
     try {
       const response = await fetch(API_URL, { method: "POST", body: form });
       const data = await parseJsonResponse(response);
-      if (!response.ok || !data.sucesso) throw new Error(data.erro || "Erro ao criar lead.");
+      if (!response.ok || !data.sucesso)
+        throw new Error(data.erro || "Erro ao criar lead.");
       await fetchLeads();
-      showNotice({ type: "success", text: "Nova linha criada. Preencha os dados do lead." });
+      showNotice({
+        type: "success",
+        text: "Nova linha criada. Preencha os dados do lead.",
+      });
     } catch (error) {
       showNotice({
         type: "error",
@@ -410,7 +443,10 @@ export const ControleLeadsView: React.FC = () => {
   };
 
   const handleArchiveLead = async (lead: LeadProspeccao) => {
-    if (!window.confirm(`Arquivar o lead ${safe(lead.empresa) || `#${lead.id}`}?`)) return;
+    if (
+      !window.confirm(`Arquivar o lead ${safe(lead.empresa) || `#${lead.id}`}?`)
+    )
+      return;
 
     const form = new FormData();
     form.append("action", "delete");
@@ -419,7 +455,8 @@ export const ControleLeadsView: React.FC = () => {
     try {
       const response = await fetch(API_URL, { method: "POST", body: form });
       const data = await parseJsonResponse(response);
-      if (!response.ok || !data.sucesso) throw new Error(data.erro || "Erro ao arquivar lead.");
+      if (!response.ok || !data.sucesso)
+        throw new Error(data.erro || "Erro ao arquivar lead.");
       setLeads((previous) => previous.filter((item) => item.id !== lead.id));
       showNotice({ type: "success", text: "Lead arquivado com sucesso." });
     } catch (error) {
@@ -430,7 +467,9 @@ export const ControleLeadsView: React.FC = () => {
     }
   };
 
-  const handleExcelImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelImport = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -440,14 +479,21 @@ export const ControleLeadsView: React.FC = () => {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, {
-        defval: "",
-        raw: false,
-      });
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        firstSheet,
+        {
+          defval: "",
+          raw: false,
+        },
+      );
 
       const parsed = rows
         .map((row) => ({
-          empresa: getExcelValue(row, ["Empresa", "Razão Social", "Nome Fantasia"]),
+          empresa: getExcelValue(row, [
+            "Empresa",
+            "Razão Social",
+            "Nome Fantasia",
+          ]),
           cidade: getExcelValue(row, ["Cidade", "Município"]),
           estado: getExcelValue(row, ["Estado", "UF"]),
           segmento: getExcelValue(row, ["Segmento", "Ramo", "Categoria"]),
@@ -464,7 +510,7 @@ export const ControleLeadsView: React.FC = () => {
 
       if (parsed.length === 0) {
         throw new Error(
-          "Não encontrei leads válidos. Confira se a planilha possui colunas como Empresa, Cidade, Segmento, Site, WhatsApp e E-mail."
+          "Não encontrei leads válidos. Confira se a planilha possui colunas como Empresa, Cidade, Segmento, Site, WhatsApp e E-mail.",
         );
       }
 
@@ -496,13 +542,14 @@ export const ControleLeadsView: React.FC = () => {
         type: errors > 0 ? "info" : "success",
         text: `Importação concluída: ${imported} novos, ${duplicates} duplicados ignorados${
           errors ? ` e ${errors} com erro` : ""
-        }.` ,
+        }.`,
       });
     } catch (error) {
       console.error(error);
       showNotice({
         type: "error",
-        text: error instanceof Error ? error.message : "Erro ao ler a planilha.",
+        text:
+          error instanceof Error ? error.message : "Erro ao ler a planilha.",
       });
     } finally {
       setImporting(false);
@@ -511,7 +558,10 @@ export const ControleLeadsView: React.FC = () => {
 
   const exportCSV = () => {
     if (filteredLeads.length === 0) {
-      showNotice({ type: "info", text: "Não há leads no filtro atual para exportar." });
+      showNotice({
+        type: "info",
+        text: "Não há leads no filtro atual para exportar.",
+      });
       return;
     }
 
@@ -553,13 +603,13 @@ export const ControleLeadsView: React.FC = () => {
 
     const csv = [headers, ...lines]
       .map((row) =>
-        row
-          .map((cell) => `"${safe(cell).replace(/"/g, '""')}"`)
-          .join(";")
+        row.map((cell) => `"${safe(cell).replace(/"/g, '""')}"`).join(";"),
       )
       .join("\n");
 
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -607,11 +657,15 @@ export const ControleLeadsView: React.FC = () => {
       setInteractionOpen(false);
       setSelectedLead(null);
       await fetchLeads();
-      showNotice({ type: "success", text: "Contato registrado no histórico do lead." });
+      showNotice({
+        type: "success",
+        text: "Contato registrado no histórico do lead.",
+      });
     } catch (error) {
       showNotice({
         type: "error",
-        text: error instanceof Error ? error.message : "Erro ao registrar contato.",
+        text:
+          error instanceof Error ? error.message : "Erro ao registrar contato.",
       });
     } finally {
       setSavingInteraction(false);
@@ -625,12 +679,17 @@ export const ControleLeadsView: React.FC = () => {
     setHistory([]);
 
     try {
-      const response = await fetch(`${API_URL}?action=history&lead_id=${lead.id}`);
+      const response = await fetch(
+        `${API_URL}?action=history&lead_id=${lead.id}`,
+      );
       const data = await parseJsonResponse(response);
       setHistory(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
-      showNotice({ type: "error", text: "Não foi possível carregar o histórico." });
+      showNotice({
+        type: "error",
+        text: "Não foi possível carregar o histórico.",
+      });
     } finally {
       setHistoryLoading(false);
     }
@@ -645,8 +704,12 @@ export const ControleLeadsView: React.FC = () => {
 
       if (safeA !== safeB) return safeA - safeB;
 
-      const dateA = a.data_criacao ? new Date(a.data_criacao.replace(" ", "T")).getTime() : 0;
-      const dateB = b.data_criacao ? new Date(b.data_criacao.replace(" ", "T")).getTime() : 0;
+      const dateA = a.data_criacao
+        ? new Date(a.data_criacao.replace(" ", "T")).getTime()
+        : 0;
+      const dateB = b.data_criacao
+        ? new Date(b.data_criacao.replace(" ", "T")).getTime()
+        : 0;
       if (dateA !== dateB) return dateA - dateB;
 
       return Number(a.id) - Number(b.id);
@@ -654,12 +717,14 @@ export const ControleLeadsView: React.FC = () => {
 
   const getSortedStageLeads = (stage: EtapaFunil) =>
     sortLeadsByOrder(
-      filteredLeads.filter((lead) => normalizeEtapa(lead.etapa_funil) === stage)
+      filteredLeads.filter(
+        (lead) => normalizeEtapa(lead.etapa_funil) === stage,
+      ),
     );
 
   const getAllSortedStageLeads = (stage: EtapaFunil) =>
     sortLeadsByOrder(
-      leads.filter((lead) => normalizeEtapa(lead.etapa_funil) === stage)
+      leads.filter((lead) => normalizeEtapa(lead.etapa_funil) === stage),
     );
 
   const getLoggedUser = () => {
@@ -674,7 +739,7 @@ export const ControleLeadsView: React.FC = () => {
   const applyKanbanUpdates = (updates: LeadProspeccao[]) => {
     const map = new Map(updates.map((lead) => [Number(lead.id), lead]));
     setLeads((previous) =>
-      previous.map((lead) => map.get(Number(lead.id)) || lead)
+      previous.map((lead) => map.get(Number(lead.id)) || lead),
     );
   };
 
@@ -691,23 +756,25 @@ export const ControleLeadsView: React.FC = () => {
           id: Number(lead.id),
           etapa_funil: normalizeEtapa(lead.etapa_funil),
           ordem: Number(lead.ordem) || 0,
-        }))
-      )
+        })),
+      ),
     );
     form.append(
       "responsavel_id",
-      String(loggedUser?.id || loggedUser?.usuario_id || "")
+      String(loggedUser?.id || loggedUser?.usuario_id || ""),
     );
     form.append(
       "responsavel_nome",
-      String(loggedUser?.nome || loggedUser?.name || "")
+      String(loggedUser?.nome || loggedUser?.name || ""),
     );
 
     const response = await fetch(API_URL, { method: "POST", body: form });
     const data = await parseJsonResponse(response);
 
     if (!response.ok || !data.sucesso) {
-      throw new Error(data.erro || "Não foi possível salvar a posição do lead.");
+      throw new Error(
+        data.erro || "Não foi possível salvar a posição do lead.",
+      );
     }
   };
 
@@ -727,14 +794,14 @@ export const ControleLeadsView: React.FC = () => {
 
   const handleDropOnCard = async (
     event: React.DragEvent,
-    targetLead: LeadProspeccao
+    targetLead: LeadProspeccao,
   ) => {
     event.preventDefault();
     event.stopPropagation();
     setDragOverLeadId(null);
 
     const sourceId = Number(
-      event.dataTransfer.getData("text/plain") || draggedLeadId
+      event.dataTransfer.getData("text/plain") || draggedLeadId,
     );
     if (!sourceId || sourceId === Number(targetLead.id)) return;
 
@@ -745,10 +812,10 @@ export const ControleLeadsView: React.FC = () => {
     const targetStage = normalizeEtapa(targetLead.etapa_funil);
 
     const targetColumn = getAllSortedStageLeads(targetStage).filter(
-      (lead) => Number(lead.id) !== sourceId
+      (lead) => Number(lead.id) !== sourceId,
     );
     const targetIndex = targetColumn.findIndex(
-      (lead) => Number(lead.id) === Number(targetLead.id)
+      (lead) => Number(lead.id) === Number(targetLead.id),
     );
 
     const movedLead: LeadProspeccao = {
@@ -756,7 +823,11 @@ export const ControleLeadsView: React.FC = () => {
       etapa_funil: targetStage,
     };
 
-    targetColumn.splice(targetIndex < 0 ? targetColumn.length : targetIndex, 0, movedLead);
+    targetColumn.splice(
+      targetIndex < 0 ? targetColumn.length : targetIndex,
+      0,
+      movedLead,
+    );
 
     const targetUpdates = targetColumn.map((lead, index) => ({
       ...lead,
@@ -797,12 +868,12 @@ export const ControleLeadsView: React.FC = () => {
 
   const handleDropColumn = async (
     event: React.DragEvent,
-    targetStage: EtapaFunil
+    targetStage: EtapaFunil,
   ) => {
     event.preventDefault();
 
     const sourceId = Number(
-      event.dataTransfer.getData("text/plain") || draggedLeadId
+      event.dataTransfer.getData("text/plain") || draggedLeadId,
     );
     if (!sourceId) return;
 
@@ -812,7 +883,7 @@ export const ControleLeadsView: React.FC = () => {
     const sourceStage = normalizeEtapa(sourceLead.etapa_funil);
 
     const targetColumn = getAllSortedStageLeads(targetStage).filter(
-      (lead) => Number(lead.id) !== sourceId
+      (lead) => Number(lead.id) !== sourceId,
     );
 
     targetColumn.push({
@@ -869,13 +940,13 @@ export const ControleLeadsView: React.FC = () => {
 
   const moveLeadToStage = async (
     lead: LeadProspeccao,
-    targetStage: EtapaFunil
+    targetStage: EtapaFunil,
   ) => {
     const sourceStage = normalizeEtapa(lead.etapa_funil);
     if (sourceStage === targetStage) return;
 
     const targetColumn = getAllSortedStageLeads(targetStage).filter(
-      (item) => Number(item.id) !== Number(lead.id)
+      (item) => Number(item.id) !== Number(lead.id),
     );
     targetColumn.push({ ...lead, etapa_funil: targetStage });
 
@@ -918,7 +989,9 @@ export const ControleLeadsView: React.FC = () => {
 
   const isFollowupLate = (value?: string | null) => {
     if (!value) return false;
-    const date = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+    const date = new Date(
+      value.includes("T") ? value : value.replace(" ", "T"),
+    );
     return !Number.isNaN(date.getTime()) && date.getTime() < Date.now();
   };
 
@@ -938,8 +1011,8 @@ export const ControleLeadsView: React.FC = () => {
             notice.type === "success"
               ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
               : notice.type === "error"
-              ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
-              : "border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300"
+                ? "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
+                : "border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300"
           }`}
         >
           {notice.text}
@@ -949,10 +1022,11 @@ export const ControleLeadsView: React.FC = () => {
       <div className="flex flex-col gap-4 border-b border-slate-300 pb-4 dark:border-slate-700 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Controle de Leads
+            Comercial
           </h1>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            CRM comercial com Kanban, histórico de contatos, follow-up e importação de Excel.
+            CRM comercial com Kanban, histórico de contatos, follow-up e
+            importação de Excel.
           </p>
         </div>
 
@@ -1019,8 +1093,16 @@ export const ControleLeadsView: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiCard icon={<Users className="h-4 w-4" />} label="Total" value={kpis.total} />
-        <KpiCard icon={<Plus className="h-4 w-4" />} label="Novos" value={kpis.novos} />
+        <KpiCard
+          icon={<Users className="h-4 w-4" />}
+          label="Total"
+          value={kpis.total}
+        />
+        <KpiCard
+          icon={<Plus className="h-4 w-4" />}
+          label="Novos"
+          value={kpis.novos}
+        />
         <KpiCard
           icon={<MessageSquarePlus className="h-4 w-4" />}
           label="Contatados"
@@ -1178,14 +1260,14 @@ export const ControleLeadsView: React.FC = () => {
                                       )}
                                       <span
                                         className={`rounded-full px-2 py-0.5 text-[9px] font-black ${interestClass(
-                                          lead.interesse
+                                          lead.interesse,
                                         )}`}
                                       >
                                         {safe(lead.interesse) || "NÃO AVALIADO"}
                                       </span>
                                       <span
                                         className={`rounded-full px-2 py-0.5 text-[9px] font-black ${statusClass(
-                                          lead.status
+                                          lead.status,
                                         )}`}
                                       >
                                         {safe(lead.status) || "NOVO"}
@@ -1212,7 +1294,9 @@ export const ControleLeadsView: React.FC = () => {
                                         href={whatsappLink(lead.whatsapp)}
                                         target="_blank"
                                         rel="noreferrer"
-                                        onClick={(event) => event.stopPropagation()}
+                                        onClick={(event) =>
+                                          event.stopPropagation()
+                                        }
                                         className="truncate font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
                                       >
                                         {lead.whatsapp}
@@ -1225,7 +1309,9 @@ export const ControleLeadsView: React.FC = () => {
                                       <Mail className="h-3.5 w-3.5 shrink-0" />
                                       <a
                                         href={`mailto:${lead.email}`}
-                                        onClick={(event) => event.stopPropagation()}
+                                        onClick={(event) =>
+                                          event.stopPropagation()
+                                        }
                                         className="truncate hover:text-indigo-600 hover:underline dark:hover:text-indigo-400"
                                       >
                                         {lead.email}
@@ -1244,7 +1330,9 @@ export const ControleLeadsView: React.FC = () => {
                                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                                     <CalendarClock
                                       className={`h-3.5 w-3.5 ${
-                                        late ? "text-rose-500" : "text-indigo-500"
+                                        late
+                                          ? "text-rose-500"
+                                          : "text-indigo-500"
                                       }`}
                                     />
                                     {lead.proxima_acao
@@ -1308,209 +1396,295 @@ export const ControleLeadsView: React.FC = () => {
           </div>
         </div>
       ) : (
-      <div className="overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-          <div>
-            <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
-              Funil de Prospecção
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {filteredLeads.length} lead(s) no filtro atual
-            </p>
+        <div className="overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex items-center justify-between border-b border-slate-300 bg-slate-200/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <div>
+              <h2 className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                Funil de Prospecção
+              </h2>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {filteredLeads.length} lead(s) no filtro atual
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[2380px] whitespace-nowrap text-left text-xs">
-            <thead className="bg-slate-300/70 text-[10px] font-bold uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              <tr>
-                <th className="px-3 py-3 w-44">Etapa CRM</th>
-                <th className="px-3 py-3 w-48">Status</th>
-                <th className="px-3 py-3 w-64">Empresa</th>
-                <th className="px-3 py-3 w-40">Cidade</th>
-                <th className="px-3 py-3 w-64">Segmento</th>
-                <th className="px-3 py-3 w-56">Site</th>
-                <th className="px-3 py-3 w-52">Contato</th>
-                <th className="px-3 py-3 w-56">WhatsApp</th>
-                <th className="px-3 py-3 w-64">E-mail</th>
-                <th className="px-3 py-3 w-40">Último contato</th>
-                <th className="px-3 py-3 w-32">Meio</th>
-                <th className="px-3 py-3 w-44">Retorno</th>
-                <th className="px-3 py-3 w-36">Interesse</th>
-                <th className="px-3 py-3 w-44">Próxima ação</th>
-                <th className="px-3 py-3 w-72">Observações</th>
-                <th className="px-3 py-3 w-28 text-center">Ações</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-200 text-slate-800 dark:divide-slate-800 dark:text-slate-200">
-              {filteredLeads.length === 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[2380px] whitespace-nowrap text-left text-xs">
+              <thead className="bg-slate-300/70 text-[10px] font-bold uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 <tr>
-                  <td colSpan={16} className="py-12 text-center text-slate-400">
-                    Nenhum lead encontrado para este filtro.
-                  </td>
+                  <th className="px-3 py-3 w-44">Etapa CRM</th>
+                  <th className="px-3 py-3 w-48">Status</th>
+                  <th className="px-3 py-3 w-64">Empresa</th>
+                  <th className="px-3 py-3 w-40">Cidade</th>
+                  <th className="px-3 py-3 w-64">Segmento</th>
+                  <th className="px-3 py-3 w-56">Site</th>
+                  <th className="px-3 py-3 w-52">Contato</th>
+                  <th className="px-3 py-3 w-56">WhatsApp</th>
+                  <th className="px-3 py-3 w-64">E-mail</th>
+                  <th className="px-3 py-3 w-40">Último contato</th>
+                  <th className="px-3 py-3 w-32">Meio</th>
+                  <th className="px-3 py-3 w-44">Retorno</th>
+                  <th className="px-3 py-3 w-36">Interesse</th>
+                  <th className="px-3 py-3 w-44">Próxima ação</th>
+                  <th className="px-3 py-3 w-72">Observações</th>
+                  <th className="px-3 py-3 w-28 text-center">Ações</th>
                 </tr>
-              ) : (
-                filteredLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="group bg-slate-100/70 transition-colors hover:bg-slate-200/70 dark:bg-slate-900 dark:hover:bg-slate-800/70"
-                  >
-                    <td className="p-1">
-                      <select
-                        value={normalizeEtapa(lead.etapa_funil)}
-                        onChange={(event) =>
-                          moveLeadToStage(
-                            lead,
-                            event.target.value as EtapaFunil
-                          )
-                        }
-                        className="w-full cursor-pointer rounded bg-slate-200 px-2 py-1.5 font-bold text-slate-700 outline-none dark:bg-slate-800 dark:text-slate-200"
-                      >
-                        {KANBAN_COLUMNS.map((column) => (
-                          <option key={column.id} value={column.id}>
-                            {column.title.replace(/^\d+\.\s*/, "")}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+              </thead>
 
-                    <td className="p-1">
-                      <select
-                        value={safe(lead.status) || "NOVO"}
-                        onChange={(event) => saveField(lead.id, "status", event.target.value)}
-                        className={`w-full cursor-pointer rounded px-2 py-1.5 font-bold outline-none ${statusClass(
-                          lead.status
-                        )}`}
-                      >
-                        {STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status} className="bg-white text-slate-800">
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    <td className="p-1">
-                      <div className="flex items-center gap-1">
-                        <input
-                          value={safe(lead.empresa)}
-                          onChange={(event) => patchLocalLead(lead.id, "empresa", event.target.value)}
-                          onBlur={(event) => saveField(lead.id, "empresa", event.target.value)}
-                          placeholder="Nome da empresa"
-                          className="min-w-0 flex-1 rounded bg-transparent px-2 py-1.5 font-semibold outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
-                        />
-                        {lead.site && (
-                          <a
-                            href={lead.site.startsWith("http") ? lead.site : `https://${lead.site}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Abrir site"
-                            className="rounded p-1 text-slate-400 hover:bg-white hover:text-indigo-600 dark:hover:bg-slate-950"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        )}
-                      </div>
-                    </td>
-
-                    <EditableCell lead={lead} field="cidade" onLocal={patchLocalLead} onSave={saveField} />
-                    <EditableCell lead={lead} field="segmento" onLocal={patchLocalLead} onSave={saveField} />
-                    <EditableCell lead={lead} field="site" onLocal={patchLocalLead} onSave={saveField} />
-                    <EditableCell lead={lead} field="contato_nome" onLocal={patchLocalLead} onSave={saveField} />
-                    <EditableCell lead={lead} field="whatsapp" onLocal={patchLocalLead} onSave={saveField} />
-                    <EditableCell lead={lead} field="email" onLocal={patchLocalLead} onSave={saveField} />
-
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                      {formatDateTime(lead.ultimo_contato)}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                      {safe(lead.meio_contato) || "—"}
-                    </td>
-                    <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                      {safe(lead.retorno) || "—"}
-                    </td>
-
-                    <td className="p-1">
-                      <select
-                        value={safe(lead.interesse) || "NÃO AVALIADO"}
-                        onChange={(event) => saveField(lead.id, "interesse", event.target.value)}
-                        className={`w-full cursor-pointer rounded px-2 py-1.5 font-bold outline-none ${interestClass(
-                          lead.interesse
-                        )}`}
-                      >
-                        {INTERESSE_OPTIONS.map((interest) => (
-                          <option key={interest} value={interest} className="bg-white text-slate-800">
-                            {interest}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    <td className="p-1">
-                      <input
-                        type="datetime-local"
-                        value={toInputDateTime(lead.proxima_acao)}
-                        onChange={(event) => patchLocalLead(lead.id, "proxima_acao", event.target.value)}
-                        onBlur={(event) => saveField(lead.id, "proxima_acao", event.target.value)}
-                        className="w-full rounded bg-transparent px-2 py-1.5 outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
-                      />
-                    </td>
-
-                    <td className="p-1">
-                      <input
-                        value={safe(lead.observacoes)}
-                        onChange={(event) => patchLocalLead(lead.id, "observacoes", event.target.value)}
-                        onBlur={(event) => saveField(lead.id, "observacoes", event.target.value)}
-                        placeholder="Observação geral..."
-                        className="w-full rounded bg-transparent px-2 py-1.5 outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
-                      />
-                    </td>
-
-                    <td className="p-1 text-center">
-                      <div className="flex justify-center gap-1">
-                        <button
-                          onClick={() => openInteraction(lead)}
-                          title="Registrar contato"
-                          className="cursor-pointer rounded p-1.5 text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-slate-800"
-                        >
-                          <MessageSquarePlus className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => openHistory(lead)}
-                          title="Ver histórico"
-                          className="cursor-pointer rounded p-1.5 text-slate-500 transition hover:bg-white dark:text-slate-400 dark:hover:bg-slate-800"
-                        >
-                          <History className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleArchiveLead(lead)}
-                          title="Arquivar lead"
-                          className="cursor-pointer rounded p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
-                        >
-                          <Archive className="h-4 w-4" />
-                        </button>
-                      </div>
+              <tbody className="divide-y divide-slate-200 text-slate-800 dark:divide-slate-800 dark:text-slate-200">
+                {filteredLeads.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={16}
+                      className="py-12 text-center text-slate-400"
+                    >
+                      Nenhum lead encontrado para este filtro.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                ) : (
+                  filteredLeads.map((lead) => (
+                    <tr
+                      key={lead.id}
+                      className="group bg-slate-100/70 transition-colors hover:bg-slate-200/70 dark:bg-slate-900 dark:hover:bg-slate-800/70"
+                    >
+                      <td className="p-1">
+                        <select
+                          value={normalizeEtapa(lead.etapa_funil)}
+                          onChange={(event) =>
+                            moveLeadToStage(
+                              lead,
+                              event.target.value as EtapaFunil,
+                            )
+                          }
+                          className="w-full cursor-pointer rounded bg-slate-200 px-2 py-1.5 font-bold text-slate-700 outline-none dark:bg-slate-800 dark:text-slate-200"
+                        >
+                          {KANBAN_COLUMNS.map((column) => (
+                            <option key={column.id} value={column.id}>
+                              {column.title.replace(/^\d+\.\s*/, "")}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
 
+                      <td className="p-1">
+                        <select
+                          value={safe(lead.status) || "NOVO"}
+                          onChange={(event) =>
+                            saveField(lead.id, "status", event.target.value)
+                          }
+                          className={`w-full cursor-pointer rounded px-2 py-1.5 font-bold outline-none ${statusClass(
+                            lead.status,
+                          )}`}
+                        >
+                          {STATUS_OPTIONS.map((status) => (
+                            <option
+                              key={status}
+                              value={status}
+                              className="bg-white text-slate-800"
+                            >
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="p-1">
+                        <div className="flex items-center gap-1">
+                          <input
+                            value={safe(lead.empresa)}
+                            onChange={(event) =>
+                              patchLocalLead(
+                                lead.id,
+                                "empresa",
+                                event.target.value,
+                              )
+                            }
+                            onBlur={(event) =>
+                              saveField(lead.id, "empresa", event.target.value)
+                            }
+                            placeholder="Nome da empresa"
+                            className="min-w-0 flex-1 rounded bg-transparent px-2 py-1.5 font-semibold outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
+                          />
+                          {lead.site && (
+                            <a
+                              href={
+                                lead.site.startsWith("http")
+                                  ? lead.site
+                                  : `https://${lead.site}`
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Abrir site"
+                              className="rounded p-1 text-slate-400 hover:bg-white hover:text-indigo-600 dark:hover:bg-slate-950"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      <EditableCell
+                        lead={lead}
+                        field="cidade"
+                        onLocal={patchLocalLead}
+                        onSave={saveField}
+                      />
+                      <EditableCell
+                        lead={lead}
+                        field="segmento"
+                        onLocal={patchLocalLead}
+                        onSave={saveField}
+                      />
+                      <EditableCell
+                        lead={lead}
+                        field="site"
+                        onLocal={patchLocalLead}
+                        onSave={saveField}
+                      />
+                      <EditableCell
+                        lead={lead}
+                        field="contato_nome"
+                        onLocal={patchLocalLead}
+                        onSave={saveField}
+                      />
+                      <EditableCell
+                        lead={lead}
+                        field="whatsapp"
+                        onLocal={patchLocalLead}
+                        onSave={saveField}
+                      />
+                      <EditableCell
+                        lead={lead}
+                        field="email"
+                        onLocal={patchLocalLead}
+                        onSave={saveField}
+                      />
+
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {formatDateTime(lead.ultimo_contato)}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {safe(lead.meio_contato) || "—"}
+                      </td>
+                      <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {safe(lead.retorno) || "—"}
+                      </td>
+
+                      <td className="p-1">
+                        <select
+                          value={safe(lead.interesse) || "NÃO AVALIADO"}
+                          onChange={(event) =>
+                            saveField(lead.id, "interesse", event.target.value)
+                          }
+                          className={`w-full cursor-pointer rounded px-2 py-1.5 font-bold outline-none ${interestClass(
+                            lead.interesse,
+                          )}`}
+                        >
+                          {INTERESSE_OPTIONS.map((interest) => (
+                            <option
+                              key={interest}
+                              value={interest}
+                              className="bg-white text-slate-800"
+                            >
+                              {interest}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
+                      <td className="p-1">
+                        <input
+                          type="datetime-local"
+                          value={toInputDateTime(lead.proxima_acao)}
+                          onChange={(event) =>
+                            patchLocalLead(
+                              lead.id,
+                              "proxima_acao",
+                              event.target.value,
+                            )
+                          }
+                          onBlur={(event) =>
+                            saveField(
+                              lead.id,
+                              "proxima_acao",
+                              event.target.value,
+                            )
+                          }
+                          className="w-full rounded bg-transparent px-2 py-1.5 outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
+                        />
+                      </td>
+
+                      <td className="p-1">
+                        <input
+                          value={safe(lead.observacoes)}
+                          onChange={(event) =>
+                            patchLocalLead(
+                              lead.id,
+                              "observacoes",
+                              event.target.value,
+                            )
+                          }
+                          onBlur={(event) =>
+                            saveField(
+                              lead.id,
+                              "observacoes",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="Observação geral..."
+                          className="w-full rounded bg-transparent px-2 py-1.5 outline-none transition hover:bg-white/70 focus:bg-white focus:ring-1 focus:ring-indigo-500 dark:hover:bg-slate-950 dark:focus:bg-slate-950"
+                        />
+                      </td>
+
+                      <td className="p-1 text-center">
+                        <div className="flex justify-center gap-1">
+                          <button
+                            onClick={() => openInteraction(lead)}
+                            title="Registrar contato"
+                            className="cursor-pointer rounded p-1.5 text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-slate-800"
+                          >
+                            <MessageSquarePlus className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => openHistory(lead)}
+                            title="Ver histórico"
+                            className="cursor-pointer rounded p-1.5 text-slate-500 transition hover:bg-white dark:text-slate-400 dark:hover:bg-slate-800"
+                          >
+                            <History className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleArchiveLead(lead)}
+                            title="Arquivar lead"
+                            className="cursor-pointer rounded p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {interactionOpen && selectedLead && (
-        <Modal title={`Registrar contato — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`} onClose={() => setInteractionOpen(false)}>
+        <Modal
+          title={`Registrar contato — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`}
+          onClose={() => setInteractionOpen(false)}
+        >
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Data e hora">
               <input
                 type="datetime-local"
                 value={interaction.data_contato}
                 onChange={(event) =>
-                  setInteraction((previous) => ({ ...previous, data_contato: event.target.value }))
+                  setInteraction((previous) => ({
+                    ...previous,
+                    data_contato: event.target.value,
+                  }))
                 }
                 className="field-input"
               />
@@ -1520,7 +1694,10 @@ export const ControleLeadsView: React.FC = () => {
               <select
                 value={interaction.meio_contato}
                 onChange={(event) =>
-                  setInteraction((previous) => ({ ...previous, meio_contato: event.target.value }))
+                  setInteraction((previous) => ({
+                    ...previous,
+                    meio_contato: event.target.value,
+                  }))
                 }
                 className="field-input"
               >
@@ -1534,7 +1711,10 @@ export const ControleLeadsView: React.FC = () => {
               <select
                 value={interaction.resultado}
                 onChange={(event) =>
-                  setInteraction((previous) => ({ ...previous, resultado: event.target.value }))
+                  setInteraction((previous) => ({
+                    ...previous,
+                    resultado: event.target.value,
+                  }))
                 }
                 className="field-input"
               >
@@ -1548,7 +1728,10 @@ export const ControleLeadsView: React.FC = () => {
               <select
                 value={interaction.interesse}
                 onChange={(event) =>
-                  setInteraction((previous) => ({ ...previous, interesse: event.target.value }))
+                  setInteraction((previous) => ({
+                    ...previous,
+                    interesse: event.target.value,
+                  }))
                 }
                 className="field-input"
               >
@@ -1562,7 +1745,10 @@ export const ControleLeadsView: React.FC = () => {
               <select
                 value={interaction.status_apos}
                 onChange={(event) =>
-                  setInteraction((previous) => ({ ...previous, status_apos: event.target.value }))
+                  setInteraction((previous) => ({
+                    ...previous,
+                    status_apos: event.target.value,
+                  }))
                 }
                 className="field-input"
               >
@@ -1577,7 +1763,10 @@ export const ControleLeadsView: React.FC = () => {
                 type="datetime-local"
                 value={interaction.proxima_acao}
                 onChange={(event) =>
-                  setInteraction((previous) => ({ ...previous, proxima_acao: event.target.value }))
+                  setInteraction((previous) => ({
+                    ...previous,
+                    proxima_acao: event.target.value,
+                  }))
                 }
                 className="field-input"
               />
@@ -1589,7 +1778,10 @@ export const ControleLeadsView: React.FC = () => {
                   rows={4}
                   value={interaction.observacao}
                   onChange={(event) =>
-                    setInteraction((previous) => ({ ...previous, observacao: event.target.value }))
+                    setInteraction((previous) => ({
+                      ...previous,
+                      observacao: event.target.value,
+                    }))
                   }
                   placeholder="Ex.: falei com o comercial, pediu apresentação por e-mail e retorno na sexta..."
                   className="field-input resize-none"
@@ -1610,7 +1802,9 @@ export const ControleLeadsView: React.FC = () => {
               disabled={savingInteraction}
               className="flex cursor-pointer items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {savingInteraction && <Loader2 className="h-4 w-4 animate-spin" />}
+              {savingInteraction && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               Registrar contato
             </button>
           </div>
@@ -1618,7 +1812,10 @@ export const ControleLeadsView: React.FC = () => {
       )}
 
       {historyOpen && selectedLead && (
-        <Modal title={`Histórico — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`} onClose={() => setHistoryOpen(false)}>
+        <Modal
+          title={`Histórico — ${safe(selectedLead.empresa) || `Lead #${selectedLead.id}`}`}
+          onClose={() => setHistoryOpen(false)}
+        >
           {historyLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
@@ -1644,15 +1841,28 @@ export const ControleLeadsView: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${interestClass(item.interesse || "")}`}>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${interestClass(item.interesse || "")}`}
+                    >
                       {item.interesse || "NÃO AVALIADO"}
                     </span>
                   </div>
                   <div className="mt-2 grid gap-1 text-xs text-slate-600 dark:text-slate-300">
-                    <div><strong>Retorno:</strong> {item.resultado || "—"}</div>
-                    <div><strong>Status:</strong> {item.status_apos || "—"}</div>
-                    <div><strong>Próxima ação:</strong> {formatDateTime(item.proxima_acao)}</div>
-                    {item.observacao && <div className="mt-1 whitespace-normal"><strong>Observação:</strong> {item.observacao}</div>}
+                    <div>
+                      <strong>Retorno:</strong> {item.resultado || "—"}
+                    </div>
+                    <div>
+                      <strong>Status:</strong> {item.status_apos || "—"}
+                    </div>
+                    <div>
+                      <strong>Próxima ação:</strong>{" "}
+                      {formatDateTime(item.proxima_acao)}
+                    </div>
+                    {item.observacao && (
+                      <div className="mt-1 whitespace-normal">
+                        <strong>Observação:</strong> {item.observacao}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1690,10 +1900,19 @@ interface EditableCellProps {
   lead: LeadProspeccao;
   field: "cidade" | "segmento" | "site" | "contato_nome" | "whatsapp" | "email";
   onLocal: (id: number, field: keyof LeadProspeccao, value: string) => void;
-  onSave: (id: number, field: keyof LeadProspeccao, value: string) => Promise<void>;
+  onSave: (
+    id: number,
+    field: keyof LeadProspeccao,
+    value: string,
+  ) => Promise<void>;
 }
 
-const EditableCell: React.FC<EditableCellProps> = ({ lead, field, onLocal, onSave }) => (
+const EditableCell: React.FC<EditableCellProps> = ({
+  lead,
+  field,
+  onLocal,
+  onSave,
+}) => (
   <td className="p-1">
     <input
       value={safe(lead[field])}
@@ -1704,23 +1923,30 @@ const EditableCell: React.FC<EditableCellProps> = ({ lead, field, onLocal, onSav
   </td>
 );
 
-const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: number }> = ({
-  icon,
-  label,
-  value,
-}) => (
+const KpiCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}> = ({ icon, label, value }) => (
   <div className="rounded-2xl border border-slate-300 bg-slate-100 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
     <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400">
       {icon}
       {label}
     </div>
-    <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{value}</div>
+    <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+      {value}
+    </div>
   </div>
 );
 
-const FormField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+const FormField: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
   <label className="block">
-    <span className="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">{label}</span>
+    <span className="mb-1.5 block text-xs font-bold text-slate-600 dark:text-slate-300">
+      {label}
+    </span>
     {children}
   </label>
 );
@@ -1733,7 +1959,9 @@ const Modal: React.FC<{
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
     <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
       <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
-        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</h3>
+        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+          {title}
+        </h3>
         <button
           onClick={onClose}
           className="cursor-pointer rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"

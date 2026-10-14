@@ -22,6 +22,7 @@ import {
   Archive,
   Link2,
   ExternalLink,
+  BriefcaseBusiness,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -153,6 +154,40 @@ const formatDateSafe = (
   }
 };
 
+const normalizeJobDateKey = (value: any): string => {
+  if (!value || String(value).startsWith("0000")) return "";
+  return String(value).split("T")[0].split(" ")[0];
+};
+
+const getJobDateKeys = (job: Job): string[] =>
+  Array.from(
+    new Set(
+      [
+        normalizeJobDateKey(job.data_inicio),
+        normalizeJobDateKey(job.data_entrega),
+      ].filter(Boolean),
+    ),
+  );
+
+const jobMatchesPeriod = (job: Job, month: string, day: string): boolean => {
+  const dates = getJobDateKeys(job);
+
+  if (day) {
+    return dates.includes(day);
+  }
+
+  if (month) {
+    return dates.some((date) => date.startsWith(`${month}-`));
+  }
+
+  return true;
+};
+
+const getCurrentMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
 interface JobsKanbanViewProps {
   jobs: Job[];
   clientes: EmpresaCliente[];
@@ -168,6 +203,7 @@ interface JobsKanbanViewProps {
   selectedJobFromApp?: Job | null;
   onClearSelectedJob?: () => void;
   onOpenNewJobModal: () => void;
+  onOpenOperationalBoard?: () => void;
 }
 
 export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
@@ -181,6 +217,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   selectedJobFromApp,
   onClearSelectedJob,
   onOpenNewJobModal,
+  onOpenOperationalBoard,
 }) => {
   const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "list">(
     "kanban",
@@ -190,6 +227,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
   const [filterResponsavel, setFilterResponsavel] = useState("all");
   const [filterUrgencia, setFilterUrgencia] = useState("all");
   const [filterTag, setFilterTag] = useState("all");
+  const [filterMonth, setFilterMonth] = useState(getCurrentMonthKey());
+  const [filterDay, setFilterDay] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [activeJob, setActiveJob] = useState<Job | null>(
     selectedJobFromApp || null,
@@ -529,13 +568,15 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     const matchesUrgencia =
       filterUrgencia === "all" || j.prioridade === filterUrgencia;
     const matchesTag = filterTag === "all" || j?.etiquetas?.includes(filterTag);
+    const matchesDate = jobMatchesPeriod(j, filterMonth, filterDay);
 
     return (
       matchesSearch &&
       matchesClient &&
       matchesResponsavel &&
       matchesUrgencia &&
-      matchesTag
+      matchesTag &&
+      matchesDate
     );
   });
 
@@ -909,6 +950,17 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
             {showArchived ? "Voltar aos Ativos" : "Ver Arquivados"}
           </button>
 
+          {onOpenOperationalBoard && (
+            <button
+              type="button"
+              onClick={onOpenOperationalBoard}
+              className="px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all border bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-700 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:border-indigo-700 dark:hover:text-indigo-300"
+            >
+              <BriefcaseBusiness className="w-4 h-4" />
+              Quadro Operacional
+            </button>
+          )}
+
           <button
             onClick={onOpenNewJobModal}
             className="btn-primary flex items-center gap-2"
@@ -919,7 +971,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
       </div>
 
       {/* Barras de Filtro */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 text-xs">
         <div className="relative">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -969,6 +1021,42 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           <option value="Crítico">Crítico</option>
         </select>
 
+        <div className="relative">
+          <span className="absolute left-3 top-1.5 text-[9px] font-bold uppercase tracking-wide text-slate-400">
+            Mês
+          </span>
+          <input
+            type="month"
+            value={filterMonth}
+            onChange={(e) => {
+              const month = e.target.value;
+              setFilterMonth(month);
+              if (filterDay && month && !filterDay.startsWith(`${month}-`)) {
+                setFilterDay("");
+              }
+            }}
+            title="Filtrar todos os jobs do mês"
+            className="w-full pt-4 pb-1.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+          />
+        </div>
+
+        <div className="relative">
+          <span className="absolute left-3 top-1.5 text-[9px] font-bold uppercase tracking-wide text-slate-400">
+            Dia específico
+          </span>
+          <input
+            type="date"
+            value={filterDay}
+            onChange={(e) => {
+              const day = e.target.value;
+              setFilterDay(day);
+              if (day) setFilterMonth(day.slice(0, 7));
+            }}
+            title="Opcional: mostrar somente os jobs deste dia"
+            className="w-full pt-4 pb-1.5 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+          />
+        </div>
+
         <select
           value={filterTag}
           onChange={(e) => setFilterTag(e.target.value)}
@@ -982,6 +1070,25 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           ))}
         </select>
       </div>
+
+      {(filterMonth || filterDay) && (
+        <div className="flex flex-wrap items-center gap-2 -mt-3 text-[10px] text-slate-500 dark:text-slate-400">
+          <span>
+            Exibindo jobs por {filterDay ? "dia" : "mês"} — considera{" "}
+            <strong>data de início ou entrega</strong>.
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setFilterMonth("");
+              setFilterDay("");
+            }}
+            className="font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+          >
+            Mostrar todos os períodos
+          </button>
+        </div>
+      )}
 
       {/* KANBAN */}
       {viewMode === "kanban" && (

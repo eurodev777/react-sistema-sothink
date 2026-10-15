@@ -13,6 +13,8 @@ import { User } from "../types";
 
 const API_URL = "https://sothink.com.br/app/api/operacional";
 const USERS_API_URL = "https://sothink.com.br/app/api/listar?tabela=usuarios";
+const CLIENTS_API_URL = "https://sothink.com.br/app/api/listar?tabela=clientes";
+const CREATE_JOB_API = "https://sothink.com.br/app/api/inserir?tabela=jobs";
 
 type AreaOperacional =
   | "SOCIAL"
@@ -63,6 +65,85 @@ interface FormAssunto {
   data_inicio: string;
   data_entrega: string;
 }
+
+type JobPrioridade = "Baixo" | "Médio" | "Alto" | "Crítico";
+
+const JOB_STATUS_OPTIONS = [
+  "Novos Jobs (Análise)",
+  "Aguardando Terceiros",
+  "Programado",
+  "Em Andamento",
+  "Aprovação Interna",
+  "Alterações",
+  "Revisão",
+  "Aprovação Cliente",
+  "Publicar / Enviar para Produção",
+  "Finalizado",
+  "Pausado / Cancelado",
+] as const;
+
+const JOB_TAGS = [
+  "SOCIAL",
+  "TRÁFEGO",
+  "PROGRAMAÇÃO",
+  "ADVERTISING",
+  "ESTRATÉGIA",
+  "DESIGN",
+  "ENVIAR PARA PRODUÇÃO",
+] as const;
+
+interface ClienteJob {
+  id: string;
+  nome_fantasia?: string;
+  razao_social?: string;
+}
+
+interface JobCreateForm {
+  cliente_id: string;
+  titulo: string;
+  briefing: string;
+  prioridade: JobPrioridade;
+  status: string;
+  responsavel: string;
+  data_inicio: string;
+  data_entrega: string;
+  etiquetas: string[];
+}
+
+const emptyJobForm = (): JobCreateForm => ({
+  cliente_id: "",
+  titulo: "",
+  briefing: "",
+  prioridade: "Médio",
+  status: "Novos Jobs (Análise)",
+  responsavel: "",
+  data_inicio: new Date().toISOString().slice(0, 10),
+  data_entrega: "",
+  etiquetas: [],
+});
+
+const mapOperationalPriorityToJob = (
+  priority?: PrioridadeOperacional,
+): JobPrioridade => {
+  if (priority === "Baixo") return "Baixo";
+  if (priority === "Alto") return "Alto";
+  if (priority === "Crítico") return "Crítico";
+  return "Médio";
+};
+
+const mapOperationalStatusToJob = (status?: StatusOperacional): string => {
+  if (status === "EM ANDAMENTO") return "Em Andamento";
+  if (status === "CONCLUÍDO") return "Finalizado";
+  if (status === "PAUSADO") return "Pausado / Cancelado";
+  return "Novos Jobs (Análise)";
+};
+
+const mapOperationalAreaToTags = (area?: AreaOperacional): string[] => {
+  if (area === "SOCIAL") return ["SOCIAL"];
+  if (area === "TRÁFEGO") return ["TRÁFEGO"];
+  if (area === "PROGRAMAÇÃO") return ["PROGRAMAÇÃO"];
+  return [];
+};
 
 const COLUNAS: {
   id: AreaOperacional;
@@ -186,6 +267,10 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
   const [saving, setSaving] = useState(false);
   const [usuariosApi, setUsuariosApi] = useState<any[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [clientesApi, setClientesApi] = useState<ClienteJob[]>([]);
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [jobSaving, setJobSaving] = useState(false);
+  const [jobForm, setJobForm] = useState<JobCreateForm>(emptyJobForm());
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterResponsavel, setFilterResponsavel] = useState("all");
@@ -275,6 +360,44 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
     }
   };
 
+  const loadClientes = async () => {
+    try {
+      const response = await fetch(CLIENTS_API_URL, { cache: "no-store" });
+      const data = await parseJson(response);
+
+      if (!response.ok || data?.erro) {
+        throw new Error(data?.erro || `Erro HTTP ${response.status}`);
+      }
+
+      const lista = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.dados)
+          ? data.dados
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+
+      setClientesApi(
+        lista
+          .filter((cliente: any) => cliente?.id)
+          .sort((a: any, b: any) =>
+            String(a?.nome_fantasia || a?.razao_social || "").localeCompare(
+              String(b?.nome_fantasia || b?.razao_social || ""),
+              "pt-BR",
+            ),
+          ),
+      );
+    } catch (error: any) {
+      console.error("Erro ao carregar clientes do Operacional:", error);
+      setClientesApi([]);
+      showToast(
+        "error",
+        "Erro ao carregar clientes",
+        error?.message || "Não foi possível carregar os clientes.",
+      );
+    }
+  };
+
   const loadAssuntos = async () => {
     try {
       setLoading(true);
@@ -300,6 +423,7 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
   useEffect(() => {
     loadAssuntos();
     loadUsuarios();
+    loadClientes();
   }, []);
 
   const availableDates = useMemo(
@@ -391,6 +515,107 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
       data_inicio: safeDate(item.data_inicio),
       data_entrega: safeDate(item.data_entrega),
     });
+  };
+
+  const openJobFromAssunto = () => {
+    if (!activeAssunto) return;
+
+    setJobForm({
+      cliente_id: "",
+      titulo: form.titulo || activeAssunto.titulo || "",
+      briefing: form.descricao || activeAssunto.descricao || "",
+      prioridade: mapOperationalPriorityToJob(
+        form.prioridade || activeAssunto.prioridade,
+      ),
+      status: mapOperationalStatusToJob(form.status || activeAssunto.status),
+      responsavel:
+        form.responsavel_nome || activeAssunto.responsavel_nome || "",
+      data_inicio:
+        form.data_inicio ||
+        safeDate(activeAssunto.data_inicio) ||
+        new Date().toISOString().slice(0, 10),
+      data_entrega:
+        form.data_entrega || safeDate(activeAssunto.data_entrega) || "",
+      etiquetas: mapOperationalAreaToTags(form.area || activeAssunto.area),
+    });
+
+    setJobModalOpen(true);
+  };
+
+  const toggleJobTag = (tag: string) => {
+    setJobForm((prev) => ({
+      ...prev,
+      etiquetas: prev.etiquetas.includes(tag)
+        ? prev.etiquetas.filter((item) => item !== tag)
+        : [...prev.etiquetas, tag],
+    }));
+  };
+
+  const createJobFromAssunto = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!jobForm.cliente_id) {
+      showToast("error", "Selecione o cliente do Job.");
+      return;
+    }
+
+    if (!jobForm.titulo.trim()) {
+      showToast("error", "Informe o título do Job.");
+      return;
+    }
+
+    try {
+      setJobSaving(true);
+
+      const body = new FormData();
+      body.append("tabela", "jobs");
+      body.append("cliente_id", jobForm.cliente_id);
+      body.append("titulo", jobForm.titulo.trim());
+      body.append("briefing", jobForm.briefing.trim());
+      body.append("descricao", "");
+      body.append("prioridade", jobForm.prioridade);
+      body.append("status", jobForm.status);
+      body.append("data_inicio", jobForm.data_inicio || "");
+      body.append("data_entrega", jobForm.data_entrega || "");
+      body.append("data_criacao", new Date().toISOString().slice(0, 10));
+      body.append("responsavel", jobForm.responsavel || "");
+      body.append("etiquetas", JSON.stringify(jobForm.etiquetas));
+      body.append("permitir_acesso_cliente", "0");
+      body.append("ordem", "0");
+      body.append("arquivado", "0");
+      body.append("links", "[]");
+
+      const response = await fetch(CREATE_JOB_API, {
+        method: "POST",
+        body,
+      });
+      const data = await parseJson(response);
+
+      if (!response.ok || data?.erro || data?.sucesso === false) {
+        throw new Error(data?.erro || "Não foi possível criar o Job.");
+      }
+
+      const cliente = clientesApi.find(
+        (item) => String(item.id) === String(jobForm.cliente_id),
+      );
+
+      setJobModalOpen(false);
+      showToast(
+        "success",
+        "Job criado no Kanban!",
+        `${jobForm.titulo} · ${
+          cliente?.nome_fantasia || cliente?.razao_social || "Cliente"
+        }`,
+      );
+    } catch (error: any) {
+      showToast(
+        "error",
+        "Erro ao criar Job",
+        error?.message || "Não foi possível criar o Job no Kanban.",
+      );
+    } finally {
+      setJobSaving(false);
+    }
   };
 
   const onSelectResponsavel = (id: string) => {
@@ -864,7 +1089,8 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
                         draggable
                         onDragStart={() => setDraggedId(item.id)}
                         onDragEnd={() => setDraggedId(null)}
-                        className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-xs shadow-sm transition hover:border-indigo-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                        onClick={() => openAssunto(item)}
+                        className="cursor-pointer space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-xs shadow-sm transition hover:border-indigo-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <span
@@ -923,17 +1149,7 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                openAssunto(item);
-                              }}
-                              className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-[10px] font-black text-white transition hover:bg-indigo-600 dark:bg-slate-800 dark:hover:bg-indigo-600"
-                            >
-                              ABRIR JOB NO KANBAN
-                            </button>
+                          <div className="flex justify-end">
                             <button
                               type="button"
                               onClick={(event) => {
@@ -1044,6 +1260,28 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
 
             {renderFormFields()}
 
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 dark:border-indigo-900/60 dark:bg-indigo-950/20">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    Transformar este assunto em Job
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    Abre uma segunda tela para completar os dados e criar o Job
+                    no Kanban de Jobs.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={openJobFromAssunto}
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-[10px] font-black text-white transition hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-500"
+                >
+                  <BriefcaseBusiness className="h-4 w-4" />
+                  ABRIR JOB NO KANBAN
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
@@ -1079,6 +1317,255 @@ export const OperacionalView: React.FC<OperacionalViewProps> = ({
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {jobModalOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-slate-950/80 p-4 pt-8 backdrop-blur-sm"
+          onClick={() => !jobSaving && setJobModalOpen(false)}
+        >
+          <form
+            onSubmit={createJobFromAssunto}
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-3xl space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
+              <div>
+                <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900 dark:text-white">
+                  <BriefcaseBusiness className="h-5 w-5 text-indigo-500" />
+                  Criar Job no Kanban
+                </h3>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Complete os dados abaixo. O Job será criado no quadro oficial
+                  de Jobs.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setJobModalOpen(false)}
+                disabled={jobSaving}
+                className="rounded-lg p-1 text-slate-400 hover:text-slate-700 disabled:opacity-50 dark:hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                  Cliente *
+                </label>
+                <select
+                  required
+                  value={jobForm.cliente_id}
+                  onChange={(event) =>
+                    setJobForm((prev) => ({
+                      ...prev,
+                      cliente_id: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <option value="">Selecione o cliente...</option>
+                  {clientesApi.map((cliente) => (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.nome_fantasia ||
+                        cliente.razao_social ||
+                        cliente.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                  Título do Job *
+                </label>
+                <input
+                  required
+                  value={jobForm.titulo}
+                  onChange={(event) =>
+                    setJobForm((prev) => ({
+                      ...prev,
+                      titulo: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                  Responsável
+                </label>
+                <select
+                  value={jobForm.responsavel}
+                  onChange={(event) =>
+                    setJobForm((prev) => ({
+                      ...prev,
+                      responsavel: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <option value="">Sem responsável</option>
+                  {colaboradores.map((usuario: any) => (
+                    <option key={String(usuario.id)} value={usuario.nome}>
+                      {usuario.nome}
+                      {usuario.cargo ? ` (${usuario.cargo})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                  Status atual
+                </label>
+                <select
+                  value={jobForm.status}
+                  onChange={(event) =>
+                    setJobForm((prev) => ({
+                      ...prev,
+                      status: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                >
+                  {JOB_STATUS_OPTIONS.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                  Grau de urgência
+                </label>
+                <select
+                  value={jobForm.prioridade}
+                  onChange={(event) =>
+                    setJobForm((prev) => ({
+                      ...prev,
+                      prioridade: event.target.value as JobPrioridade,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <option value="Baixo">Baixo</option>
+                  <option value="Médio">Normal - 7 dias</option>
+                  <option value="Alto">Alto</option>
+                  <option value="Crítico">Crítico</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                    Início
+                  </label>
+                  <input
+                    type="date"
+                    value={jobForm.data_inicio}
+                    onChange={(event) =>
+                      setJobForm((prev) => ({
+                        ...prev,
+                        data_inicio: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                    Entrega
+                  </label>
+                  <input
+                    type="date"
+                    value={jobForm.data_entrega}
+                    onChange={(event) =>
+                      setJobForm((prev) => ({
+                        ...prev,
+                        data_entrega: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-bold dark:border-slate-700 dark:bg-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block font-bold text-slate-700 dark:text-slate-300">
+                  Briefing
+                </label>
+                <textarea
+                  rows={5}
+                  value={jobForm.briefing}
+                  onChange={(event) =>
+                    setJobForm((prev) => ({
+                      ...prev,
+                      briefing: event.target.value,
+                    }))
+                  }
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-800"
+                  placeholder="Informações que devem ir para o Job..."
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-2 block font-bold text-slate-700 dark:text-slate-300">
+                  Etiquetas / Tags
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {JOB_TAGS.map((tag) => {
+                    const selected = jobForm.etiquetas.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleJobTag(tag)}
+                        className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-extrabold transition ${
+                          selected
+                            ? "border-indigo-600 bg-indigo-600 text-white"
+                            : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setJobModalOpen(false)}
+                disabled={jobSaving}
+                className="px-4 py-2 font-bold text-slate-500 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={
+                  jobSaving || !jobForm.cliente_id || !jobForm.titulo.trim()
+                }
+                className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-extrabold text-white disabled:opacity-50"
+              >
+                {jobSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <BriefcaseBusiness className="h-4 w-4" />
+                )}
+                Criar Job no Kanban
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

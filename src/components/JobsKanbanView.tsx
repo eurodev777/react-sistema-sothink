@@ -97,6 +97,7 @@ export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
 export const TAGS_PRESETS = [
   "SOCIAL",
   "TRÁFEGO",
+  "PROGRAMAÇÃO",
   "ADVERTISING",
   "ESTRATÉGIA",
   "DESIGN",
@@ -186,6 +187,13 @@ const jobMatchesPeriod = (job: Job, month: string, day: string): boolean => {
 const getCurrentMonthKey = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const normalizeJobPriority = (value: any): string => {
+  const priority = String(value || "").trim();
+  return priority === "Médio" || priority === "Medio"
+    ? "Normal - 7 dias"
+    : priority;
 };
 
 interface JobsKanbanViewProps {
@@ -372,7 +380,13 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           activeJob[campo as keyof Job] !== undefined &&
           activeJob[campo as keyof Job] !== null
         ) {
-          formData.append(campo, String(activeJob[campo as keyof Job]));
+          const valor =
+            campo === "prioridade" &&
+            normalizeJobPriority(activeJob[campo as keyof Job]) ===
+              "Normal - 7 dias"
+              ? "Médio"
+              : String(activeJob[campo as keyof Job]);
+          formData.append(campo, valor);
         }
       });
 
@@ -566,7 +580,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
     const matchesResponsavel =
       filterResponsavel === "all" || j.responsavel === filterResponsavel;
     const matchesUrgencia =
-      filterUrgencia === "all" || j.prioridade === filterUrgencia;
+      filterUrgencia === "all" ||
+      (filterUrgencia === "Médio"
+        ? ["Médio", "Medio", "Normal - 7 dias"].includes(
+            String(j.prioridade || ""),
+          )
+        : j.prioridade === filterUrgencia);
     const matchesTag = filterTag === "all" || j?.etiquetas?.includes(filterTag);
     const matchesDate = jobMatchesPeriod(j, filterMonth, filterDay);
 
@@ -1016,7 +1035,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         >
           <option value="all">Todas as Urgências</option>
           <option value="Baixo">Baixo</option>
-          <option value="Médio">Médio</option>
+          <option value="Médio">Normal - 7 dias</option>
           <option value="Alto">Alto</option>
           <option value="Crítico">Crítico</option>
         </select>
@@ -1211,13 +1230,14 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                     job.prioridade === "Crítico" ||
                                     job.prioridade === "Alto"
                                       ? "priority-high"
-                                      : job.prioridade === "Médio"
+                                      : normalizeJobPriority(job.prioridade) ===
+                                          "Normal - 7 dias"
                                         ? "priority-med"
                                         : "priority-low"
                                   }`}
                                 />
                                 <span className="hidden sm:block">
-                                  {job.prioridade}
+                                  {normalizeJobPriority(job.prioridade)}
                                 </span>
                               </div>
                               {job.responsavel && (
@@ -1402,7 +1422,9 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                       {job.status}
                     </span>
                   </td>
-                  <td className="py-3 font-bold">{job.prioridade}</td>
+                  <td className="py-3 font-bold">
+                    {normalizeJobPriority(job.prioridade)}
+                  </td>
                   <td className="py-3">{job.responsavel}</td>
                   <td className="py-3 text-right font-mono">
                     {formatDateSafe(job.data_inicio)}
@@ -1962,7 +1984,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     Grau de Urgência
                   </label>
                   <select
-                    value={activeJob.prioridade}
+                    value={
+                      normalizeJobPriority(activeJob.prioridade) ===
+                      "Normal - 7 dias"
+                        ? "Médio"
+                        : activeJob.prioridade
+                    }
                     onChange={(e) =>
                       handleUpdateActiveJobField(
                         "prioridade",
@@ -1972,7 +1999,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                     className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
                   >
                     <option value="Baixo">Baixo</option>
-                    <option value="Médio">Médio</option>
+                    <option value="Médio">Normal - 7 dias</option>
                     <option value="Alto">Alto</option>
                     <option value="Crítico">Crítico</option>
                   </select>

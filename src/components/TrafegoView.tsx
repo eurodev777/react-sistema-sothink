@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+
 import {
   Plus,
   Trash2,
@@ -10,76 +11,110 @@ import {
 
 export interface CampanhaTrafego {
   id?: string;
+
   plataforma: "Google" | "Meta";
+
   status_obs: string;
+
   data_atualizacao: string;
+
   empresa: string;
+
   campanha: string;
+
   ultimo_pagamento: string;
+
   verba_total: string;
+
   verba_disponivel: string;
+
   orcamento_diario: string;
+
   gasto_diario: string;
+
   objetivo: string;
+
   data_termino: string;
 }
 
-// Função para ocultar null, "null", undefined, 0 ou "0"
+// Evita que null / "null" / undefined apareçam na interface.
+// Zero continua aparecendo normalmente, pois pode ser um valor válido.
 const safeValue = (val: any) => {
-  if (
-    val === null ||
-    val === "null" ||
-    val === undefined ||
-    val === 0 ||
-    val === "0"
-  )
-    return "";
+  if (val === null || val === undefined) return "";
+
+  if (typeof val === "string") {
+    const normalized = val.trim().toLowerCase();
+    if (normalized === "null" || normalized === "undefined") return "";
+  }
+
   return val;
+};
+
+const sanitizeCampaign = (row: any): CampanhaTrafego => {
+  const sanitized = Object.fromEntries(
+    Object.entries(row || {}).map(([key, value]) => [key, safeValue(value)]),
+  );
+
+  return sanitized as CampanhaTrafego;
 };
 
 const formatDateForInput = (dateStr?: string) => {
   if (!dateStr) return "";
+
   if (dateStr.includes("/")) {
     const parts = dateStr.split("/");
+
     if (parts.length === 3) {
       return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(
         2,
-        "0"
+
+        "0",
       )}`;
     } else if (parts.length === 2) {
       const currentYear = new Date().getFullYear();
+
       return `${currentYear}-${parts[1].padStart(2, "0")}-${parts[0].padStart(
         2,
-        "0"
+
+        "0",
       )}`;
     }
   }
+
   return dateStr;
 };
 
 const formatDateForDB = (dateStr?: string) => {
   if (!dateStr) return "";
+
   if (dateStr.includes("-")) {
     const parts = dateStr.split("-");
+
     if (parts.length === 3) {
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
   }
+
   return dateStr;
 };
 
 // Função global para exportar dados para CSV (abre no Excel)
+
 const exportToCSV = (dados: any[], nomeArquivo: string) => {
   if (!dados || dados.length === 0) {
     alert("Não há dados para exportar.");
+
     return;
   }
 
   // Pega os cabeçalhos a partir das chaves do primeiro objeto
+
   const headers = Object.keys(dados[0]);
 
   // Monta as linhas do CSV
+
   const csvRows = [];
+
   csvRows.push(headers.join(";")); // Separador padrão pt-BR no Excel é ;
 
   for (const row of dados) {
@@ -88,48 +123,69 @@ const exportToCSV = (dados: any[], nomeArquivo: string) => {
         row[header] === null || row[header] === undefined
           ? ""
           : String(row[header]);
+
       const escaped = valor.replace(/"/g, '""');
+
       return `"${escaped}"`;
     });
+
     csvRows.push(values.join(";"));
   }
 
   const csvString = csvRows.join("\n");
+
   // \uFEFF força o UTF-8 no Excel para não quebrar acentos
+
   const blob = new Blob(["\uFEFF" + csvString], {
     type: "text/csv;charset=utf-8;",
   });
+
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
+
   link.href = url;
+
   link.setAttribute("download", `${nomeArquivo}.csv`);
+
   document.body.appendChild(link);
+
   link.click();
+
   document.body.removeChild(link);
 };
 
 export const TrafegoView: React.FC = () => {
   const [campanhas, setCampanhas] = useState<CampanhaTrafego[]>([]);
+
   const [loading, setLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState("");
+
   const [statusFilter, setStatusFilter] = useState(""); // <-- NOVO: Estado para o filtro de status
+
   const [dragInfo, setDragInfo] = useState<{
     index: number | null;
+
     plataforma: string | null;
   }>({ index: null, plataforma: null });
+
   const [clienteFilter, setClienteFilter] = useState(""); // <-- NOVO AQUI
 
   const API_URL = "https://sothink.com.br/app/api/trafego"; // Aponta para o seu trafego.php
 
   const fetchCampanhas = async () => {
     setLoading(true);
+
     try {
       const res = await fetch(`${API_URL}?action=read`);
+
       const data = await res.json();
-      setCampanhas(Array.isArray(data) ? data : []);
+
+      setCampanhas(Array.isArray(data) ? data.map(sanitizeCampaign) : []);
     } catch (err) {
       console.error("Erro ao buscar tráfego:", err);
+
       setCampanhas([]);
     } finally {
       setLoading(false);
@@ -141,18 +197,25 @@ export const TrafegoView: React.FC = () => {
   }, []);
 
   // <-- NOVO: Extrair empresas (clientes) únicas para o Select
+
   const empresasUnicas = Array.from(
-    new Set(campanhas.map((c) => c.empresa).filter((e) => e && e.trim() !== ""))
+    new Set(
+      campanhas.map((c) => c.empresa).filter((e) => e && e.trim() !== ""),
+    ),
   ).sort();
 
   const handleAddRow = async (plataforma: "Google" | "Meta") => {
     const formData = new FormData();
+
     formData.append("action", "create");
+
     formData.append("plataforma", plataforma);
 
     try {
       const res = await fetch(API_URL, { method: "POST", body: formData });
+
       const data = await res.json();
+
       if (data.sucesso) {
         fetchCampanhas();
       }
@@ -163,18 +226,23 @@ export const TrafegoView: React.FC = () => {
 
   const handleChange = (
     id: string,
+
     field: keyof CampanhaTrafego,
-    value: string
+
+    value: string,
   ) => {
     setCampanhas((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
     );
   };
 
   const handleBlur = async (campanha: CampanhaTrafego) => {
     if (!campanha.id) return;
+
     const formData = new FormData();
+
     formData.append("action", "update");
+
     Object.entries(campanha).forEach(([key, val]) => {
       formData.append(key, val as string);
     });
@@ -188,12 +256,16 @@ export const TrafegoView: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Remover esta campanha?")) return;
+
     const formData = new FormData();
+
     formData.append("action", "delete");
+
     formData.append("id", id);
 
     try {
       await fetch(API_URL, { method: "POST", body: formData });
+
       setCampanhas((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       console.error("Erro ao deletar:", err);
@@ -201,14 +273,20 @@ export const TrafegoView: React.FC = () => {
   };
 
   // ==========================================
+
   // FUNÇÕES DE MUDANÇA DE ORDEM (DRAG & DROP)
+
   // ==========================================
+
   const handleDragStart = (
     e: React.DragEvent,
+
     index: number,
-    plataforma: string
+
+    plataforma: string,
   ) => {
     setDragInfo({ index, plataforma });
+
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -218,45 +296,59 @@ export const TrafegoView: React.FC = () => {
 
   const handleDrop = async (
     e: React.DragEvent,
+
     targetIndex: number,
+
     targetPlataforma: string,
-    listaFiltrada: CampanhaTrafego[]
+
+    listaFiltrada: CampanhaTrafego[],
   ) => {
     e.preventDefault();
 
     // Não permite arrastar entre plataformas (ex: Google para Meta) nem soltar no mesmo lugar
+
     if (
       dragInfo.plataforma !== targetPlataforma ||
       dragInfo.index === null ||
       dragInfo.index === targetIndex
     ) {
       setDragInfo({ index: null, plataforma: null });
+
       return;
     }
 
     const novaLista = [...listaFiltrada];
+
     const itemMovido = novaLista[dragInfo.index];
 
     // Move o item na lista localmente
+
     novaLista.splice(dragInfo.index, 1);
+
     novaLista.splice(targetIndex, 0, itemMovido);
 
     const idsOrdenados = novaLista.map((item) => item.id);
 
     // Atualiza o state mantendo os itens da outra plataforma intocados
+
     setCampanhas((prev) => {
       const outrasPlataformas = prev.filter(
-        (p) => p.plataforma !== targetPlataforma
+        (p) => p.plataforma !== targetPlataforma,
       );
+
       return [...outrasPlataformas, ...novaLista];
     });
 
     setDragInfo({ index: null, plataforma: null });
 
     // Envia a nova ordem pro PHP
+
     const formData = new FormData();
+
     formData.append("action", "update_order");
+
     formData.append("ids", JSON.stringify(idsOrdenados));
+
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
@@ -264,6 +356,7 @@ export const TrafegoView: React.FC = () => {
     const listaCampanhas = Array.isArray(campanhas) ? campanhas : [];
 
     // <-- ATUALIZADO: Incluir o clienteFilter na trava do drag & drop
+
     const isFiltered =
       searchTerm.trim() !== "" ||
       statusFilter.trim() !== "" ||
@@ -271,19 +364,28 @@ export const TrafegoView: React.FC = () => {
 
     const dados = listaCampanhas.filter((c) => {
       const nomeEmpresa = c.empresa || "";
+
       const busca = searchTerm || "";
+
       const statusC = c.status_obs || "";
 
       const matchPlataforma = c.plataforma === plataforma;
+
       const matchBusca = nomeEmpresa
+
         .toLowerCase()
+
         .includes(busca.toLowerCase());
+
       const matchStatus = statusFilter === "" || statusC === statusFilter;
+
       // <-- NOVO: Checa se o cliente bate
+
       const matchCliente =
         clienteFilter === "" || nomeEmpresa === clienteFilter;
 
       // <-- ATUALIZADO: Retorna com o matchCliente
+
       return matchPlataforma && matchBusca && matchStatus && matchCliente;
     });
 
@@ -306,6 +408,7 @@ export const TrafegoView: React.FC = () => {
             )}
             {plataforma} Ads
           </h2>
+
           <button
             onClick={() => handleAddRow(plataforma)}
             className="cursor-pointer flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
@@ -319,24 +422,37 @@ export const TrafegoView: React.FC = () => {
             <thead className="bg-slate-300/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-bold text-[10px]">
               <tr>
                 <th className="px-3 py-3 w-10 text-center"></th>
+
                 <th className="px-3 py-3 w-40">Obs (Status)</th>
+
                 <th className="px-3 py-3 w-32">Atualização</th>
+
                 <th className="px-3 py-3 w-64">Cliente</th>
+
                 <th className="px-3 py-3 w-64">Nome Campanha</th>
+
                 <th className="px-3 py-3 w-32">Último Pag.</th>
+
                 <th className="px-3 py-3 w-32">
                   {plataforma === "Meta" ? "Pagamento" : "Verba"}
                 </th>
+
                 <th className="px-3 py-3 w-32">Disponível</th>
+
                 <th className="px-3 py-3 w-32">Orçamento</th>
+
                 <th className="px-3 py-3 w-32">Gasto Diário</th>
+
                 {plataforma === "Meta" && (
                   <th className="px-3 py-3 w-28">Objetivo</th>
                 )}
+
                 <th className="px-3 py-3 w-32">Término</th>
+
                 <th className="px-3 py-3 w-10 text-center">Ações</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
               {dados.length === 0 ? (
                 <tr>
@@ -347,17 +463,21 @@ export const TrafegoView: React.FC = () => {
               ) : (
                 dados.map((c, index) => {
                   // Lógica de cores do STATUS
+
                   const statusVal = safeValue(c.status_obs);
+
                   const statusColor =
                     statusVal === "OK"
                       ? "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/40"
-                      : statusVal === "PAUSADA"
-                      ? "text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40"
-                      : statusVal === "AGUARDANDO PUBLICAÇÃO"
-                      ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40"
-                      : statusVal === "AGUARDANDO CRIATIVO"
-                      ? "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-950/40" // <-- NOVO STATUS COLORIDO
-                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 bg-transparent";
+                      : statusVal === "REPROVADO"
+                        ? "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-950/50"
+                        : statusVal === "PAUSADA"
+                          ? "text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40"
+                          : statusVal === "AGUARDANDO PUBLICAÇÃO"
+                            ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40"
+                            : statusVal === "AGUARDANDO CRIATIVO"
+                              ? "text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-950/40" // <-- NOVO STATUS COLORIDO
+                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 bg-transparent";
 
                   return (
                     <tr
@@ -378,6 +498,7 @@ export const TrafegoView: React.FC = () => {
                       }
                     >
                       {/* COLUNA DE ORDENAÇÃO (DRAG) */}
+
                       <td className="p-1 text-center text-slate-400">
                         {!isFiltered ? (
                           <div
@@ -405,7 +526,10 @@ export const TrafegoView: React.FC = () => {
                           onBlur={() => handleBlur(c)}
                           className={`w-full px-2 py-1.5 rounded outline-none font-bold cursor-pointer transition-colors ${statusColor}`}
                         >
-                          <option value="" className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900">
+                          <option
+                            value=""
+                            className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900"
+                          >
                             Selecione...
                           </option>
                           <option
@@ -428,6 +552,12 @@ export const TrafegoView: React.FC = () => {
                           </option>{" "}
                           {/* <-- NOVO STATUS AQUI */}
                           <option
+                            value="REPROVADO"
+                            className="text-red-700 dark:text-red-300 bg-white dark:bg-slate-900"
+                          >
+                            REPROVADO
+                          </option>
+                          <option
                             value="PAUSADA"
                             className="text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-900"
                           >
@@ -435,23 +565,27 @@ export const TrafegoView: React.FC = () => {
                           </option>
                         </select>
                       </td>
+
                       <td className="p-1">
                         <input
                           type="date"
                           value={formatDateForInput(
-                            safeValue(c.data_atualizacao)
+                            safeValue(c.data_atualizacao),
                           )}
                           onChange={(e) =>
                             handleChange(
                               c.id!,
+
                               "data_atualizacao",
-                              formatDateForDB(e.target.value)
+
+                              formatDateForDB(e.target.value),
                             )
                           }
                           onBlur={() => handleBlur(c)}
                           className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none transition-colors"
                         />
                       </td>
+
                       <td className="p-1">
                         <input
                           type="text"
@@ -464,6 +598,7 @@ export const TrafegoView: React.FC = () => {
                           placeholder="Empresa"
                         />
                       </td>
+
                       <td className="p-1">
                         <input
                           type="text"
@@ -476,17 +611,20 @@ export const TrafegoView: React.FC = () => {
                           placeholder="Nome da Campanha"
                         />
                       </td>
+
                       <td className="p-1">
                         <input
                           type="date"
                           value={formatDateForInput(
-                            safeValue(c.ultimo_pagamento)
+                            safeValue(c.ultimo_pagamento),
                           )}
                           onChange={(e) =>
                             handleChange(
                               c.id!,
+
                               "ultimo_pagamento",
-                              formatDateForDB(e.target.value)
+
+                              formatDateForDB(e.target.value),
                             )
                           }
                           onBlur={() => handleBlur(c)}
@@ -495,11 +633,13 @@ export const TrafegoView: React.FC = () => {
                       </td>
 
                       {/* CAMPOS COM VALORES R$ (Efeito esverdeado) */}
+
                       <td className="p-1">
                         <div className="flex items-center rounded hover:bg-emerald-100/70 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-100/70 dark:focus-within:bg-emerald-950/30 transition-colors">
                           <span className="text-emerald-700/70 dark:text-emerald-300/80 font-bold text-[10px] pl-1 mr-0.5">
                             R$
                           </span>
+
                           <input
                             type="text"
                             value={safeValue(c.verba_total)}
@@ -512,11 +652,13 @@ export const TrafegoView: React.FC = () => {
                           />
                         </div>
                       </td>
+
                       <td className="p-1">
                         <div className="flex items-center rounded hover:bg-emerald-100/70 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-100/70 dark:focus-within:bg-emerald-950/30 transition-colors">
                           <span className="text-emerald-700/70 dark:text-emerald-300/80 font-bold text-[10px] pl-1 mr-0.5">
                             R$
                           </span>
+
                           <input
                             type="text"
                             value={safeValue(c.verba_disponivel)}
@@ -524,8 +666,10 @@ export const TrafegoView: React.FC = () => {
                             onChange={(e) =>
                               handleChange(
                                 c.id!,
+
                                 "verba_disponivel",
-                                e.target.value
+
+                                e.target.value,
                               )
                             }
                             onBlur={() => handleBlur(c)}
@@ -533,11 +677,13 @@ export const TrafegoView: React.FC = () => {
                           />
                         </div>
                       </td>
+
                       <td className="p-1">
                         <div className="flex items-center rounded hover:bg-emerald-100/70 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-100/70 dark:focus-within:bg-emerald-950/30 transition-colors">
                           <span className="text-emerald-700/70 dark:text-emerald-300/80 font-bold text-[10px] pl-1 mr-0.5">
                             R$
                           </span>
+
                           <input
                             type="text"
                             value={safeValue(c.orcamento_diario)}
@@ -545,8 +691,10 @@ export const TrafegoView: React.FC = () => {
                             onChange={(e) =>
                               handleChange(
                                 c.id!,
+
                                 "orcamento_diario",
-                                e.target.value
+
+                                e.target.value,
                               )
                             }
                             onBlur={() => handleBlur(c)}
@@ -567,6 +715,7 @@ export const TrafegoView: React.FC = () => {
                           className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-700 dark:text-slate-200 font-medium transition-colors"
                         />
                       </td>
+
                       {plataforma === "Meta" && (
                         <td className="p-1">
                           <input
@@ -581,6 +730,7 @@ export const TrafegoView: React.FC = () => {
                           />
                         </td>
                       )}
+
                       <td className="p-1">
                         <input
                           type="date"
@@ -588,14 +738,17 @@ export const TrafegoView: React.FC = () => {
                           onChange={(e) =>
                             handleChange(
                               c.id!,
+
                               "data_termino",
-                              formatDateForDB(e.target.value)
+
+                              formatDateForDB(e.target.value),
                             )
                           }
                           onBlur={() => handleBlur(c)}
                           className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 rounded outline-none text-slate-800 dark:text-slate-200 transition-colors"
                         />
                       </td>
+
                       <td className="p-1 text-center">
                         <button
                           onClick={() => handleDelete(c.id!)}
@@ -631,22 +784,31 @@ export const TrafegoView: React.FC = () => {
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Gestão de Tráfego Pago
           </h1>
+
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Planilha de controle de Google e Meta Ads (Salva automaticamente ao
             digitar)
           </p>
         </div>
+
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
           {/* NOVO: Select para Filtro de Status */}
+
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="cursor-pointer w-full sm:w-auto px-3 py-2 text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
           >
             <option value="">Todos os Status</option>
+
             <option value="OK">OK</option>
+
             <option value="AGUARDANDO PUBLICAÇÃO">AGUARDANDO PUBLICAÇÃO</option>
+
             <option value="AGUARDANDO CRIATIVO">AGUARDANDO CRIATIVO</option>
+
+            <option value="REPROVADO">REPROVADO</option>
+
             <option value="PAUSADA">PAUSADA</option>
           </select>
 
@@ -656,6 +818,7 @@ export const TrafegoView: React.FC = () => {
             className="cursor-pointer w-full sm:w-auto px-3 py-2 text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/40 outline-none transition-all"
           >
             <option value="">Todos os Clientes</option>
+
             {empresasUnicas.map((emp, index) => (
               <option key={index} value={emp}>
                 {emp}
@@ -665,6 +828,7 @@ export const TrafegoView: React.FC = () => {
 
           <div className="relative w-full lg:w-72">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+
             <input
               type="text"
               value={searchTerm}
@@ -685,6 +849,7 @@ export const TrafegoView: React.FC = () => {
       </div>
 
       {renderTable("Google")}
+
       {renderTable("Meta")}
     </div>
   );

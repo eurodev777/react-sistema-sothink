@@ -24,6 +24,8 @@ import {
   Copy,
   Check,
   MessageSquare,
+  Archive,
+  RotateCcw,
 } from "lucide-react";
 import { EmpresaCliente, ResponsavelCliente, AtaReuniao, Job } from "../types";
 import { apiService } from "../services/apiService";
@@ -40,7 +42,7 @@ interface ClientsViewProps {
   showToast: (
     type: "success" | "error" | "info",
     title: string,
-    desc?: string
+    desc?: string,
   ) => void;
 }
 
@@ -54,6 +56,7 @@ type ClientWithDbFields = EmpresaCliente & {
   contatos?: ResponsavelCliente[];
   responsaveis?: ResponsavelCliente[];
   permitir_acesso?: boolean | number | string;
+  arquivado?: boolean | number | string;
 };
 
 const isEnabled = (value: any) =>
@@ -66,7 +69,7 @@ const safe = (value: any) => {
 
 const normalizeClient = (
   raw: any,
-  contacts: ResponsavelCliente[] = []
+  contacts: ResponsavelCliente[] = [],
 ): ClientWithDbFields => ({
   ...raw,
   razao_social: safe(raw.razao_social),
@@ -91,8 +94,11 @@ const normalizeClient = (
   login_cliente: safe(raw.username ?? raw.login_cliente),
   senha_cliente: safe(raw.password ?? raw.senha_cliente),
   permitir_acesso: isEnabled(raw.permitir_acesso),
+  arquivado: isEnabled(raw.arquivado),
   contatos: contacts.length ? contacts : raw.contatos || raw.responsaveis || [],
-  responsaveis: contacts.length ? contacts : raw.contatos || raw.responsaveis || [],
+  responsaveis: contacts.length
+    ? contacts
+    : raw.contatos || raw.responsaveis || [],
 });
 
 const emptyForm = (): Partial<EmpresaCliente> => ({
@@ -128,20 +134,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   showToast,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClient, setSelectedClient] = useState<ClientWithDbFields | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [selectedClient, setSelectedClient] =
+    useState<ClientWithDbFields | null>(null);
   const [clientDetailTab, setClientDetailTab] = useState<
     "info" | "atas" | "jobs" | "arquivos" | "historico" | "config"
   >("info");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<ClientWithDbFields | null>(null);
+  const [editingClient, setEditingClient] = useState<ClientWithDbFields | null>(
+    null,
+  );
   const [cnpjLoading, setCnpjLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [showDetailPassword, setShowDetailPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<Partial<EmpresaCliente>>(emptyForm());
+  const [formData, setFormData] =
+    useState<Partial<EmpresaCliente>>(emptyForm());
   const [responsaveis, setResponsaveis] = useState<ResponsavelCliente[]>([]);
   const [clientes, setClientes] = useState<ClientWithDbFields[]>([]);
   const [loadingClientes, setLoadingClientes] = useState(false);
@@ -153,25 +164,39 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const [loadingJobComments, setLoadingJobComments] = useState(false);
   const [sendingJobComment, setSendingJobComment] = useState(false);
 
-  const carregarClientes = async (keepSelectedId?: string) => {
+  const carregarClientes = async (
+    keepSelectedId?: string,
+    archivedMode: boolean = showArchived,
+  ) => {
     try {
       setLoadingClientes(true);
 
+      const clientesUrl = `https://sothink.com.br/app/api/listar?tabela=clientes&arquivados=${
+        archivedMode ? "1" : "0"
+      }`;
+
       const [clientesResult, contatosResult] = await Promise.allSettled([
-        fetch("https://sothink.com.br/app/api/listar?tabela=clientes", {
+        fetch(clientesUrl, {
           cache: "no-store",
         }).then((r) => r.json()),
-        fetch("https://sothink.com.br/app/api/listar?tabela=clientes_contatos", {
-          cache: "no-store",
-        }).then((r) => r.json()),
+        fetch(
+          "https://sothink.com.br/app/api/listar?tabela=clientes_contatos",
+          {
+            cache: "no-store",
+          },
+        ).then((r) => r.json()),
       ]);
 
-      if (clientesResult.status !== "fulfilled" || !Array.isArray(clientesResult.value)) {
+      if (
+        clientesResult.status !== "fulfilled" ||
+        !Array.isArray(clientesResult.value)
+      ) {
         throw new Error("Não foi possível carregar a tabela de clientes.");
       }
 
       const contatosRaw =
-        contatosResult.status === "fulfilled" && Array.isArray(contatosResult.value)
+        contatosResult.status === "fulfilled" &&
+        Array.isArray(contatosResult.value)
           ? contatosResult.value
           : [];
 
@@ -199,8 +224,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       const normalizados = clientesResult.value.map((cliente: any) =>
         normalizeClient(
           cliente,
-          contatosPorCliente.get(String(cliente.id)) || []
-        )
+          contatosPorCliente.get(String(cliente.id)) || [],
+        ),
       );
 
       setClientes(normalizados);
@@ -208,7 +233,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       const idToKeep = keepSelectedId || selectedClient?.id;
       if (idToKeep) {
         const refreshed = normalizados.find(
-          (cliente: ClientWithDbFields) => String(cliente.id) === String(idToKeep)
+          (cliente: ClientWithDbFields) =>
+            String(cliente.id) === String(idToKeep),
         );
         if (refreshed) setSelectedClient(refreshed);
       }
@@ -217,7 +243,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       showToast(
         "error",
         "Erro ao carregar clientes",
-        error?.message || "Não foi possível consultar os clientes."
+        error?.message || "Não foi possível consultar os clientes.",
       );
     } finally {
       setLoadingClientes(false);
@@ -225,9 +251,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   };
 
   useEffect(() => {
-    carregarClientes();
+    setSelectedClient(null);
+    setSearchTerm("");
+    carregarClientes(undefined, showArchived);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showArchived]);
 
   const filteredClients = useMemo(() => {
     const termo = searchTerm.trim().toLowerCase();
@@ -244,7 +272,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         c.telefone,
         c.whatsapp,
         c.login_cliente,
-      ].some((value) => safe(value).toLowerCase().includes(termo))
+      ].some((value) => safe(value).toLowerCase().includes(termo)),
     );
   }, [clientes, searchTerm]);
 
@@ -287,7 +315,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
   const handleConsultarCNPJ = async () => {
     if (!formData.cnpj) {
-      showToast("error", "CNPJ Obrigatório", "Informe o CNPJ antes de consultar.");
+      showToast(
+        "error",
+        "CNPJ Obrigatório",
+        "Informe o CNPJ antes de consultar.",
+      );
       return;
     }
 
@@ -299,7 +331,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         setFormData((prev) => ({
           ...prev,
           razao_social: d.razao_social || prev.razao_social,
-          nome_fantasia: d.nome_fantasia || d.razao_social || prev.nome_fantasia,
+          nome_fantasia:
+            d.nome_fantasia || d.razao_social || prev.nome_fantasia,
           logradouro: d.logradouro || d.endereco || prev.logradouro,
           numero: d.numero || prev.numero,
           bairro: d.bairro || prev.bairro,
@@ -312,13 +345,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         showToast(
           "success",
           "CNPJ Consultado com Sucesso!",
-          "Dados preenchidos automaticamente."
+          "Dados preenchidos automaticamente.",
         );
       } else {
         showToast(
           "error",
           "Falha na Consulta CNPJ",
-          res.message || "CNPJ não encontrado."
+          res.message || "CNPJ não encontrado.",
         );
       }
     } catch (e: any) {
@@ -346,7 +379,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleUpdateResponsavel = (
     index: number,
     field: keyof ResponsavelCliente,
-    value: string
+    value: string,
   ) => {
     setResponsaveis((prev) => {
       const updated = [...prev];
@@ -438,14 +471,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       showToast(
         "success",
         isEditing ? "Cliente Atualizado!" : "Cliente Cadastrado!",
-        "Todos os dados, inclusive acesso do cliente, foram salvos."
+        "Todos os dados, inclusive acesso do cliente, foram salvos.",
       );
     } catch (err: any) {
       console.error("Erro ao salvar cliente:", err);
       showToast(
         "error",
         "Erro ao salvar cliente",
-        err?.message || "Não foi possível salvar os dados."
+        err?.message || "Não foi possível salvar os dados.",
       );
     } finally {
       setSaving(false);
@@ -455,13 +488,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleDelete = async () => {
     if (!selectedClient?.id) return;
 
-    if (!confirm(`Excluir o cliente ${selectedClient.nome_fantasia || selectedClient.razao_social}?`)) {
+    if (
+      !confirm(
+        `Excluir o cliente ${selectedClient.nome_fantasia || selectedClient.razao_social}?`,
+      )
+    ) {
       return;
     }
 
     try {
       const response = await fetch(
-        `https://sothink.com.br/app/api/deletar?id=${selectedClient.id}&tabela=clientes`
+        `https://sothink.com.br/app/api/deletar?id=${selectedClient.id}&tabela=clientes`,
       );
       const data = await response.json();
 
@@ -471,10 +508,78 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         await carregarClientes();
         showToast("info", "Cliente Excluído");
       } else {
-        showToast("error", "Erro ao excluir cliente", data.erro || "Erro desconhecido");
+        showToast(
+          "error",
+          "Erro ao excluir cliente",
+          data.erro || "Erro desconhecido",
+        );
       }
     } catch (error) {
       showToast("error", "Erro de conexão com a API");
+    }
+  };
+
+  const handleArchiveToggle = async (client: ClientWithDbFields) => {
+    if (!client?.id) return;
+
+    const currentlyArchived = isEnabled(client.arquivado);
+    const actionLabel = currentlyArchived ? "restaurar" : "arquivar";
+    const clientName =
+      client.nome_fantasia || client.razao_social || "este cliente";
+
+    if (
+      !confirm(
+        currentlyArchived
+          ? `Restaurar o cliente ${clientName}?`
+          : `Arquivar o cliente ${clientName}? Ele deixará de aparecer na lista normal de clientes.`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const form = new FormData();
+      form.append("tabela", "clientes");
+      form.append("id", String(client.id));
+      form.append("arquivado", currentlyArchived ? "0" : "1");
+
+      const response = await fetch("https://sothink.com.br/app/api/editar", {
+        method: "POST",
+        body: form,
+      });
+
+      const texto = await response.text();
+      let data: any = {};
+
+      try {
+        data = texto ? JSON.parse(texto) : {};
+      } catch {
+        throw new Error("Resposta inválida da API: " + texto);
+      }
+
+      if (!response.ok || data?.erro || data?.sucesso === false) {
+        throw new Error(
+          data?.erro || `Não foi possível ${actionLabel} o cliente.`,
+        );
+      }
+
+      setSelectedClient(null);
+      await carregarClientes(undefined, showArchived);
+
+      showToast(
+        "success",
+        currentlyArchived ? "Cliente restaurado!" : "Cliente arquivado!",
+        currentlyArchived
+          ? "O cliente voltou para a lista de clientes ativos."
+          : "O cliente foi movido para Arquivados.",
+      );
+    } catch (error: any) {
+      console.error(`Erro ao ${actionLabel} cliente:`, error);
+      showToast(
+        "error",
+        `Erro ao ${actionLabel} cliente`,
+        error?.message || "Não foi possível concluir a operação.",
+      );
     }
   };
 
@@ -496,15 +601,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       setLoadingJobComments(true);
       const response = await fetch(
         "https://sothink.com.br/app/api/listar?tabela=jobs_comentarios",
-        { cache: "no-store" }
+        { cache: "no-store" },
       );
 
       const data = await response.json();
       const todos = Array.isArray(data)
         ? data
         : Array.isArray(data?.data)
-        ? data.data
-        : [];
+          ? data.data
+          : [];
 
       const comentariosDoJob = todos
         .filter((com: any) => String(com.job_id) === String(job.id))
@@ -516,7 +621,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       showToast(
         "error",
         "Erro ao carregar comentários",
-        "Não foi possível carregar a conversa deste job."
+        "Não foi possível carregar a conversa deste job.",
       );
     } finally {
       setLoadingJobComments(false);
@@ -533,7 +638,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   const handleAddClientComment = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newClientComment.trim() || !commentJob?.id || !selectedClient?.id) return;
+    if (!newClientComment.trim() || !commentJob?.id || !selectedClient?.id)
+      return;
 
     try {
       setSendingJobComment(true);
@@ -543,12 +649,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       formData.append("job_id", String(commentJob.id));
       formData.append(
         "cliente_id",
-        String((commentJob as any).cliente_id || selectedClient.id)
+        String((commentJob as any).cliente_id || selectedClient.id),
       );
       formData.append("autor_tipo", "cliente");
       formData.append(
         "autor_nome",
-        selectedClient.nome_fantasia || selectedClient.razao_social || "Cliente"
+        selectedClient.nome_fantasia ||
+          selectedClient.razao_social ||
+          "Cliente",
       );
       formData.append("comentario", newClientComment.trim());
 
@@ -557,7 +665,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         {
           method: "POST",
           body: formData,
-        }
+        },
       );
 
       const texto = await response.text();
@@ -570,7 +678,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       }
 
       if (!response.ok || result?.erro || result?.sucesso === false) {
-        throw new Error(result?.erro || "Não foi possível enviar o comentário.");
+        throw new Error(
+          result?.erro || "Não foi possível enviar o comentário.",
+        );
       }
 
       setNewClientComment("");
@@ -580,7 +690,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       showToast(
         "error",
         "Erro ao comentar",
-        error?.message || "Não foi possível enviar o comentário."
+        error?.message || "Não foi possível enviar o comentário.",
       );
     } finally {
       setSendingJobComment(false);
@@ -591,7 +701,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     ? atas.filter(
         (a: any) =>
           String(a.cliente_id || a.id_cliente || a.cliente) ===
-          String(selectedClient.id)
+          String(selectedClient.id),
       )
     : [];
 
@@ -604,19 +714,41 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            CRM de Clientes
+            {showArchived ? "Clientes Arquivados" : "CRM de Clientes"}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Cadastro de empresas, contatos responsáveis, histórico e acessos.
+            {showArchived
+              ? "Clientes retirados da operação ativa. Você pode visualizar ou restaurar."
+              : "Cadastro de empresas, contatos responsáveis, histórico e acessos."}
           </p>
         </div>
-        <button
-          onClick={openNewClientModal}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all active:scale-95 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          Cadastrar Empresa
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowArchived((previous) => !previous)}
+            className={`px-4 py-2.5 rounded-xl border font-semibold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shrink-0 ${
+              showArchived
+                ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            {showArchived ? (
+              <RotateCcw className="w-4 h-4" />
+            ) : (
+              <Archive className="w-4 h-4" />
+            )}
+            {showArchived ? "Clientes Ativos" : "Arquivados"}
+          </button>
+
+          {!showArchived && (
+            <button
+              onClick={openNewClientModal}
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all active:scale-95 shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              Cadastrar Empresa
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -631,7 +763,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           />
         </div>
         <span className="text-[11px] font-bold text-slate-400">
-          {clientes.length} cliente{clientes.length === 1 ? "" : "s"}
+          {clientes.length} cliente{clientes.length === 1 ? "" : "s"}{" "}
+          {showArchived ? "arquivado" : "ativo"}
+          {clientes.length === 1 ? "" : "s"}
         </span>
       </div>
 
@@ -646,10 +780,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             const clientAtasCount = atas.filter(
               (a: any) =>
                 String(a.cliente_id || a.id_cliente || a.cliente) ===
-                String(client.id)
+                String(client.id),
             ).length;
             const clientJobsCount = jobs.filter(
-              (j) => String(j.cliente_id) === String(client.id)
+              (j) => String(j.cliente_id) === String(client.id),
             ).length;
 
             return (
@@ -753,20 +887,47 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {selectedClient.razao_social}
                 </p>
+                {isEnabled(selectedClient.arquivado) && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                    <Archive className="h-3 w-3" />
+                    Arquivado
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {!isEnabled(selectedClient.arquivado) && (
+                <button
+                  onClick={() => openEditClientModal(selectedClient)}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" /> Editar Cliente
+                </button>
+              )}
+
               <button
-                onClick={() => openEditClientModal(selectedClient)}
-                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-2"
+                onClick={() => handleArchiveToggle(selectedClient)}
+                className={`px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                  isEnabled(selectedClient.arquivado)
+                    ? "border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                    : "border-amber-200 text-amber-600 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                }`}
               >
-                <Edit2 className="w-4 h-4" /> Editar Cliente
+                {isEnabled(selectedClient.arquivado) ? (
+                  <RotateCcw className="w-4 h-4" />
+                ) : (
+                  <Archive className="w-4 h-4" />
+                )}
+                {isEnabled(selectedClient.arquivado)
+                  ? "Restaurar Cliente"
+                  : "Arquivar Cliente"}
               </button>
+
               <button
                 onClick={handleDelete}
                 className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                title="Excluir cliente"
+                title="Excluir cliente permanentemente"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -774,45 +935,42 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </div>
 
           <div className="flex overflow-x-auto gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 text-xs font-semibold">
-            {[
-              "info",
-              "atas",
-              "jobs",
-              "arquivos",
-              "historico",
-              "config",
-            ].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setClientDetailTab(tab as any)}
-                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                  clientDetailTab === tab
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-              >
-                {tab === "info" && <Building2 className="w-4 h-4" />}
-                {tab === "atas" && (
-                  <>
-                    <FileText className="w-4 h-4" /> Atas ({selectedAtas.length})
-                  </>
-                )}
-                {tab === "jobs" && (
-                  <>
-                    <Kanban className="w-4 h-4" /> Jobs ({selectedJobs.length})
-                  </>
-                )}
-                {tab === "arquivos" && <Folder className="w-4 h-4" />}
-                {tab === "historico" && <History className="w-4 h-4" />}
-                {tab === "config" && <Settings className="w-4 h-4" />}
-                {(tab === "info" ||
-                  tab === "arquivos" ||
-                  tab === "historico" ||
-                  tab === "config") && (
-                  <span className="capitalize">{tab}</span>
-                )}
-              </button>
-            ))}
+            {["info", "atas", "jobs", "arquivos", "historico", "config"].map(
+              (tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setClientDetailTab(tab as any)}
+                  className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
+                    clientDetailTab === tab
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {tab === "info" && <Building2 className="w-4 h-4" />}
+                  {tab === "atas" && (
+                    <>
+                      <FileText className="w-4 h-4" /> Atas (
+                      {selectedAtas.length})
+                    </>
+                  )}
+                  {tab === "jobs" && (
+                    <>
+                      <Kanban className="w-4 h-4" /> Jobs ({selectedJobs.length}
+                      )
+                    </>
+                  )}
+                  {tab === "arquivos" && <Folder className="w-4 h-4" />}
+                  {tab === "historico" && <History className="w-4 h-4" />}
+                  {tab === "config" && <Settings className="w-4 h-4" />}
+                  {(tab === "info" ||
+                    tab === "arquivos" ||
+                    tab === "historico" ||
+                    tab === "config") && (
+                    <span className="capitalize">{tab}</span>
+                  )}
+                </button>
+              ),
+            )}
           </div>
 
           {clientDetailTab === "info" && (
@@ -823,8 +981,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   icon={<Building2 className="w-4 h-4 text-indigo-500" />}
                 >
                   <InfoGrid>
-                    <InfoItem label="Razão Social" value={selectedClient.razao_social} />
-                    <InfoItem label="Nome Fantasia" value={selectedClient.nome_fantasia} />
+                    <InfoItem
+                      label="Razão Social"
+                      value={selectedClient.razao_social}
+                    />
+                    <InfoItem
+                      label="Nome Fantasia"
+                      value={selectedClient.nome_fantasia}
+                    />
                     <InfoItem label="CNPJ" value={selectedClient.cnpj} />
                     <InfoItem
                       label="Inscrição Estadual"
@@ -840,15 +1004,24 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <InfoGrid>
                     <InfoItem
                       label="Endereço"
-                      value={`${selectedClient.logradouro || selectedClient.endereco || ""}${
-                        selectedClient.numero ? `, ${selectedClient.numero}` : ""
-                      }` || "-"}
+                      value={
+                        `${selectedClient.logradouro || selectedClient.endereco || ""}${
+                          selectedClient.numero
+                            ? `, ${selectedClient.numero}`
+                            : ""
+                        }` || "-"
+                      }
                     />
-                    <InfoItem label="Bairro" value={selectedClient.bairro || "-"} />
+                    <InfoItem
+                      label="Bairro"
+                      value={selectedClient.bairro || "-"}
+                    />
                     <InfoItem
                       label="Cidade / UF"
                       value={`${selectedClient.cidade || "-"}${
-                        selectedClient.estado ? ` / ${selectedClient.estado}` : ""
+                        selectedClient.estado
+                          ? ` / ${selectedClient.estado}`
+                          : ""
                       }`}
                     />
                     <InfoItem label="CEP" value={selectedClient.cep || "-"} />
@@ -860,12 +1033,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   icon={<Phone className="w-4 h-4 text-indigo-500" />}
                 >
                   <InfoGrid>
-                    <InfoItem label="Telefone" value={selectedClient.telefone || "-"} />
-                    <InfoItem label="WhatsApp" value={selectedClient.whatsapp || "-"} />
-                    <InfoItem label="E-mail" value={selectedClient.email || "-"} />
+                    <InfoItem
+                      label="Telefone"
+                      value={selectedClient.telefone || "-"}
+                    />
+                    <InfoItem
+                      label="WhatsApp"
+                      value={selectedClient.whatsapp || "-"}
+                    />
+                    <InfoItem
+                      label="E-mail"
+                      value={selectedClient.email || "-"}
+                    />
                     <InfoItem label="Site" value={selectedClient.site || "-"} />
-                    <InfoItem label="Instagram" value={selectedClient.instagram || "-"} />
-                    <InfoItem label="Facebook" value={selectedClient.facebook || "-"} />
+                    <InfoItem
+                      label="Instagram"
+                      value={selectedClient.instagram || "-"}
+                    />
+                    <InfoItem
+                      label="Facebook"
+                      value={selectedClient.facebook || "-"}
+                    />
                   </InfoGrid>
                 </InfoSection>
 
@@ -874,30 +1062,38 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   icon={<UserCheck className="w-4 h-4 text-indigo-500" />}
                 >
                   {!selectedClient.contatos?.length ? (
-                    <p className="text-xs text-slate-500">Nenhum contato cadastrado.</p>
+                    <p className="text-xs text-slate-500">
+                      Nenhum contato cadastrado.
+                    </p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {selectedClient.contatos.map((contato: any, index: number) => (
-                        <div
-                          key={contato.id || index}
-                          className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                        >
-                          <h5 className="text-xs font-extrabold text-slate-900 dark:text-white">
-                            {contato.nome || "Contato sem nome"}
-                          </h5>
-                          <p className="text-[10px] text-indigo-500 font-bold mb-2">
-                            {contato.cargo || "Sem cargo"}
-                          </p>
-                          <div className="space-y-1 text-[10px] text-slate-500">
-                            {contato.email && <p>E-mail: {contato.email}</p>}
-                            {contato.telefone && <p>Telefone: {contato.telefone}</p>}
-                            {contato.whatsapp && <p>WhatsApp: {contato.whatsapp}</p>}
-                            {contato.data_aniversario && (
-                              <p>Aniversário: {contato.data_aniversario}</p>
-                            )}
+                      {selectedClient.contatos.map(
+                        (contato: any, index: number) => (
+                          <div
+                            key={contato.id || index}
+                            className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          >
+                            <h5 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                              {contato.nome || "Contato sem nome"}
+                            </h5>
+                            <p className="text-[10px] text-indigo-500 font-bold mb-2">
+                              {contato.cargo || "Sem cargo"}
+                            </p>
+                            <div className="space-y-1 text-[10px] text-slate-500">
+                              {contato.email && <p>E-mail: {contato.email}</p>}
+                              {contato.telefone && (
+                                <p>Telefone: {contato.telefone}</p>
+                              )}
+                              {contato.whatsapp && (
+                                <p>WhatsApp: {contato.whatsapp}</p>
+                              )}
+                              {contato.data_aniversario && (
+                                <p>Aniversário: {contato.data_aniversario}</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   )}
                 </InfoSection>
@@ -925,11 +1121,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
                   <CredentialRow
                     label="Login"
-                    value={selectedClient.login_cliente || selectedClient.username || ""}
+                    value={
+                      selectedClient.login_cliente ||
+                      selectedClient.username ||
+                      ""
+                    }
                     onCopy={() =>
                       copyText(
                         "login",
-                        selectedClient.login_cliente || selectedClient.username || ""
+                        selectedClient.login_cliente ||
+                          selectedClient.username ||
+                          "",
                       )
                     }
                     copied={copiedField === "login"}
@@ -942,16 +1144,21 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <div className="flex items-center gap-2">
                       <code className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200 truncate">
                         {showDetailPassword
-                          ? selectedClient.senha_cliente || selectedClient.password || "Não definida"
-                          : selectedClient.senha_cliente || selectedClient.password
-                          ? "••••••••••••"
-                          : "Não definida"}
+                          ? selectedClient.senha_cliente ||
+                            selectedClient.password ||
+                            "Não definida"
+                          : selectedClient.senha_cliente ||
+                              selectedClient.password
+                            ? "••••••••••••"
+                            : "Não definida"}
                       </code>
                       <button
                         type="button"
                         onClick={() => setShowDetailPassword((v) => !v)}
                         className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-500"
-                        title={showDetailPassword ? "Ocultar senha" : "Mostrar senha"}
+                        title={
+                          showDetailPassword ? "Ocultar senha" : "Mostrar senha"
+                        }
                       >
                         {showDetailPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -964,7 +1171,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         onClick={() =>
                           copyText(
                             "senha",
-                            selectedClient.senha_cliente || selectedClient.password || ""
+                            selectedClient.senha_cliente ||
+                              selectedClient.password ||
+                              "",
                           )
                         }
                         className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-500"
@@ -1021,7 +1230,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     >
                       <div className="flex justify-between items-start mb-2 gap-2">
                         <h5 className="font-bold text-sm text-slate-900 dark:text-white truncate">
-                          {ata.objetivo || ata.titulo || ata.assunto || "Ata de reunião"}
+                          {ata.objetivo ||
+                            ata.titulo ||
+                            ata.assunto ||
+                            "Ata de reunião"}
                         </h5>
                         <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 shrink-0">
                           {ata.data_reuniao || ata.data || "-"}
@@ -1105,10 +1317,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <h4 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-indigo-500" /> Acesso ao Portal do Cliente
+                      <Lock className="w-4 h-4 text-indigo-500" /> Acesso ao
+                      Portal do Cliente
                     </h4>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Dados utilizados pelo cliente para entrar na Área do Cliente.
+                      Dados utilizados pelo cliente para entrar na Área do
+                      Cliente.
                     </p>
                   </div>
                   <span
@@ -1118,17 +1332,25 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
                     }`}
                   >
-                    {isEnabled(selectedClient.permitir_acesso) ? "LIBERADO" : "BLOQUEADO"}
+                    {isEnabled(selectedClient.permitir_acesso)
+                      ? "LIBERADO"
+                      : "BLOQUEADO"}
                   </span>
                 </div>
 
                 <CredentialRow
                   label="Login"
-                  value={selectedClient.login_cliente || selectedClient.username || ""}
+                  value={
+                    selectedClient.login_cliente ||
+                    selectedClient.username ||
+                    ""
+                  }
                   onCopy={() =>
                     copyText(
                       "login-config",
-                      selectedClient.login_cliente || selectedClient.username || ""
+                      selectedClient.login_cliente ||
+                        selectedClient.username ||
+                        "",
                     )
                   }
                   copied={copiedField === "login-config"}
@@ -1141,10 +1363,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   <div className="flex gap-2">
                     <code className="flex-1 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200">
                       {showDetailPassword
-                        ? selectedClient.senha_cliente || selectedClient.password || "Não definida"
-                        : selectedClient.senha_cliente || selectedClient.password
-                        ? "••••••••••••"
-                        : "Não definida"}
+                        ? selectedClient.senha_cliente ||
+                          selectedClient.password ||
+                          "Não definida"
+                        : selectedClient.senha_cliente ||
+                            selectedClient.password
+                          ? "••••••••••••"
+                          : "Não definida"}
                     </code>
                     <button
                       type="button"
@@ -1171,7 +1396,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </div>
           )}
 
-          {(clientDetailTab === "arquivos" || clientDetailTab === "historico") && (
+          {(clientDetailTab === "arquivos" ||
+            clientDetailTab === "historico") && (
             <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800">
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                 Área em desenvolvimento.
@@ -1181,7 +1407,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </div>
       )}
 
-{commentJob && selectedClient && (
+      {commentJob && selectedClient && (
         <div
           className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-4 pt-10 overflow-y-auto"
           onClick={() => setCommentJob(null)}
@@ -1219,10 +1445,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               <div className="space-y-6">
                 <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <h4 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-indigo-500" /> Briefing do Job
+                    <FileText className="w-4 h-4 text-indigo-500" /> Briefing do
+                    Job
                   </h4>
                   <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-                    {commentJob.briefing || commentJob.descricao || "Nenhum briefing informado para este job."}
+                    {commentJob.briefing ||
+                      commentJob.descricao ||
+                      "Nenhum briefing informado para este job."}
                   </div>
                 </div>
 
@@ -1248,7 +1477,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       Data de Início
                     </span>
                     <span className="font-bold text-slate-900 dark:text-white text-sm">
-                      {commentJob.data_inicio ? new Date(commentJob.data_inicio).toLocaleDateString('pt-BR') : "-"}
+                      {commentJob.data_inicio
+                        ? new Date(commentJob.data_inicio).toLocaleDateString(
+                            "pt-BR",
+                          )
+                        : "-"}
                     </span>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -1256,7 +1489,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       Prazo / Entrega
                     </span>
                     <span className="font-bold text-rose-600 dark:text-rose-400 text-sm">
-                      {commentJob.data_entrega ? new Date(commentJob.data_entrega).toLocaleDateString('pt-BR') : "A definir"}
+                      {commentJob.data_entrega
+                        ? new Date(commentJob.data_entrega).toLocaleDateString(
+                            "pt-BR",
+                          )
+                        : "A definir"}
                     </span>
                   </div>
                 </div>
@@ -1265,7 +1502,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
               {/* COLUNA DIREITA: Comentários e Interação */}
               <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col h-[500px]">
                 <h4 className="font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-4">
-                  <MessageSquare className="w-4 h-4 text-indigo-500" /> Conversa com a Agência
+                  <MessageSquare className="w-4 h-4 text-indigo-500" /> Conversa
+                  com a Agência
                 </h4>
 
                 {/* Lista de Comentários */}
@@ -1273,12 +1511,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {loadingJobComments ? (
                     <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500">
                       <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
-                      <span className="text-xs font-bold">Carregando mensagens...</span>
+                      <span className="text-xs font-bold">
+                        Carregando mensagens...
+                      </span>
                     </div>
                   ) : jobComments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center p-6 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl text-slate-400">
                       <MessageSquare className="w-8 h-8 mb-2 opacity-50" />
-                      <p className="text-xs">Nenhum comentário neste job ainda.<br/>Envie a primeira mensagem!</p>
+                      <p className="text-xs">
+                        Nenhum comentário neste job ainda.
+                        <br />
+                        Envie a primeira mensagem!
+                      </p>
                     </div>
                   ) : (
                     jobComments.map((com: any) => {
@@ -1297,7 +1541,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           >
                             <div className="flex items-center gap-2 mb-1.5 opacity-90">
                               <strong className="text-[10px] uppercase tracking-wide">
-                                {com.autor_nome || (isCliente ? "Você" : "Equipe Sothink")}
+                                {com.autor_nome ||
+                                  (isCliente ? "Você" : "Equipe Sothink")}
                               </strong>
                               <span className="text-[9px] font-mono opacity-70">
                                 {com.data_criacao || com.data_hora || ""}
@@ -1331,7 +1576,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       disabled={!newClientComment.trim() || sendingJobComment}
                       className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all active:scale-95"
                     >
-                      {sendingJobComment && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {sendingJobComment && (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      )}
                       {sendingJobComment ? "Enviando..." : "Enviar Mensagem"}
                     </button>
                   </div>
@@ -1376,7 +1623,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       type="text"
                       value={formData.razao_social || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, razao_social: e.target.value })
+                        setFormData({
+                          ...formData,
+                          razao_social: e.target.value,
+                        })
                       }
                       className={inputClass}
                     />
@@ -1388,7 +1638,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       type="text"
                       value={formData.nome_fantasia || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, nome_fantasia: e.target.value })
+                        setFormData({
+                          ...formData,
+                          nome_fantasia: e.target.value,
+                        })
                       }
                       className={inputClass}
                     />
@@ -1399,7 +1652,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       <input
                         type="text"
                         value={formData.cnpj || ""}
-                        onChange={(e) => setFormData({ ...formData, cnpj: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, cnpj: e.target.value })
+                        }
                         className={inputClass}
                       />
                       <button
@@ -1408,7 +1663,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         disabled={cnpjLoading}
                         className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5"
                       >
-                        {cnpjLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {cnpjLoading && (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        )}
                         {cnpjLoading ? "Buscando" : "Buscar CNPJ"}
                       </button>
                     </div>
@@ -1441,7 +1698,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         type="text"
                         value={(formData as any).logradouro || ""}
                         onChange={(e) =>
-                          setFormData({ ...formData, logradouro: e.target.value })
+                          setFormData({
+                            ...formData,
+                            logradouro: e.target.value,
+                          })
                         }
                         className={inputClass}
                       />
@@ -1504,7 +1764,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       <input
                         type="text"
                         value={formData.cep || ""}
-                        onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, cep: e.target.value })
+                        }
                         className={inputClass}
                       />
                     </Field>
@@ -1541,7 +1803,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="email"
                       value={formData.email || ""}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
                       className={inputClass}
                     />
                   </Field>
@@ -1557,7 +1821,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     <input
                       type="text"
                       value={formData.site || ""}
-                      onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, site: e.target.value })
+                      }
                       placeholder="https://..."
                       className={inputClass}
                     />
@@ -1598,7 +1864,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         Permitir acesso ao portal
                       </span>
                       <span className="text-[10px] text-slate-500">
-                        Quando desativado, o cliente não deve conseguir acessar a Área do Cliente.
+                        Quando desativado, o cliente não deve conseguir acessar
+                        a Área do Cliente.
                       </span>
                     </div>
                     <input
@@ -1650,7 +1917,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                           type="button"
                           onClick={() => setShowFormPassword((v) => !v)}
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500"
-                          title={showFormPassword ? "Ocultar senha" : "Mostrar senha"}
+                          title={
+                            showFormPassword ? "Ocultar senha" : "Mostrar senha"
+                          }
                         >
                           {showFormPassword ? (
                             <EyeOff className="w-4 h-4" />
@@ -1703,7 +1972,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                               type="text"
                               value={resp.nome || ""}
                               onChange={(e) =>
-                                handleUpdateResponsavel(index, "nome", e.target.value)
+                                handleUpdateResponsavel(
+                                  index,
+                                  "nome",
+                                  e.target.value,
+                                )
                               }
                               className={inputClass}
                             />
@@ -1713,7 +1986,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                               type="text"
                               value={resp.cargo || ""}
                               onChange={(e) =>
-                                handleUpdateResponsavel(index, "cargo", e.target.value)
+                                handleUpdateResponsavel(
+                                  index,
+                                  "cargo",
+                                  e.target.value,
+                                )
                               }
                               className={inputClass}
                             />
@@ -1723,7 +2000,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                               type="email"
                               value={resp.email || ""}
                               onChange={(e) =>
-                                handleUpdateResponsavel(index, "email", e.target.value)
+                                handleUpdateResponsavel(
+                                  index,
+                                  "email",
+                                  e.target.value,
+                                )
                               }
                               className={inputClass}
                             />
@@ -1733,7 +2014,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                               type="text"
                               value={resp.telefone || ""}
                               onChange={(e) =>
-                                handleUpdateResponsavel(index, "telefone", e.target.value)
+                                handleUpdateResponsavel(
+                                  index,
+                                  "telefone",
+                                  e.target.value,
+                                )
                               }
                               className={inputClass}
                             />
@@ -1743,7 +2028,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                               type="text"
                               value={resp.whatsapp || ""}
                               onChange={(e) =>
-                                handleUpdateResponsavel(index, "whatsapp", e.target.value)
+                                handleUpdateResponsavel(
+                                  index,
+                                  "whatsapp",
+                                  e.target.value,
+                                )
                               }
                               className={inputClass}
                             />
@@ -1756,7 +2045,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                                 handleUpdateResponsavel(
                                   index,
                                   "data_aniversario",
-                                  e.target.value
+                                  e.target.value,
                                 )
                               }
                               className={inputClass}
@@ -1787,8 +2076,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                   {saving
                     ? "Salvando..."
                     : editingClient
-                    ? "Salvar Alterações"
-                    : "Cadastrar Cliente"}
+                      ? "Salvar Alterações"
+                      : "Cadastrar Cliente"}
                 </button>
               </div>
             </form>
@@ -1850,7 +2139,10 @@ const InfoGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </div>
 );
 
-const InfoItem: React.FC<{ label: string; value?: any }> = ({ label, value }) => (
+const InfoItem: React.FC<{ label: string; value?: any }> = ({
+  label,
+  value,
+}) => (
   <div className="min-w-0">
     <span className="text-slate-400 block font-medium mb-0.5">{label}:</span>
     <span className="font-bold text-slate-800 dark:text-slate-200 break-words">

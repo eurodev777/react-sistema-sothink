@@ -41,7 +41,9 @@ interface ClientPortalViewProps {
 
   showToast: (
     type: "success" | "error" | "info",
+
     title: string,
+
     desc?: string,
   ) => void;
 }
@@ -82,10 +84,14 @@ const parseArray = <T,>(value: any): T[] => {
 
 const getJobLinks = (job: Job): string[] => {
   const value = (job as any).links;
+
   if (Array.isArray(value)) return value.filter(Boolean).map(String);
+
   if (!value || typeof value !== "string") return [];
+
   try {
     const parsed = JSON.parse(value);
+
     return Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : [];
   } catch {
     return value.trim() ? [value.trim()] : [];
@@ -96,9 +102,13 @@ const normalizeLinksInput = (value: string): string[] =>
   Array.from(
     new Set(
       value
+
         .split(/\r?\n|,/)
+
         .map((item) => item.trim())
+
         .filter(Boolean)
+
         .map((item) => (/^https?:\/\//i.test(item) ? item : `https://${item}`)),
     ),
   );
@@ -106,67 +116,89 @@ const normalizeLinksInput = (value: string): string[] =>
 const CLIENT_KANBAN_COLUMNS = [
   {
     id: "Novos Jobs (Análise)",
+
     title: "1. Novos Jobs (Análise)",
+
     color: "border-sky-500 bg-sky-950/20",
   },
 
   {
     id: "Aguardando Terceiros",
+
     title: "2. Aguardando Terceiros",
+
     color: "border-purple-500 bg-purple-950/20",
   },
 
   {
     id: "Programado",
+
     title: "3. Programado",
+
     color: "border-blue-500 bg-blue-950/20",
   },
 
   {
     id: "Em Andamento",
+
     title: "4. Em Andamento",
+
     color: "border-amber-500 bg-amber-950/20",
   },
 
   {
     id: "Aprovação Interna",
+
     title: "5. Aprovação Interna",
+
     color: "border-teal-500 bg-teal-950/20",
   },
 
   {
     id: "Alterações",
+
     title: "6. Alterações",
+
     color: "border-orange-500 bg-orange-950/20",
   },
 
   {
     id: "Revisão",
+
     title: "7. Revisão",
+
     color: "border-indigo-500 bg-indigo-950/20",
   },
 
   {
     id: "Aprovação Cliente",
+
     title: "8. Aprovação Cliente",
+
     color: "border-violet-500 bg-violet-950/20",
   },
 
   {
     id: "Publicar / Enviar para Produção",
+
     title: "9. Publicar / Enviar para Produção",
+
     color: "border-cyan-500 bg-cyan-950/20",
   },
 
   {
     id: "Finalizado",
+
     title: "10. Finalizado",
+
     color: "border-emerald-500 bg-emerald-950/20",
   },
 
   {
     id: "Pausado / Cancelado",
+
     title: "11. Pausado / Cancelado",
+
     color: "border-slate-500 bg-slate-800/30",
   },
 ] as const;
@@ -223,6 +255,9 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<ClientTab>("dashboard");
 
+  // Cada clique em Dashboard recria a visão inicial do painel.
+  const [dashboardKey, setDashboardKey] = useState(0);
+
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const [createJobModalOpen, setCreateJobModalOpen] = useState(false);
@@ -236,7 +271,9 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
   const [newJobUrgencia, setNewJobUrgencia] = useState<
     "Baixo" | "Médio" | "Alto" | "Crítico"
   >("Médio");
+
   const [newJobFiles, setNewJobFiles] = useState<File[]>([]);
+
   const [newJobLinksText, setNewJobLinksText] = useState("");
 
   // Mantém uma lista local para o novo job aparecer imediatamente no portal.
@@ -250,6 +287,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
   const fetchPortalJobs = async () => {
     const response = await fetch(
       "https://sothink.com.br/app/api/listar?tabela=jobs",
+
       {
         cache: "no-store",
       },
@@ -319,7 +357,9 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
     if (!newJobTitle.trim() || !newJobBriefing.trim()) {
       showToast(
         "error",
+
         "Campos obrigatórios",
+
         "Preencha o título e o briefing da solicitação.",
       );
 
@@ -362,8 +402,10 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
       form.append("ordem", "0");
 
       form.append("arquivado", "0");
+
       form.append(
         "links",
+
         JSON.stringify(normalizeLinksInput(newJobLinksText)),
       );
 
@@ -410,7 +452,9 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
       setNewJobBriefing("");
 
       setNewJobUrgencia("Médio");
+
       setNewJobFiles([]);
+
       setNewJobLinksText("");
 
       showToast(
@@ -435,12 +479,23 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
     }
   };
 
+  const handleTabClick = (id: ClientTab) => {
+    if (id === "dashboard") {
+      // Mesmo que a aba já esteja ativa, volta para a página inicial.
+      setDashboardKey((previous) => previous + 1);
+      setSelectedJob(null);
+    }
+    setActiveTab(id);
+  };
+
   const tabs = [
     { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
 
     {
       id: "jobs" as const,
+
       label: `Meus Jobs (${clientJobs.length})`,
+
       icon: Kanban,
     },
 
@@ -478,7 +533,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id)}
+              onClick={() => handleTabClick(id)}
               className={`px-4 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all ${
                 activeTab === id
                   ? "bg-blue-600 text-white shadow-md"
@@ -506,7 +561,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
-            onClick={() => setActiveTab(id)}
+            onClick={() => handleTabClick(id)}
             className={`shrink-0 px-3 py-2 text-center text-xs font-bold rounded-xl flex items-center gap-1.5 ${
               activeTab === id
                 ? "bg-blue-600 text-white"
@@ -538,7 +593,11 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
         </div>
 
         {activeTab === "dashboard" && (
-          <ClientDashboardTrafego client={client} showToast={showToast} />
+          <ClientDashboardTrafego
+            key={dashboardKey}
+            client={client}
+            showToast={showToast}
+          />
         )}
 
         {activeTab === "jobs" && (
@@ -611,6 +670,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                               const checklists = getJobChecklists(job);
 
                               const attachments = getJobAttachments(job);
+
                               const links = getJobLinks(job);
 
                               const doneItems = checklists.filter(
@@ -673,6 +733,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                                           title={`${attachments.length} anexo(s)`}
                                         >
                                           <Paperclip className="w-3 h-3" />
+
                                           {attachments.length}
                                         </span>
                                       )}
@@ -683,6 +744,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                                           title={`${links.length} link(s)`}
                                         >
                                           <Link2 className="w-3 h-3" />
+
                                           {links.length}
                                         </span>
                                       )}
@@ -752,6 +814,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
           const anexos = Array.isArray((selectedJob as any).anexos)
             ? (selectedJob as any).anexos
             : [];
+
           const links = getJobLinks(selectedJob);
 
           const comentarios = parseArray<any>(
@@ -918,6 +981,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                     <Link2 className="w-4 h-4 text-cyan-400" /> Links e
                     Referências ({links.length})
                   </h4>
+
                   {links.length === 0 ? (
                     <p className="text-[11px] text-slate-500 italic">
                       Nenhum link anexado.
@@ -935,6 +999,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                           <span className="min-w-0 truncate text-[11px] font-semibold">
                             {link}
                           </span>
+
                           <ExternalLink className="h-4 w-4 shrink-0" />
                         </a>
                       ))}
@@ -1045,7 +1110,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
 
               <div>
                 <label className="block font-bold text-slate-300 mb-1">
-                  Briefing / Detalhes da Solicitação *
+                  Briefing / Detalhes da Solicitação \*
                 </label>
 
                 <textarea
@@ -1063,6 +1128,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                   <Paperclip className="h-4 w-4 text-blue-400" /> Arquivos /
                   anexos
                 </label>
+
                 <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-700 bg-slate-950 px-4 py-3 font-bold text-slate-300 transition hover:border-blue-500 hover:text-blue-300">
                   <Upload className="h-4 w-4" /> Selecionar arquivos
                   <input
@@ -1074,6 +1140,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                     }
                   />
                 </label>
+
                 {newJobFiles.length > 0 && (
                   <div className="space-y-1">
                     {newJobFiles.map((file, index) => (
@@ -1084,6 +1151,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                         <span className="truncate text-[11px] text-slate-300">
                           {file.name}
                         </span>
+
                         <button
                           type="button"
                           onClick={() =>
@@ -1109,6 +1177,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                   <Link2 className="h-4 w-4 text-cyan-400" /> Links /
                   referências
                 </label>
+
                 <textarea
                   rows={3}
                   value={newJobLinksText}
@@ -1118,6 +1187,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
                   }
                   className="w-full resize-y rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 font-medium text-white outline-none focus:ring-2 focus:ring-blue-500"
                 />
+
                 <p className="mt-1 text-[10px] text-slate-500">
                   Pode enviar vários links, um por linha.
                 </p>
@@ -1156,6 +1226,7 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
 
 const InfoCard: React.FC<{ label: string; value: string }> = ({
   label,
+
   value,
 }) => (
   <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">

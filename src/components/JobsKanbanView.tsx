@@ -63,33 +63,28 @@ export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
       color: "border-teal-500 bg-teal-50/50 dark:bg-teal-950/20",
     },
     {
-      id: "Alterações",
-      title: "6. Alterações",
-      color: "border-orange-500 bg-orange-50/50 dark:bg-orange-950/20",
-    },
-    {
       id: "Revisão",
-      title: "7. Revisão",
+      title: "6. Revisão",
       color: "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20",
     },
     {
       id: "Aprovação Cliente",
-      title: "8. Aprovação Cliente",
+      title: "7. Aprovação Cliente",
       color: "border-violet-500 bg-violet-50/50 dark:bg-violet-950/20",
     },
     {
       id: "Publicar / Enviar para Produção",
-      title: "9. Publicar / Enviar para Produção",
+      title: "8. Publicar / Enviar para Produção",
       color: "border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20",
     },
     {
       id: "Finalizado",
-      title: "10. Finalizado",
+      title: "9. Finalizado",
       color: "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
     },
     {
       id: "Pausado / Cancelado",
-      title: "11. Pausado / Cancelado",
+      title: "10. Pausado / Cancelado",
       color: "border-slate-500 bg-slate-100/50 dark:bg-slate-800/20",
     },
   ];
@@ -98,6 +93,7 @@ export const TAGS_PRESETS = [
   "SOCIAL",
   "TRÁFEGO",
   "PROGRAMAÇÃO",
+  "AJUSTES",
   "ADVERTISING",
   "ESTRATÉGIA",
   "DESIGN",
@@ -133,6 +129,17 @@ const getInitials = (name: string) => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   return name.substring(0, 2).toUpperCase();
+};
+
+const USER_PHOTO_BASE = "https://sothink.com.br/app/uploads/usuarios";
+
+const getUserPhotoUrl = (value?: string | null) => {
+  const photo = String(value || "").trim();
+  if (!photo) return "";
+  if (/^(?:https?:|data:|blob:)/i.test(photo)) return photo;
+
+  const filename = photo.split("/").pop() || photo;
+  return `${USER_PHOTO_BASE}/${encodeURIComponent(filename)}`;
 };
 
 const formatDateSafe = (
@@ -340,6 +347,57 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
 
   const loggedUser = getLoggedUser();
 
+  const findUsuarioByNome = (nome?: string | null) => {
+    const normalized = String(nome || "")
+      .trim()
+      .toLocaleLowerCase("pt-BR");
+    if (!normalized) return null;
+
+    return (
+      (usuarios as any[]).find((usuario: any) => {
+        const candidate = String(
+          usuario?.nome ||
+            usuario?.name ||
+            usuario?.usuario ||
+            usuario?.email ||
+            "",
+        )
+          .trim()
+          .toLocaleLowerCase("pt-BR");
+        return candidate === normalized;
+      }) || null
+    );
+  };
+
+  const renderUserAvatar = (
+    nome?: string | null,
+    sizeClass = "w-6 h-6",
+    textClass = "text-[10px]",
+  ) => {
+    const safeName = String(nome || "").trim();
+    const usuario = findUsuarioByNome(safeName);
+    const photo = getUserPhotoUrl((usuario as any)?.foto_perfil);
+
+    return (
+      <div
+        className={`relative ${sizeClass} rounded-full overflow-hidden bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center ${textClass} font-extrabold shadow-sm shrink-0`}
+        title={safeName ? `Responsável: ${safeName}` : "Colaborador"}
+      >
+        {getInitials(safeName)}
+        {photo && (
+          <img
+            src={photo}
+            alt={safeName || "Colaborador"}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        )}
+      </div>
+    );
+  };
+
   useEffect(() => {
     const carregarUsuarios = async () => {
       try {
@@ -347,7 +405,14 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
           "https://sothink.com.br/app/api/listar?tabela=usuarios",
         );
         const data = await response.json();
-        setUsuarios(data);
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.dados)
+            ? data.dados
+            : Array.isArray(data?.data)
+              ? data.data
+              : [];
+        setUsuarios(lista);
       } catch (error) {
         console.error("Erro ao carregar usuários:", error);
       }
@@ -1172,6 +1237,8 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                       lower.includes("traffic")
                                     )
                                       tagClass = "tag-traffic";
+                                    if (lower.includes("ajustes"))
+                                      tagClass = "tag-design";
 
                                     return (
                                       <span
@@ -1240,14 +1307,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                   {normalizeJobPriority(job.prioridade)}
                                 </span>
                               </div>
-                              {job.responsavel && (
-                                <div
-                                  className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-[10px] font-extrabold shadow-sm"
-                                  title={`Responsável: ${job.responsavel}`}
-                                >
-                                  {getInitials(job.responsavel)}
-                                </div>
-                              )}
+                              {job.responsavel &&
+                                renderUserAvatar(
+                                  job.responsavel,
+                                  "w-6 h-6",
+                                  "text-[10px]",
+                                )}
                             </div>
                           </div>
                         </div>
@@ -1372,14 +1437,12 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                           </div>
                         </div>
 
-                        {job?.responsavel && (
-                          <div
-                            className="w-5 h-5 shrink-0 rounded-full bg-indigo-200 dark:bg-indigo-800/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-[9px] font-extrabold shadow-sm"
-                            title={`Responsável: ${job.responsavel}`}
-                          >
-                            {getInitials(job.responsavel)}
-                          </div>
-                        )}
+                        {job?.responsavel &&
+                          renderUserAvatar(
+                            job.responsavel,
+                            "w-5 h-5",
+                            "text-[9px]",
+                          )}
                       </div>
                     ))}
                   </div>
@@ -1899,9 +1962,11 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   >
                     {activeJob.responsavel ? (
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[10px] font-bold">
-                          {getInitials(activeJob.responsavel)}
-                        </div>
+                        {renderUserAvatar(
+                          activeJob.responsavel,
+                          "w-6 h-6",
+                          "text-[10px]",
+                        )}
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
                           {activeJob.responsavel}
                         </span>
@@ -1939,9 +2004,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                             }}
                             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                           >
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold shrink-0">
-                              {getInitials(u.nome)}
-                            </div>
+                            {renderUserAvatar(u.nome, "w-6 h-6", "text-[10px]")}
                             <span className="font-medium text-slate-700 dark:text-slate-300 truncate">
                               {u.nome}
                             </span>

@@ -17,127 +17,211 @@ import {
   MapPin,
   AlertTriangle,
   KeyRound,
+  Camera,
 } from "lucide-react";
 
 const API_BASE = "https://sothink.com.br/app/api";
+const USER_PHOTO_BASE = "https://sothink.com.br/app/uploads/usuarios";
 
 type AbaRH = "colaboradores" | "squads";
 
 interface Usuario {
   id: string;
+
   nome?: string;
+
   cpf_cnpj?: string;
+
   cargo?: string;
+
   whatsapp?: string;
+
   endereco?: string;
+
   numero?: string;
+
   bairro?: string;
+
   cidade?: string;
+
   estado?: string;
+
   cep?: string;
+
   emergencia_1_nome?: string;
+
   emergencia_1_whatsapp?: string;
+
   emergencia_2_nome?: string;
+
   emergencia_2_whatsapp?: string;
+
   usuario?: string;
+
   email?: string;
+
   senha?: string;
+
   tipo?: string;
+
   perfil?: string;
+
   ativo?: string | number | boolean;
+
+  foto_perfil?: string;
 }
 
 interface Permissao {
   id?: string;
+
   usuario_id: string;
+
   quadro: string;
+
   permitido?: string | number | boolean;
 }
 
 interface FormUsuario {
   nome: string;
+
   cpf_cnpj: string;
+
   cargo: string;
+
   whatsapp: string;
+
   endereco: string;
+
   numero: string;
+
   bairro: string;
+
   cidade: string;
+
   estado: string;
+
   cep: string;
+
   emergencia_1_nome: string;
+
   emergencia_1_whatsapp: string;
+
   emergencia_2_nome: string;
+
   emergencia_2_whatsapp: string;
+
   usuario: string;
+
   email: string;
+
   senha: string;
+
   tipo: string;
+
   perfil: string;
+
   ativo: boolean;
 }
 
 const QUADROS = [
   {
     id: "jobs",
+
     nome: "Jobs",
+
     descricao: "Acesso ao quadro principal de jobs",
   },
+
   {
     id: "clientes",
+
     nome: "Clientes",
+
     descricao: "Cadastro e gestão de clientes",
   },
 
   // NOVO
+
   {
     id: "leads",
+
     nome: "Leads / CRM",
+
     descricao: "Controle de leads, prospecção e funil comercial",
   },
 
   {
     id: "atas_reuniao",
+
     nome: "Atas de Reunião",
+
     descricao: "Reuniões, decisões e pendências",
   },
+
   {
     id: "relatorios_performance",
+
     nome: "Relatórios",
+
     descricao: "Relatórios de performance",
   },
+
   {
     id: "usuarios",
+
     nome: "RH / Colaboradores",
+
     descricao: "Gestão dos colaboradores",
   },
+
   {
     id: "trafego",
+
     nome: "Tráfego Pago",
+
     descricao: "Gestão de tráfego e campanhas",
   },
 ];
 
 const EMPTY_FORM: FormUsuario = {
   nome: "",
+
   cpf_cnpj: "",
+
   cargo: "",
+
   whatsapp: "",
+
   endereco: "",
+
   numero: "",
+
   bairro: "",
+
   cidade: "",
+
   estado: "",
+
   cep: "",
+
   emergencia_1_nome: "",
+
   emergencia_1_whatsapp: "",
+
   emergencia_2_nome: "",
+
   emergencia_2_whatsapp: "",
+
   usuario: "",
+
   email: "",
+
   senha: "",
+
   tipo: "colaborador",
+
   perfil: "colaborador",
+
   ativo: true,
 };
 
@@ -145,13 +229,29 @@ const isTrue = (value: any) =>
   value === true || value === 1 || value === "1" || value === "true";
 
 /* =========================================================
+
+
+
    MÁSCARAS
+
+
+
    ========================================================= */
 
 /**
+
+
+
  * CPF
+
+
+
  * 123.456.789-00
+
+
+
  */
+
 const formatCPF = (value: string) => {
   const numbers = value.replace(/\D/g, "").substring(0, 11);
 
@@ -166,20 +266,32 @@ const formatCPF = (value: string) => {
   if (numbers.length <= 9) {
     return `${numbers.substring(0, 3)}.${numbers.substring(
       3,
+
       6,
     )}.${numbers.substring(6)}`;
   }
 
   return `${numbers.substring(0, 3)}.${numbers.substring(
     3,
+
     6,
   )}.${numbers.substring(6, 9)}-${numbers.substring(9)}`;
 };
 
 /**
+
+
+
  * CNPJ
+
+
+
  * 12.345.678/0001-90
+
+
+
  */
+
 const formatCNPJ = (value: string) => {
   const numbers = value.replace(/\D/g, "").substring(0, 14);
 
@@ -194,6 +306,7 @@ const formatCNPJ = (value: string) => {
   if (numbers.length <= 8) {
     return `${numbers.substring(0, 2)}.${numbers.substring(
       2,
+
       5,
     )}.${numbers.substring(5)}`;
   }
@@ -201,23 +314,36 @@ const formatCNPJ = (value: string) => {
   if (numbers.length <= 12) {
     return `${numbers.substring(0, 2)}.${numbers.substring(
       2,
+
       5,
     )}.${numbers.substring(5, 8)}/${numbers.substring(8)}`;
   }
 
   return `${numbers.substring(0, 2)}.${numbers.substring(
     2,
+
     5,
   )}.${numbers.substring(5, 8)}/${numbers.substring(
     8,
+
     12,
   )}-${numbers.substring(12)}`;
 };
 
 /**
+
+
+
  * CPF ou CNPJ
+
+
+
  * Detecta automaticamente pelo número de dígitos.
+
+
+
  */
+
 const formatCpfCnpj = (value: string) => {
   const numbers = value.replace(/\D/g, "").substring(0, 14);
 
@@ -229,16 +355,47 @@ const formatCpfCnpj = (value: string) => {
 };
 
 /**
+
+
+
  * Telefone / WhatsApp
+
+
+
  *
+
+
+
  * 11 dígitos:
+
+
+
  * (11) 99999-9999
+
+
+
  *
+
+
+
  * 10 dígitos:
+
+
+
  * (11) 9999-9999
+
+
+
  *
+
+
+
  * Também permite digitação com +55.
+
+
+
  */
+
 const formatWhatsapp = (value: string) => {
   let numbers = value.replace(/\D/g, "");
 
@@ -254,6 +411,7 @@ const formatWhatsapp = (value: string) => {
 
   if (numbers.startsWith("55") && numbers.length > 11) {
     const ddd = numbers.substring(2, 4);
+
     const telefone = numbers.substring(4);
 
     if (telefone.length <= 4) {
@@ -263,6 +421,7 @@ const formatWhatsapp = (value: string) => {
     if (telefone.length <= 8) {
       return `+55 (${ddd}) ${telefone.substring(
         0,
+
         4,
       )}-${telefone.substring(4)}`;
     }
@@ -275,6 +434,7 @@ const formatWhatsapp = (value: string) => {
   }
 
   const ddd = numbers.substring(0, 2);
+
   const telefone = numbers.substring(2);
 
   if (telefone.length === 0) {
@@ -293,9 +453,19 @@ const formatWhatsapp = (value: string) => {
 };
 
 /**
+
+
+
  * CEP
+
+
+
  * 00000-000
+
+
+
  */
+
 const formatCEP = (value: string) => {
   const numbers = value.replace(/\D/g, "").substring(0, 8);
 
@@ -316,6 +486,18 @@ const getInitials = (name?: string) => {
   }
 
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const getFotoPerfilUrl = (value?: string | null) => {
+  const foto = String(value || "").trim();
+
+  if (!foto) return "";
+
+  if (/^https?:\/\//i.test(foto)) return foto;
+
+  const filename = foto.split("/").pop() || foto;
+
+  return `${USER_PHOTO_BASE}/${encodeURIComponent(filename)}`;
 };
 
 export const RHView: React.FC = () => {
@@ -347,17 +529,31 @@ export const RHView: React.FC = () => {
 
   const [error, setError] = useState("");
 
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+
+  const [fotoPreview, setFotoPreview] = useState("");
+
+  const [removerFoto, setRemoverFoto] = useState(false);
+
   /* =========================================================
+
+
+
      CARREGAR DADOS
+
+
+
      ========================================================= */
 
   const carregarDados = async () => {
     setLoading(true);
+
     setError("");
 
     try {
       const [usuariosResponse, permissoesResponse] = await Promise.all([
         fetch(`${API_BASE}/listar?tabela=usuarios`),
+
         fetch(`${API_BASE}/listar?tabela=usuarios_permissoes`),
       ]);
 
@@ -376,6 +572,7 @@ export const RHView: React.FC = () => {
       );
     } catch (err) {
       console.error(err);
+
       setError("Não foi possível carregar os dados do RH.");
     } finally {
       setLoading(false);
@@ -387,7 +584,13 @@ export const RHView: React.FC = () => {
   }, []);
 
   /* =========================================================
+
+
+
      VIA CEP
+
+
+
      ========================================================= */
 
   const buscarCEP = async (cepDigitado: string) => {
@@ -398,6 +601,7 @@ export const RHView: React.FC = () => {
     }
 
     setLoadingCep(true);
+
     setCepError("");
 
     try {
@@ -411,19 +615,26 @@ export const RHView: React.FC = () => {
 
       if (data.erro) {
         setCepError("CEP não encontrado.");
+
         return;
       }
 
       setForm((prev) => ({
         ...prev,
+
         cep: formatCEP(data.cep || cep),
+
         endereco: data.logradouro || "",
+
         bairro: data.bairro || "",
+
         cidade: data.localidade || "",
+
         estado: data.uf || "",
       }));
     } catch (err) {
       console.error("Erro ViaCEP:", err);
+
       setCepError("Não foi possível consultar o CEP.");
     } finally {
       setLoadingCep(false);
@@ -437,6 +648,7 @@ export const RHView: React.FC = () => {
 
     setForm((prev) => ({
       ...prev,
+
       cep: formatted,
     }));
 
@@ -448,7 +660,13 @@ export const RHView: React.FC = () => {
   };
 
   /* =========================================================
+
+
+
      FILTRO
+
+
+
      ========================================================= */
 
   const usuariosFiltrados = useMemo(() => {
@@ -468,12 +686,73 @@ export const RHView: React.FC = () => {
     });
   }, [usuarios, search]);
 
+  const limparPreviewBlob = () => {
+    if (fotoPreview.startsWith("blob:")) {
+      URL.revokeObjectURL(fotoPreview);
+    }
+  };
+
+  const handleFotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file) return;
+
+    const permitidos = ["image/jpeg", "image/png", "image/webp"];
+
+    if (!permitidos.includes(file.type)) {
+      alert("Envie uma imagem JPG, PNG ou WEBP.");
+
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("A foto deve ter no máximo 5 MB.");
+
+      return;
+    }
+
+    limparPreviewBlob();
+
+    setFotoFile(file);
+
+    setRemoverFoto(false);
+
+    setFotoPreview(URL.createObjectURL(file));
+  };
+
+  const removerFotoPerfil = () => {
+    limparPreviewBlob();
+
+    setFotoFile(null);
+
+    setFotoPreview("");
+
+    setRemoverFoto(Boolean(editingUsuario?.foto_perfil));
+  };
+
   /* =========================================================
+
+
+
      NOVO
+
+
+
      ========================================================= */
 
   const abrirNovo = () => {
+    limparPreviewBlob();
+
+    setFotoFile(null);
+
+    setFotoPreview("");
+
+    setRemoverFoto(false);
+
     setEditingUsuario(null);
+
     setForm({
       ...EMPTY_FORM,
     });
@@ -492,36 +771,69 @@ export const RHView: React.FC = () => {
   };
 
   /* =========================================================
+
+
+
      EDITAR
+
+
+
      ========================================================= */
 
   const abrirEdicao = (usuario: Usuario) => {
+    limparPreviewBlob();
+
+    setFotoFile(null);
+
+    setFotoPreview(getFotoPerfilUrl(usuario.foto_perfil));
+
+    setRemoverFoto(false);
+
     setEditingUsuario(usuario);
 
     setForm({
       nome: usuario.nome || "",
+
       cpf_cnpj: usuario.cpf_cnpj || "",
+
       cargo: usuario.cargo || "",
+
       whatsapp: usuario.whatsapp ? formatWhatsapp(usuario.whatsapp) : "",
+
       endereco: usuario.endereco || "",
+
       numero: usuario.numero || "",
+
       bairro: usuario.bairro || "",
+
       cidade: usuario.cidade || "",
+
       estado: usuario.estado || "",
+
       cep: usuario.cep ? formatCEP(usuario.cep) : "",
+
       emergencia_1_nome: usuario.emergencia_1_nome || "",
+
       emergencia_1_whatsapp: usuario.emergencia_1_whatsapp
         ? formatWhatsapp(usuario.emergencia_1_whatsapp)
         : "",
+
       emergencia_2_nome: usuario.emergencia_2_nome || "",
+
       emergencia_2_whatsapp: usuario.emergencia_2_whatsapp
         ? formatWhatsapp(usuario.emergencia_2_whatsapp)
         : "",
+
       usuario: usuario.usuario || "",
+
       email: usuario.email || "",
+
       senha: "",
+
       tipo: usuario.tipo || "colaborador",
+
       perfil: usuario.perfil || "colaborador",
+
       ativo: isTrue(usuario.ativo),
     });
 
@@ -547,28 +859,53 @@ export const RHView: React.FC = () => {
   };
 
   /* =========================================================
+
+
+
      FECHAR MODAL
+
+
+
      ========================================================= */
 
   const fecharModal = () => {
     if (saving) return;
 
     setShowModal(false);
+
     setEditingUsuario(null);
+
     setForm({
       ...EMPTY_FORM,
     });
+
     setSelectedPermissions({});
+
     setCepError("");
+
+    limparPreviewBlob();
+
+    setFotoFile(null);
+
+    setFotoPreview("");
+
+    setRemoverFoto(false);
   };
 
   /* =========================================================
+
+
+
      UPDATE FORM
+
+
+
      ========================================================= */
 
   const updateForm = (field: keyof FormUsuario, value: any) => {
     setForm((prev) => ({
       ...prev,
+
       [field]: value,
     }));
   };
@@ -576,27 +913,85 @@ export const RHView: React.FC = () => {
   const togglePermission = (quadro: string) => {
     setSelectedPermissions((prev) => ({
       ...prev,
+
       [quadro]: !prev[quadro],
     }));
   };
 
+  const salvarFotoDoUsuario = async (usuarioId: string) => {
+    if (!fotoFile && !removerFoto) return;
+
+    const fotoForm = new FormData();
+
+    fotoForm.append("usuario_id", usuarioId);
+
+    if (fotoFile) {
+      fotoForm.append("foto", fotoFile);
+    } else if (removerFoto) {
+      fotoForm.append("remover", "1");
+    }
+
+    const response = await fetch(`${API_BASE}/usuario_foto`, {
+      method: "POST",
+
+      body: fotoForm,
+    });
+
+    const raw = await response.text();
+
+    let data: any = {};
+
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      throw new Error("Resposta inválida ao salvar a foto: " + raw);
+    }
+
+    if (!response.ok || data?.erro || data?.sucesso === false) {
+      throw new Error(
+        data?.erro || "Não foi possível salvar a foto do colaborador.",
+      );
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("sothink:user-photo-updated", {
+        detail: {
+          userId: usuarioId,
+          foto_perfil: data?.foto_perfil || null,
+          url: data?.url || getFotoPerfilUrl(data?.foto_perfil),
+        },
+      }),
+    );
+
+    return data;
+  };
+
   /* =========================================================
+
+
+
      SALVAR
+
+
+
      ========================================================= */
 
   const salvarUsuario = async () => {
     if (!form.nome.trim()) {
       alert("Informe o nome do colaborador.");
+
       return;
     }
 
     if (!form.cargo.trim()) {
       alert("Informe o cargo do colaborador.");
+
       return;
     }
 
     if (!editingUsuario && !form.senha.trim()) {
       alert("Informe uma senha para o colaborador.");
+
       return;
     }
 
@@ -635,6 +1030,7 @@ export const RHView: React.FC = () => {
 
       formData.append(
         "emergencia_1_whatsapp",
+
         form.emergencia_1_whatsapp.trim(),
       );
 
@@ -642,6 +1038,7 @@ export const RHView: React.FC = () => {
 
       formData.append(
         "emergencia_2_whatsapp",
+
         form.emergencia_2_whatsapp.trim(),
       );
 
@@ -665,6 +1062,7 @@ export const RHView: React.FC = () => {
 
       const response = await fetch(endpoint, {
         method: "POST",
+
         body: formData,
       });
 
@@ -706,19 +1104,41 @@ export const RHView: React.FC = () => {
 
           await fetch(`${API_BASE}/editar`, {
             method: "POST",
+
             body: permissaoForm,
           });
         } else {
           await fetch(`${API_BASE}/inserir`, {
             method: "POST",
+
             body: permissaoForm,
           });
         }
       }
 
+      await salvarFotoDoUsuario(String(usuarioId));
+
       await carregarDados();
 
-      fecharModal();
+      // Fecha o modal após salvar. O fecharModal normal bloqueia enquanto saving=true.
+
+      setShowModal(false);
+
+      setEditingUsuario(null);
+
+      setForm({ ...EMPTY_FORM });
+
+      setSelectedPermissions({});
+
+      setCepError("");
+
+      limparPreviewBlob();
+
+      setFotoFile(null);
+
+      setFotoPreview("");
+
+      setRemoverFoto(false);
 
       alert(
         editingUsuario
@@ -735,7 +1155,13 @@ export const RHView: React.FC = () => {
   };
 
   /* =========================================================
+
+
+
      EXCLUIR
+
+
+
      ========================================================= */
 
   const excluirUsuario = async (usuario: Usuario) => {
@@ -771,7 +1197,13 @@ export const RHView: React.FC = () => {
   };
 
   /* =========================================================
+
+
+
      ATIVO / INATIVO
+
+
+
      ========================================================= */
 
   const toggleAtivoRapido = async (usuario: Usuario) => {
@@ -788,6 +1220,7 @@ export const RHView: React.FC = () => {
 
       const response = await fetch(`${API_BASE}/editar`, {
         method: "POST",
+
         body: formData,
       });
 
@@ -806,12 +1239,19 @@ export const RHView: React.FC = () => {
   };
 
   /* =========================================================
+
+
+
      RENDER
+
+
+
      ========================================================= */
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
       {/* HEADER */}
+
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-3">
@@ -844,6 +1284,7 @@ export const RHView: React.FC = () => {
       </div>
 
       {/* ABAS */}
+
       <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
         <button
           type="button"
@@ -873,6 +1314,7 @@ export const RHView: React.FC = () => {
       </div>
 
       {/* SQUADS */}
+
       {aba === "squads" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-10 text-center shadow-sm">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
@@ -895,9 +1337,11 @@ export const RHView: React.FC = () => {
       )}
 
       {/* COLABORADORES */}
+
       {aba === "colaboradores" && (
         <>
           {/* BUSCA */}
+
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -918,6 +1362,7 @@ export const RHView: React.FC = () => {
           </div>
 
           {/* RESUMO */}
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
               <div className="flex items-center justify-between">
@@ -978,6 +1423,7 @@ export const RHView: React.FC = () => {
           </div>
 
           {/* TABELA */}
+
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             {loading ? (
               <div className="p-12 flex flex-col items-center justify-center text-slate-400">
@@ -1044,8 +1490,20 @@ export const RHView: React.FC = () => {
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-extrabold shrink-0">
+                              <div className="relative w-9 h-9 rounded-xl overflow-hidden bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-extrabold shrink-0">
                                 {getInitials(usuario.nome)}
+
+                                {usuario.foto_perfil && (
+                                  <img
+                                    src={getFotoPerfilUrl(usuario.foto_perfil)}
+                                    alt={`Foto de ${usuario.nome || "colaborador"}`}
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    onError={(event) => {
+                                      event.currentTarget.style.display =
+                                        "none";
+                                    }}
+                                  />
+                                )}
                               </div>
 
                               <div className="min-w-0">
@@ -1157,8 +1615,15 @@ export const RHView: React.FC = () => {
       )}
 
       {/* =====================================================
+
+
+
           MODAL
+
+
+
           ===================================================== */}
+
       {showModal && (
         <div
           className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-4 pt-8 overflow-y-auto"
@@ -1169,6 +1634,7 @@ export const RHView: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* HEADER MODAL */}
+
             <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-5 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
@@ -1206,6 +1672,7 @@ export const RHView: React.FC = () => {
 
             <div className="p-6 space-y-6">
               {/* DADOS PRINCIPAIS */}
+
               <section className="space-y-4">
                 <div>
                   <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
@@ -1215,6 +1682,58 @@ export const RHView: React.FC = () => {
                   <p className="text-[11px] text-slate-400 mt-1">
                     Informações principais, cargo e documento.
                   </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/30 p-4">
+                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-2xl font-black shrink-0">
+                    {getInitials(form.nome)}
+
+                    {fotoPreview && (
+                      <img
+                        src={fotoPreview}
+                        alt="Prévia da foto de perfil"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-sm font-extrabold text-slate-800 dark:text-slate-100">
+                      <Camera className="w-4 h-4 text-indigo-500" />
+                      Foto de perfil
+                    </div>
+
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      JPG, PNG ou WEBP. Tamanho máximo de 5 MB. A imagem será
+                      recortada para preencher o avatar.
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3 py-2 text-[11px] font-extrabold text-white transition-colors">
+                        <Camera className="w-3.5 h-3.5" />
+
+                        {fotoPreview ? "Alterar foto" : "Selecionar foto"}
+
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleFotoChange}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {fotoPreview && (
+                        <button
+                          type="button"
+                          onClick={removerFotoPerfil}
+                          className="inline-flex items-center gap-2 rounded-xl border border-rose-200 dark:border-rose-900/60 px-3 py-2 text-[11px] font-extrabold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remover foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1276,7 +1795,7 @@ export const RHView: React.FC = () => {
                       type="email"
                       value={form.email}
                       onChange={(e) => updateForm("email", e.target.value)}
-                      placeholder="email@empresa.com"
+                      placeholder="email\@empresa.com"
                       className="field-input"
                     />
                   </div>
@@ -1296,6 +1815,7 @@ export const RHView: React.FC = () => {
               </section>
 
               {/* ENDEREÇO */}
+
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-indigo-500" />
@@ -1313,6 +1833,7 @@ export const RHView: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                   {/* CEP PRIMEIRO */}
+
                   <div className="md:col-span-2">
                     <label className="field-label">CEP</label>
 
@@ -1405,9 +1926,13 @@ export const RHView: React.FC = () => {
                       onChange={(e) =>
                         updateForm(
                           "estado",
+
                           e.target.value
+
                             .replace(/[^a-zA-Z]/g, "")
+
                             .toUpperCase()
+
                             .substring(0, 2),
                         )
                       }
@@ -1419,6 +1944,7 @@ export const RHView: React.FC = () => {
               </section>
 
               {/* EMERGÊNCIA */}
+
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
@@ -1436,6 +1962,7 @@ export const RHView: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* CONTATO 1 */}
+
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
                       Contato 01
@@ -1457,6 +1984,7 @@ export const RHView: React.FC = () => {
                       onChange={(e) =>
                         updateForm(
                           "emergencia_1_whatsapp",
+
                           formatWhatsapp(e.target.value),
                         )
                       }
@@ -1466,6 +1994,7 @@ export const RHView: React.FC = () => {
                   </div>
 
                   {/* CONTATO 2 */}
+
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
                       Contato 02
@@ -1487,6 +2016,7 @@ export const RHView: React.FC = () => {
                       onChange={(e) =>
                         updateForm(
                           "emergencia_2_whatsapp",
+
                           formatWhatsapp(e.target.value),
                         )
                       }
@@ -1498,6 +2028,7 @@ export const RHView: React.FC = () => {
               </section>
 
               {/* ACESSO */}
+
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-indigo-500" />
@@ -1589,6 +2120,7 @@ export const RHView: React.FC = () => {
               </section>
 
               {/* PERMISSÕES */}
+
               <section className="space-y-4">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-indigo-500" />
@@ -1657,6 +2189,7 @@ export const RHView: React.FC = () => {
             </div>
 
             {/* FOOTER */}
+
             <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-4 flex flex-col sm:flex-row justify-end gap-2">
               <button
                 type="button"
@@ -1694,45 +2227,163 @@ export const RHView: React.FC = () => {
       )}
 
       {/* ESTILOS */}
+
       <style>{`
+
+
+
         .field-label {
+
+
+
           display: block;
+
+
+
           margin-bottom: 6px;
+
+
+
           font-size: 11px;
+
+
+
           font-weight: 700;
+
+
+
           color: rgb(71 85 105);
+
+
+
         }
+
+
+
+
+
+
 
         .dark .field-label {
+
+
+
           color: rgb(203 213 225);
+
+
+
         }
+
+
+
+
+
+
 
         .field-input {
+
+
+
           width: 100%;
+
+
+
           padding: 9px 12px;
+
+
+
           border-radius: 10px;
+
+
+
           border: 1px solid rgb(226 232 240);
+
+
+
           background: white;
+
+
+
           color: rgb(15 23 42);
+
+
+
           font-size: 12px;
+
+
+
           outline: none;
+
+
+
           transition: all .15s ease;
+
+
+
         }
+
+
+
+
+
+
 
         .field-input:focus {
+
+
+
           border-color: rgb(99 102 241);
+
+
+
           box-shadow: 0 0 0 3px rgba(99, 102, 241, .10);
+
+
+
         }
+
+
+
+
+
+
 
         .dark .field-input {
+
+
+
           background: rgb(15 23 42);
+
+
+
           border-color: rgb(51 65 85);
+
+
+
           color: rgb(241 245 249);
+
+
+
         }
 
+
+
+
+
+
+
         .dark .field-input:focus {
+
+
+
           border-color: rgb(99 102 241);
+
+
+
         }
+
+
+
       `}</style>
     </div>
   );

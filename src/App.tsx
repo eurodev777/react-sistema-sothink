@@ -126,6 +126,11 @@ export function App() {
 
   const [newJobModalOpen, setNewJobModalOpen] = useState(false);
 
+  // Lista independente de colaboradores para o modal "+ Novo Job".
+  // Não depende do carregamento geral do App, que pode falhar antes de chegar em usuários.
+  const [newJobUsers, setNewJobUsers] = useState<any[]>([]);
+  const [loadingNewJobUsers, setLoadingNewJobUsers] = useState(false);
+
   const [newJobFiles, setNewJobFiles] = useState<File[]>([]);
   const [newJobLinksText, setNewJobLinksText] = useState("");
 
@@ -367,6 +372,101 @@ export function App() {
       carregarTudoDoBanco();
     }
   }, [user, clientPortalObj]); // Recarrega os dados ao logar
+
+  // Carrega colaboradores diretamente quando o modal de criação de Job abrir.
+  useEffect(() => {
+    if (!newJobModalOpen) return;
+
+    const carregarResponsaveisNovoJob = async () => {
+      setLoadingNewJobUsers(true);
+
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=usuarios",
+          { cache: "no-store" },
+        );
+
+        const rawText = await response.text();
+        let data: any = [];
+
+        try {
+          data = rawText ? JSON.parse(rawText) : [];
+        } catch {
+          throw new Error(
+            rawText || "Resposta inválida ao carregar colaboradores.",
+          );
+        }
+
+        if (!response.ok || data?.erro) {
+          throw new Error(
+            data?.erro ||
+              `Não foi possível carregar colaboradores (HTTP ${response.status}).`,
+          );
+        }
+
+        const lista = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.dados)
+            ? data.dados
+            : Array.isArray(data?.data)
+              ? data.data
+              : [];
+
+        setNewJobUsers(lista);
+      } catch (error) {
+        console.error("Erro ao carregar responsáveis do novo Job:", error);
+        setNewJobUsers([]);
+
+        showToast(
+          "error",
+          "Erro ao carregar colaboradores",
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar a lista de responsáveis.",
+        );
+      } finally {
+        setLoadingNewJobUsers(false);
+      }
+    };
+
+    carregarResponsaveisNovoJob();
+  }, [newJobModalOpen]);
+
+  const responsaveisNovoJob = (() => {
+    const todos = [
+      ...(Array.isArray(users) ? users : []),
+      ...(Array.isArray(newJobUsers) ? newJobUsers : []),
+    ] as any[];
+
+    const porId = new Map<string, any>();
+
+    todos.forEach((u: any, index: number) => {
+      const ativo = u?.ativo;
+      const inativo =
+        ativo === false ||
+        ativo === 0 ||
+        ativo === "0" ||
+        String(ativo).toLowerCase() === "false";
+
+      if (inativo) return;
+
+      const nome = String(
+        u?.nome || u?.name || u?.usuario || u?.email || "",
+      ).trim();
+
+      if (!nome) return;
+
+      const id = String(
+        u?.id ?? u?.usuario_id ?? u?.email ?? `${nome}-${index}`,
+      );
+
+      porId.set(id, { ...u, id, nome });
+    });
+
+    return Array.from(porId.values()).sort((a: any, b: any) =>
+      String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"),
+    );
+  })();
 
   // Função auxiliar para recarregar apenas os jobs após criar um novo
 
@@ -990,26 +1090,31 @@ export function App() {
                         responsavel: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                    disabled={
+                      loadingNewJobUsers && responsaveisNovoJob.length === 0
+                    }
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold disabled:opacity-60"
                   >
-                    <option value="">Sem responsável</option>
-                    {users
-                      .filter((u: any) => {
-                        const ativo = (u as any)?.ativo;
-                        return !(
-                          ativo === false ||
-                          ativo === 0 ||
-                          ativo === "0" ||
-                          String(ativo).toLowerCase() === "false"
-                        );
-                      })
-                      .map((u: any) => (
-                        <option key={u.id} value={u.nome}>
-                          {u.nome}
-                          {u.cargo ? ` (${u.cargo})` : ""}
-                        </option>
-                      ))}
+                    <option value="">
+                      {loadingNewJobUsers && responsaveisNovoJob.length === 0
+                        ? "Carregando colaboradores..."
+                        : "Sem responsável"}
+                    </option>
+
+                    {responsaveisNovoJob.map((u: any) => (
+                      <option key={String(u.id)} value={u.nome}>
+                        {u.nome}
+                        {u.cargo ? ` (${u.cargo})` : ""}
+                      </option>
+                    ))}
                   </select>
+
+                  {!loadingNewJobUsers && responsaveisNovoJob.length === 0 && (
+                    <p className="mt-1 text-[10px] font-bold text-rose-500">
+                      Nenhum colaborador ativo foi retornado pela tabela
+                      usuarios.
+                    </p>
+                  )}
                 </div>
 
                 <div>

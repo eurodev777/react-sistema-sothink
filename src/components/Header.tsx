@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
+
 import {
   Menu,
   Moon,
@@ -12,70 +13,220 @@ import {
   ChevronDown,
   Lock,
   LayoutDashboard,
-} from 'lucide-react';
-import { User, ApiConfig } from '../types';
+} from "lucide-react";
+
+import { User, ApiConfig } from "../types";
+
+const USER_PHOTO_BASE = "https://sothink.com.br/app/uploads/usuarios";
+
+const getUserPhotoUrl = (value?: string | null) => {
+  const photo = String(value || "").trim();
+  if (!photo) return "";
+  if (/^(?:https?:|data:|blob:)/i.test(photo)) return photo;
+
+  const filename = photo.split("/").pop() || photo;
+  return `${USER_PHOTO_BASE}/${encodeURIComponent(filename)}`;
+};
 
 interface HeaderProps {
   currentUser?: User | null;
+
   onToggleSidebar?: () => void;
+
   darkMode?: boolean;
+
   onToggleDarkMode?: () => void;
-  theme?: 'light' | 'dark';
+
+  theme?: "light" | "dark";
+
   onToggleTheme?: () => void;
+
   apiConfig?: ApiConfig;
+
   onOpenApiConfig?: () => void;
+
   onLogout?: () => void;
+
   onOpenLoginModal?: () => void;
+
   searchQuery?: string;
+
   onSearchChange?: (q: string) => void;
-  onSwitchRole?: (role: 'admin' | 'cliente') => void;
+
+  onSwitchRole?: (role: "admin" | "cliente") => void;
+
   activeTabTitle?: string;
-  showToast?: (type: 'success' | 'error' | 'info', title: string, desc?: string) => void;
-  
+
+  showToast?: (
+    type: "success" | "error" | "info",
+    title: string,
+    desc?: string,
+  ) => void;
+
   // Novas propriedades para o botão Voltar ao Dashboard
+
   isDashboard?: boolean;
+
   onBackToDashboard?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
+
   onToggleSidebar,
+
   darkMode,
+
   onToggleDarkMode,
+
   theme,
+
   onToggleTheme,
+
   apiConfig,
+
   onOpenApiConfig,
+
   onLogout,
+
   onOpenLoginModal,
-  searchQuery = '',
+
+  searchQuery = "",
+
   onSearchChange,
+
   onSwitchRole,
-  activeTabTitle = 'Controle de Jobs',
+
+  activeTabTitle = "Controle de Jobs",
+
   isDashboard,
+
   onBackToDashboard,
 }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [userPhotoUrl, setUserPhotoUrl] = useState("");
 
-  const isDark = theme ? theme === 'dark' : Boolean(darkMode);
+  const currentUserAny = currentUser as any;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const localPhoto = getUserPhotoUrl(
+      currentUserAny?.foto_perfil || currentUserAny?.avatar,
+    );
+    setUserPhotoUrl(localPhoto);
+
+    const loadCurrentUserPhoto = async () => {
+      if (!currentUser) return;
+
+      try {
+        const response = await fetch(
+          "https://sothink.com.br/app/api/listar?tabela=usuarios",
+          { cache: "no-store" },
+        );
+        const data = await response.json();
+        const usuarios = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.dados)
+            ? data.dados
+            : Array.isArray(data?.data)
+              ? data.data
+              : [];
+
+        const userId = String(currentUserAny?.id || "").trim();
+        const email = String(currentUserAny?.email || "")
+          .trim()
+          .toLowerCase();
+        const usuarioLogin = String(currentUserAny?.usuario || "")
+          .trim()
+          .toLowerCase();
+
+        const usuarioBanco = usuarios.find((item: any) => {
+          if (userId && String(item?.id || "") === userId) return true;
+          if (
+            email &&
+            String(item?.email || "")
+              .trim()
+              .toLowerCase() === email
+          )
+            return true;
+          if (
+            usuarioLogin &&
+            String(item?.usuario || "")
+              .trim()
+              .toLowerCase() === usuarioLogin
+          ) {
+            return true;
+          }
+          return false;
+        });
+
+        const photo = getUserPhotoUrl(usuarioBanco?.foto_perfil);
+        if (mounted && photo) setUserPhotoUrl(photo);
+      } catch (error) {
+        console.error("Erro ao carregar foto do usuário no Header:", error);
+      }
+    };
+
+    const handlePhotoUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<any>)?.detail || {};
+      const currentId = String(currentUserAny?.id || "");
+      if (currentId && String(detail?.userId || "") !== currentId) return;
+
+      const photo = getUserPhotoUrl(detail?.url || detail?.foto_perfil);
+      setUserPhotoUrl(photo);
+    };
+
+    loadCurrentUserPhoto();
+    window.addEventListener(
+      "sothink:user-photo-updated",
+      handlePhotoUpdated as EventListener,
+    );
+
+    return () => {
+      mounted = false;
+      window.removeEventListener(
+        "sothink:user-photo-updated",
+        handlePhotoUpdated as EventListener,
+      );
+    };
+  }, [
+    currentUserAny?.id,
+    currentUserAny?.email,
+    currentUserAny?.usuario,
+    currentUserAny?.foto_perfil,
+    currentUserAny?.avatar,
+  ]);
+
+  const isDark = theme ? theme === "dark" : Boolean(darkMode);
+
   const handleToggleTheme = onToggleTheme || onToggleDarkMode || (() => {});
+
   const handleLogout = onLogout || onOpenLoginModal || (() => {});
 
   // Identifica se está no dashboard pela prop isDashboard ou pelo título da aba
-  const currentlyOnDashboard = isDashboard ?? (activeTabTitle === 'Dashboard' || activeTabTitle === 'Painel Administrativo');
+
+  const currentlyOnDashboard =
+    isDashboard ??
+    (activeTabTitle === "Dashboard" ||
+      activeTabTitle === "Painel Administrativo");
 
   const getInitials = (name?: string) => {
-    if (!name) return 'AD';
-    const parts = name.trim().split(' ');
+    if (!name) return "AD";
+
+    const parts = name.trim().split(" ");
+
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
+
     return name.substring(0, 2).toUpperCase();
   };
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 flex items-center justify-between transition-colors shadow-xs">
       {/* Left section: Breadcrumb & Sidebar Toggle */}
+
       <div className="flex items-center gap-3 w-1/3">
         {onToggleSidebar && (
           <button
@@ -89,17 +240,27 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="hidden sm:flex items-center gap-2">
           {/* <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
+
             S
+
           </div> */}
+
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <span className="font-bold text-slate-800 dark:text-slate-200">STK</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              STK
+            </span>
+
             <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300 font-semibold">{activeTabTitle}</span>
+
+            <span className="text-slate-600 dark:text-slate-300 font-semibold">
+              {activeTabTitle}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Center section: Back to Dashboard & Search Bar */}
+
       <div className="flex-1 flex items-center justify-center gap-4">
         {!currentlyOnDashboard && onBackToDashboard && (
           <button
@@ -107,7 +268,9 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center cursor-pointer gap-2 px-4 py-1.5 bg-slate-800 dark:bg-slate-100 hover:bg-slate-700 dark:hover:bg-white text-white dark:text-slate-900 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap"
           >
             <LayoutDashboard className="w-4 h-4" />
+
             <span className="hidden sm:inline">Voltar ao Dashboard</span>
+
             <span className="sm:hidden">Dashboard</span>
           </button>
         )}
@@ -115,6 +278,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onSearchChange && (
           <div className="hidden md:flex relative w-full max-w-sm">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+
             <input
               type="text"
               value={searchQuery}
@@ -127,57 +291,72 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right Section: Actions & User Profile */}
+
       <div className="flex items-center justify-end gap-2 sm:gap-3 w-1/3">
         {/* PHP API Status indicator */}
+
         {onOpenApiConfig && (
           <button
             onClick={onOpenApiConfig}
             className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
               apiConfig?.useRemoteApi
-                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-300'
+                ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-300"
             }`}
             title="Status da API REST PHP"
           >
             <Server className="w-3.5 h-3.5 text-blue-600" />
-            <span>{apiConfig?.useRemoteApi ? 'API PHP' : 'Local REST'}</span>
+
+            <span>{apiConfig?.useRemoteApi ? "API PHP" : "Local REST"}</span>
+
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </button>
         )}
 
         {/* Theme Toggle */}
+
         <button
           onClick={handleToggleTheme}
           className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-all"
-          title={isDark ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
+          title={isDark ? "Ativar Modo Claro" : "Ativar Modo Escuro"}
         >
-          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          {isDark ? (
+            <Sun className="w-4 h-4 text-amber-400" />
+          ) : (
+            <Moon className="w-4 h-4 text-slate-600" />
+          )}
         </button>
 
         {/* User Profile Pill */}
+
         <div className="relative">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-800"
           >
-            {currentUser?.avatar ? (
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.nome}
-                className="w-7 h-7 rounded-full object-cover ring-2 ring-blue-500/20"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs">
-                {getInitials(currentUser?.nome)}
-              </div>
-            )}
+            <div className="relative w-7 h-7 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold text-xs ring-2 ring-blue-500/20">
+              {getInitials(currentUser?.nome)}
+              {userPhotoUrl && (
+                <img
+                  src={userPhotoUrl}
+                  alt={currentUser?.nome || "Usuário"}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+            </div>
 
             <div className="hidden lg:block text-left pr-1">
               <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[120px]">
-                {currentUser?.nome || 'Agência Sothink'}
+                {currentUser?.nome || "Agência Sothink"}
               </div>
+
               <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
-                {currentUser?.role === 'cliente' ? 'Cliente Portal' : currentUser?.cargo || 'Admin'}
+                {currentUser?.role === "cliente"
+                  ? "Cliente Portal"
+                  : currentUser?.cargo || "Admin"}
               </div>
             </div>
 
@@ -185,6 +364,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* User Dropdown */}
+
           {userMenuOpen && (
             <div
               className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2"
@@ -192,21 +372,29 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                  {currentUser?.nome || 'Agência Sothink'}
+                  {currentUser?.nome || "Agência Sothink"}
                 </p>
+
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {currentUser?.email || 'sothink.gestao@gmail.com'}
+                  {currentUser?.email || "sothink.gestao@gmail.com"}
                 </p>
               </div>
 
               <div className="p-1.5 space-y-1">
                 {onSwitchRole && (
                   <button
-                    onClick={() => onSwitchRole(currentUser?.role === 'admin' ? 'cliente' : 'admin')}
+                    onClick={() =>
+                      onSwitchRole(
+                        currentUser?.role === "admin" ? "cliente" : "admin",
+                      )
+                    }
                     className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2"
                   >
                     <Sparkles className="w-4 h-4 text-blue-600" />
-                    {currentUser?.role === 'admin' ? 'Visão do Cliente' : 'Modo Admin'}
+
+                    {currentUser?.role === "admin"
+                      ? "Visão do Cliente"
+                      : "Modo Admin"}
                   </button>
                 )}
 

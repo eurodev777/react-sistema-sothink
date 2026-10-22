@@ -38,12 +38,15 @@ export interface CampanhaTrafego {
 }
 
 // Evita que null / "null" / undefined apareçam na interface.
+
 // Zero continua aparecendo normalmente, pois pode ser um valor válido.
+
 const safeValue = (val: any) => {
   if (val === null || val === undefined) return "";
 
   if (typeof val === "string") {
     const normalized = val.trim().toLowerCase();
+
     if (normalized === "null" || normalized === "undefined") return "";
   }
 
@@ -196,13 +199,22 @@ export const TrafegoView: React.FC = () => {
     fetchCampanhas();
   }, []);
 
-  // <-- NOVO: Extrair empresas (clientes) únicas para o Select
+  // Padroniza nomes usados apenas na seleção e no filtro, sem alterar os registros.
+  // Remove espaços extras e ignora diferenças entre maiúsculas e minúsculas.
+  const normalizarCliente = (nome: string) =>
+    (nome || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
 
+  // Uma opção por cliente, mesmo quando as campanhas usam grafias com espaços extras.
   const empresasUnicas = Array.from(
-    new Set(
-      campanhas.map((c) => c.empresa).filter((e) => e && e.trim() !== ""),
-    ),
-  ).sort();
+    new Map(
+      campanhas
+        .filter((c) => normalizarCliente(c.empresa) !== "")
+        .map((c) => {
+          const nomeExibicao = c.empresa.trim().replace(/\s+/g, " ");
+          return [normalizarCliente(c.empresa), nomeExibicao] as const;
+        }),
+    ).values(),
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   const handleAddRow = async (plataforma: "Google" | "Meta") => {
     const formData = new FormData();
@@ -382,7 +394,8 @@ export const TrafegoView: React.FC = () => {
       // <-- NOVO: Checa se o cliente bate
 
       const matchCliente =
-        clienteFilter === "" || nomeEmpresa === clienteFilter;
+        clienteFilter === "" ||
+        normalizarCliente(nomeEmpresa) === normalizarCliente(clienteFilter);
 
       // <-- ATUALIZADO: Retorna com o matchCliente
 
@@ -395,7 +408,7 @@ export const TrafegoView: React.FC = () => {
           <h2 className="font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             {plataforma === "Google" ? (
               <img
-                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google\_%22G%22_logo.svg"
                 alt="Google"
                 className="w-4 h-4"
               />

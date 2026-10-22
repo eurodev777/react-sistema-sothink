@@ -131,6 +131,11 @@ const QUADROS = [
 
     descricao: "Acesso ao quadro principal de jobs",
   },
+  {
+    id: "operacional",
+    nome: "Diretoria",
+    descricao: "Acesso ao quadro Diretoria: Operacional e Agenda Diretoria",
+  },
 
   {
     id: "clientes",

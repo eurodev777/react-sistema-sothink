@@ -4,14 +4,11 @@ import {
   Building2,
   FileText,
   Kanban,
-  CheckSquare,
   ShieldCheck,
-  Code2,
-  ChevronRight,
-  Sparkles,
   TrendingUp,
   Megaphone,
   Headset,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { User } from "../types";
 import logo from "../assets/logo.jpeg";
@@ -64,10 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const jCount = counts ? counts.jobs : jobsCount;
 
   const pode = (tab: ActiveTab) => {
-    // Se não foi enviada função de permissão,
-    // mantém o comportamento atual
     if (!podeAcessarAba) return true;
-
     return podeAcessarAba(tab);
   };
 
@@ -112,9 +106,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...(pode("operacional")
           ? [
               {
+                // NÃO trocar este ID para "diretoria".
+                // A permissão persistida no banco continua sendo "operacional".
                 id: "operacional" as ActiveTab,
-                label: "Operacional",
-                icon: <Headset className="w-5 h-5" />,
+                label: "Diretoria",
+                icon: <BriefcaseBusiness className="w-5 h-5" />,
                 badge: 0,
               },
             ]
@@ -181,9 +177,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }`}
     >
       <div className="flex flex-col h-full">
-        {/* Sidebar Brand Logo */}
         <div
-          className={`h-16 flex items-center border-b dark:border-slate-950 border-slate-200 transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-6"}`}
+          className={`h-16 flex items-center border-b dark:border-slate-950 border-slate-200 transition-all duration-300 ${
+            collapsed ? "justify-center px-0" : "px-6"
+          }`}
         >
           {!collapsed ? (
             <img
@@ -192,14 +189,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="h-8 w-auto object-contain"
             />
           ) : (
-            // Quando fechado, mostra uma versão reduzida do logo (ou uma letra/ícone para não quebrar o visual)
             <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white text-lg shadow-sm">
               S
             </div>
           )}
         </div>
 
-        {/* Navigation Items */}
         <nav className="p-2.5 mt-2 space-y-2 flex-1 overflow-y-auto">
           {!collapsed && (
             <div className="px-3 pt-3 pb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
@@ -226,7 +221,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span
                   className={`shrink-0 transition-transform duration-200 ${
                     collapsed ? "group-hover:scale-110" : ""
-                  } ${isActive ? "text-white" : "text-slate-400 group-hover:text-blue-600"}`}
+                  } ${
+                    isActive
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-blue-600"
+                  }`}
                 >
                   {item.icon}
                 </span>
@@ -234,17 +233,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!collapsed && (
                   <div className="flex-1 text-left flex items-center justify-between min-w-0">
                     <span className="truncate">{item.label}</span>
-
-                    {/* Mostra a Badge apenas se não estiver minimizado */}
-                    {/* {item.badge !== undefined && item.badge > 0 && (
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold ml-2 ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )} */}
                   </div>
                 )}
               </button>

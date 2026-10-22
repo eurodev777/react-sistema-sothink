@@ -1,4 +1,5 @@
 import React from "react";
+
 import {
   Users,
   FileText,
@@ -9,12 +10,16 @@ import {
   Megaphone,
   Headset, // <-- Ícone novo importado
 } from "lucide-react";
+
 import { EmpresaCliente, AtaReuniao, Job } from "../types";
 
 interface DashboardViewProps {
   clientes: EmpresaCliente[];
+
   atas: AtaReuniao[];
+
   jobs: Job[];
+
   users: any[];
 
   podeAcessarAba: (
@@ -24,14 +29,18 @@ interface DashboardViewProps {
       | "rh"
       | "atas"
       | "jobs"
+      | "operacional"
       | "relatorios"
       | "trafego"
       | "leads",
   ) => boolean;
 
   onOpenNewCliente: () => void;
+
   onOpenNewAta: () => void;
+
   onOpenNewJob: () => void;
+
   onSelectJob: (job: Job) => void;
 
   onNavigateTab: (
@@ -49,16 +58,22 @@ interface DashboardViewProps {
 
 export const DashboardView = ({
   clientes,
+
   atas,
+
   jobs,
+
   users,
+
   onNavigateTab,
+
   podeAcessarAba,
 }: DashboardViewProps) => {
   return (
     <div className="w-full min-h-screen dark:bg-slate-950 bg-slate-50 text-slate-800 animate-in fade-in duration-300">
       <div className="max-w-7xl mx-auto space-y-10">
         {/* Header Section */}
+
         <div className="space-y-4">
           <h1 className="text-4xl font-extrabold dark:text-white text-slate-900 tracking-tight">
             STK App
@@ -66,8 +81,10 @@ export const DashboardView = ({
         </div>
 
         {/* Cards Grid */}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Card: Clientes */}
+
           {podeAcessarAba("clientes") && (
             <div
               onClick={() => onNavigateTab("clientes")}
@@ -101,6 +118,7 @@ export const DashboardView = ({
           )}
 
           {/* Card: Atendimento */}
+
           {podeAcessarAba("atas") && (
             <div
               onClick={() => onNavigateTab("atas")}
@@ -134,6 +152,7 @@ export const DashboardView = ({
           )}
 
           {/* Card: Jobs */}
+
           {podeAcessarAba("jobs") && (
             <div
               onClick={() => onNavigateTab("jobs")}
@@ -166,7 +185,8 @@ export const DashboardView = ({
             </div>
           )}
 
-                    {/* Card: Operacional */}
+          {/* Card: Operacional */}
+
           {podeAcessarAba("operacional") && (
             <div
               onClick={() => onNavigateTab("operacional")}
@@ -179,14 +199,14 @@ export const DashboardView = ({
 
                 <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
                   <span className="text-xs font-medium dark:text-white text-slate-600">
-                    Quadro Geral
+                    Operacional + Agenda
                   </span>
                 </div>
               </div>
 
               <div className="space-y-3 flex-1">
                 <h2 className="text-2xl font-bold dark:text-white text-slate-900">
-                  Operacional
+                  Diretoria
                 </h2>
               </div>
 
@@ -200,6 +220,7 @@ export const DashboardView = ({
           )}
 
           {/* Card: Relatórios */}
+
           {podeAcessarAba("relatorios") && (
             <div
               onClick={() => onNavigateTab("relatorios")}
@@ -233,6 +254,7 @@ export const DashboardView = ({
           )}
 
           {/* Card: Tráfego Pago */}
+
           {podeAcessarAba("trafego") && (
             <div
               onClick={() => onNavigateTab("trafego")}
@@ -266,6 +288,7 @@ export const DashboardView = ({
           )}
 
           {/* Card: Tráfego Pago */}
+
           {podeAcessarAba("leads") && (
             <div
               onClick={() => onNavigateTab("leads")}
@@ -299,6 +322,7 @@ export const DashboardView = ({
           )}
 
           {/* Card: RH */}
+
           {podeAcessarAba("rh") && (
             <div
               onClick={() => onNavigateTab("rh")}
@@ -308,6 +332,7 @@ export const DashboardView = ({
                 <div className="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
                   <ShieldCheck className="w-7 h-7 text-white" />
                 </div>
+
                 <div className="px-3 py-1.5 rounded-full dark:bg-slate-800 bg-slate-100 border dark:border-slate-800 border-slate-200">
                   <span className="text-xs font-medium dark:text-white text-slate-600">
                     {users.length} Recursos Humanos

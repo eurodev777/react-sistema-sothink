@@ -1041,7 +1041,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
               className="px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all border bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-700 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:border-indigo-700 dark:hover:text-indigo-300"
             >
               <BriefcaseBusiness className="w-4 h-4" />
-              Quadro Operacional
+              Diretoria
             </button>
           )}
 

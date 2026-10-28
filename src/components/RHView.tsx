@@ -131,11 +131,6 @@ const QUADROS = [
 
     descricao: "Acesso ao quadro principal de jobs",
   },
-  {
-    id: "operacional",
-    nome: "Diretoria",
-    descricao: "Acesso ao quadro Diretoria: Operacional e Agenda Diretoria",
-  },
 
   {
     id: "clientes",
@@ -927,34 +922,47 @@ export const RHView: React.FC = () => {
     if (!fotoFile && !removerFoto) return;
 
     const fotoForm = new FormData();
-
     fotoForm.append("usuario_id", usuarioId);
 
     if (fotoFile) {
-      fotoForm.append("foto", fotoFile);
+      fotoForm.append("foto", fotoFile, fotoFile.name);
     } else if (removerFoto) {
       fotoForm.append("remover", "1");
     }
 
     const response = await fetch(`${API_BASE}/usuario_foto`, {
       method: "POST",
-
       body: fotoForm,
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+      },
     });
 
     const raw = await response.text();
-
     let data: any = {};
 
     try {
       data = raw ? JSON.parse(raw) : {};
     } catch {
-      throw new Error("Resposta inválida ao salvar a foto: " + raw);
+      console.error("Resposta inválida do upload:", {
+        status: response.status,
+        body: raw,
+      });
+
+      throw new Error(
+        response.status === 404
+          ? "A rota /api/usuario_foto não foi encontrada no servidor."
+          : `Resposta inválida ao salvar a foto (HTTP ${response.status}).`,
+      );
     }
 
     if (!response.ok || data?.erro || data?.sucesso === false) {
+      console.error("Erro no upload da foto:", data);
+
       throw new Error(
-        data?.erro || "Não foi possível salvar a foto do colaborador.",
+        data?.erro ||
+          `Não foi possível salvar a foto do colaborador (HTTP ${response.status}).`,
       );
     }
 

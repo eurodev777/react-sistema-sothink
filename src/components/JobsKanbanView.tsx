@@ -63,28 +63,33 @@ export const KANBAN_COLUMNS: { id: JobStatus; title: string; color: string }[] =
       color: "border-teal-500 bg-teal-50/50 dark:bg-teal-950/20",
     },
     {
+      id: "Alterações",
+      title: "6. Alterações",
+      color: "border-orange-500 bg-orange-50/50 dark:bg-orange-950/20",
+    },
+    {
       id: "Revisão",
-      title: "6. Revisão",
+      title: "7. Revisão",
       color: "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20",
     },
     {
       id: "Aprovação Cliente",
-      title: "7. Aprovação Cliente",
+      title: "8. Aprovação Cliente",
       color: "border-violet-500 bg-violet-50/50 dark:bg-violet-950/20",
     },
     {
       id: "Publicar / Enviar para Produção",
-      title: "8. Publicar / Enviar para Produção",
+      title: "9. Publicar / Enviar para Produção",
       color: "border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20",
     },
     {
       id: "Finalizado",
-      title: "9. Finalizado",
+      title: "10. Finalizado",
       color: "border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
     },
     {
       id: "Pausado / Cancelado",
-      title: "10. Pausado / Cancelado",
+      title: "11. Pausado / Cancelado",
       color: "border-slate-500 bg-slate-100/50 dark:bg-slate-800/20",
     },
   ];
@@ -93,7 +98,6 @@ export const TAGS_PRESETS = [
   "SOCIAL",
   "TRÁFEGO",
   "PROGRAMAÇÃO",
-  "AJUSTES",
   "ADVERTISING",
   "ESTRATÉGIA",
   "DESIGN",
@@ -1041,7 +1045,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
               className="px-3 py-2 text-xs font-bold rounded-xl flex items-center gap-2 transition-all border bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:text-indigo-700 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:border-indigo-700 dark:hover:text-indigo-300"
             >
               <BriefcaseBusiness className="w-4 h-4" />
-              Diretoria
+              Quadro Operacional
             </button>
           )}
 
@@ -1237,8 +1241,6 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                                       lower.includes("traffic")
                                     )
                                       tagClass = "tag-traffic";
-                                    if (lower.includes("ajustes"))
-                                      tagClass = "tag-design";
 
                                     return (
                                       <span

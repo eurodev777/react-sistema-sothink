@@ -171,6 +171,12 @@ const normalizeJobDateKey = (value: any): string => {
   return String(value).split("T")[0].split(" ")[0];
 };
 
+const formatJobStartTime = (value: any): string => {
+  const time = String(value || "").trim();
+  if (!time || time === "00:00:00" || time === "00:00") return "";
+  return time.slice(0, 5);
+};
+
 const getJobDateKeys = (job: Job): string[] =>
   Array.from(
     new Set(
@@ -440,6 +446,7 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
         "prioridade",
         "status",
         "data_inicio",
+        "hora_inicio",
         "data_entrega",
         "responsavel",
         "ordem",
@@ -1269,7 +1276,15 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                               <span className="font-medium">
                                 📅{" "}
                                 {job.data_inicio
-                                  ? formatDateSafe(job.data_inicio, "short")
+                                  ? `${formatDateSafe(job.data_inicio, "short")}${
+                                      formatJobStartTime(
+                                        (job as any).hora_inicio,
+                                      )
+                                        ? ` • ${formatJobStartTime(
+                                            (job as any).hora_inicio,
+                                          )}`
+                                        : ""
+                                    }`
                                   : "A definir"}
                               </span>
                               {job.anexos && job.anexos.length > 0 && (
@@ -2111,18 +2126,40 @@ export const JobsKanbanView: React.FC<JobsKanbanViewProps> = ({
                   </p>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Data de Início
-                  </label>
-                  <input
-                    type="date"
-                    value={activeJob.data_inicio || ""}
-                    onChange={(e) =>
-                      handleUpdateActiveJobField("data_inicio", e.target.value)
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-indigo-600 mb-3"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Data de Início
+                    </label>
+                    <input
+                      type="date"
+                      value={activeJob.data_inicio || ""}
+                      onChange={(e) =>
+                        handleUpdateActiveJobField(
+                          "data_inicio",
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-indigo-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Horário de Início
+                    </label>
+                    <input
+                      type="time"
+                      value={formatJobStartTime((activeJob as any).hora_inicio)}
+                      onChange={(e) =>
+                        handleUpdateActiveJobField(
+                          "hora_inicio" as any,
+                          e.target.value,
+                        )
+                      }
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-indigo-600"
+                    />
+                  </div>
                 </div>
 
                 <div>

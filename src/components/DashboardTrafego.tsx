@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+
 import {
   Plus,
   Trash2,
@@ -13,26 +14,47 @@ import {
   Download,
   Activity, // <-- Novo ícone para o botão de verificar sites
 } from "lucide-react";
+
 import { TrafegoView } from "./TrafegoView";
 
 // Função para evitar que a string "null" ou valores nulos apareçam na tela
+
 const safeValue = (val: any) => {
-  if (val === null || val === "null" || val === undefined) return "";
+  if (val === null || val === undefined) return "";
+
+  if (typeof val === "string") {
+    const normalized = val.trim().toLowerCase();
+    if (normalized === "null" || normalized === "undefined") return "";
+  }
+
   return val;
 };
 
+const sanitizeApiRow = (row: any) => {
+  if (!row || typeof row !== "object") return row;
+
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [key, safeValue(value)]),
+  );
+};
+
 // Função global para exportar dados para CSV (abre no Excel)
+
 const exportToCSV = (dados: any[], nomeArquivo: string) => {
   if (!dados || dados.length === 0) {
     alert("Não há dados para exportar.");
+
     return;
   }
 
   // Pega os cabeçalhos a partir das chaves do primeiro objeto
+
   const headers = Object.keys(dados[0]);
 
   // Monta as linhas do CSV
+
   const csvRows = [];
+
   csvRows.push(headers.join(";")); // Separador padrão pt-BR no Excel é ;
 
   for (const row of dados) {
@@ -41,30 +63,44 @@ const exportToCSV = (dados: any[], nomeArquivo: string) => {
         row[header] === null || row[header] === undefined
           ? ""
           : String(row[header]);
+
       const escaped = valor.replace(/"/g, '""');
+
       return `"${escaped}"`;
     });
+
     csvRows.push(values.join(";"));
   }
 
   const csvString = csvRows.join("\n");
+
   // \uFEFF força o UTF-8 no Excel para não quebrar acentos
+
   const blob = new Blob(["\uFEFF" + csvString], {
     type: "text/csv;charset=utf-8;",
   });
+
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
+
   link.href = url;
+
   link.setAttribute("download", `${nomeArquivo}.csv`);
+
   document.body.appendChild(link);
+
   link.click();
+
   document.body.removeChild(link);
 };
 
 // ==========================================
+
 // 1. COMPONENTE PRINCIPAL (MENU DE CARDS)
+
 // ==========================================
+
 export const DashboardTrafego = () => {
   const [activeView, setActiveView] = useState<
     "menu" | "geral" | "sites" | "custos" | "leads"
@@ -79,9 +115,11 @@ export const DashboardTrafego = () => {
         >
           ← Voltar ao Menu
         </button>
+
         <TrafegoView />
       </div>
     );
+
   if (activeView === "sites")
     return (
       <div className="animate-in fade-in duration-300">
@@ -91,9 +129,11 @@ export const DashboardTrafego = () => {
         >
           ← Voltar ao Menu
         </button>
+
         <PlanilhaSitesView />
       </div>
     );
+
   if (activeView === "custos")
     return (
       <div className="animate-in fade-in duration-300">
@@ -103,12 +143,14 @@ export const DashboardTrafego = () => {
         >
           ← Voltar ao Menu
         </button>
+
         <PlanilhaMensalView
           tipo="custos"
           titulo="Controle Custo por Resultado"
         />
       </div>
     );
+
   if (activeView === "leads")
     return (
       <div className="animate-in fade-in duration-300">
@@ -118,6 +160,7 @@ export const DashboardTrafego = () => {
         >
           ← Voltar ao Menu
         </button>
+
         <PlanilhaMensalView tipo="leads" titulo="Controle de Leads" />
       </div>
     );
@@ -127,46 +170,55 @@ export const DashboardTrafego = () => {
       <h1 className="text-2xl font-extrabold mb-6 text-slate-800 dark:text-white">
         Menu de Tráfego
       </h1>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Card 1 - Sites */}
+
         <div
           onClick={() => setActiveView("sites")}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all group transform hover:-translate-y-1"
         >
           <Globe className="w-8 h-8 text-blue-500 mb-4 group-hover:scale-110 transition-transform" />
+
           <h2 className="text-lg font-bold text-slate-800">
             Controle de Sites
           </h2>
         </div>
 
         {/* Card 2 */}
+
         <div
           onClick={() => setActiveView("geral")}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-indigo-500 hover:shadow-md transition-all group transform hover:-translate-y-1"
         >
           <LayoutGrid className="w-8 h-8 text-indigo-500 mb-4 group-hover:scale-110 transition-transform" />
+
           <h2 className="text-lg font-bold text-slate-800">
             Controle Geral de Verbas
           </h2>
         </div>
 
         {/* Card 3 */}
+
         <div
           onClick={() => setActiveView("custos")}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all group transform hover:-translate-y-1"
         >
           <DollarSign className="w-8 h-8 text-emerald-500 mb-4 group-hover:scale-110 transition-transform" />
+
           <h2 className="text-lg font-bold text-slate-800">
             Custo por Resultado
           </h2>
         </div>
 
         {/* Card 4 */}
+
         <div
           onClick={() => setActiveView("leads")}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-amber-500 hover:shadow-md transition-all group transform hover:-translate-y-1"
         >
           <Users className="w-8 h-8 text-amber-500 mb-4 group-hover:scale-110 transition-transform" />
+
           <h2 className="text-lg font-bold text-slate-800">
             Controle de Leads
           </h2>
@@ -177,39 +229,55 @@ export const DashboardTrafego = () => {
 };
 
 // ==========================================
+
 // 2. COMPONENTE DA PLANILHA DE SITES
+
 // ==========================================
+
 const PlanilhaSitesView = () => {
   const [dados, setDados] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(false);
+
   const [checkingSites, setCheckingSites] = useState(false); // <-- Estado para o loading de verificação
+
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
   const [filtroStatus, setFiltroStatus] = useState("");
+
   const [filtroCampanha, setFiltroCampanha] = useState("");
 
   const [mesAno, setMesAno] = useState(() => {
     const hoje = new Date();
+
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(
       2,
-      "0"
+
+      "0",
     )}`;
   });
 
   const [filtroEmpresa, setFiltroEmpresa] = useState("");
+
   const [filtroLink, setFiltroLink] = useState("");
 
   const API_URL = `https://sothink.com.br/app/api/api_sites?`;
+
   const diasDoMes = Array.from({ length: 31 }, (_, i) => i + 1);
 
   // <-- ATUALIZADO: Adicionada validação do status no drag and drop
+
   const isFiltered = filtroEmpresa.trim() !== "" || filtroLink.trim() !== "";
 
   const fetchDados = async () => {
     setLoading(true);
+
     try {
       const res = await fetch(`${API_URL}action=read&mes_ano=${mesAno}`);
+
       const data = await res.json();
-      setDados(Array.isArray(data) ? data : []);
+
+      setDados(Array.isArray(data) ? data.map(sanitizeApiRow) : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -219,49 +287,63 @@ const PlanilhaSitesView = () => {
 
   useEffect(() => {
     fetchDados();
+
     setFiltroEmpresa("");
+
     setFiltroLink("");
   }, [mesAno]);
 
   const empresasUnicas = Array.from(
-    new Set(dados.map((d) => d.empresa).filter((e) => e && e.trim() !== ""))
+    new Set(dados.map((d) => d.empresa).filter((e) => e && e.trim() !== "")),
   ).sort();
 
   const handleAddRow = async () => {
     const formData = new FormData();
+
     formData.append("action", "create");
+
     formData.append("mes_ano", mesAno);
 
     await fetch(API_URL, { method: "POST", body: formData });
+
     fetchDados();
   };
 
   const handleChange = (id: string, field: string, value: string) => {
     setDados((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
     );
   };
 
   const handleBlur = async (item: any) => {
     const formData = new FormData();
+
     formData.append("action", "update");
+
     Object.entries(item).forEach(([key, val]) =>
-      formData.append(key, val as string)
+      formData.append(key, val as string),
     );
+
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Remover esta linha?")) return;
+
     const formData = new FormData();
+
     formData.append("action", "delete");
+
     formData.append("id", id);
+
     await fetch(API_URL, { method: "POST", body: formData });
+
     setDados((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
+
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -271,48 +353,65 @@ const PlanilhaSitesView = () => {
 
   const handleDrop = async (
     e: React.DragEvent,
+
     targetIndex: number,
-    listaFiltrada: any[]
+
+    listaFiltrada: any[],
   ) => {
     e.preventDefault();
+
     if (draggedIndex === null || draggedIndex === targetIndex) return;
 
     const novaLista = [...listaFiltrada];
+
     const itemMovido = novaLista[draggedIndex];
 
     novaLista.splice(draggedIndex, 1);
+
     novaLista.splice(targetIndex, 0, itemMovido);
 
     const idsOrdenados = novaLista.map((item) => item.id);
+
     setDados(novaLista);
+
     setDraggedIndex(null);
 
     const formData = new FormData();
+
     formData.append("action", "update_order");
+
     formData.append("ids", JSON.stringify(idsOrdenados));
+
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
   // ==========================================
+
   // FUNÇÃO DE VERIFICAÇÃO AUTOMÁTICA (VIA API PHP)
+
   // ==========================================
+
   const handleVerificarHoje = async () => {
     const dataAtual = new Date();
+
     const mesAtualStr = `${dataAtual.getFullYear()}-${String(
-      dataAtual.getMonth() + 1
+      dataAtual.getMonth() + 1,
     ).padStart(2, "0")}`;
 
     if (mesAno !== mesAtualStr) {
       alert(
-        "Por favor, selecione o mês atual para poder fazer a verificação de hoje."
+        "Por favor, selecione o mês atual para poder fazer a verificação de hoje.",
       );
+
       return;
     }
 
     const diaHoje = dataAtual.getDate();
+
     const confirmacao = window.confirm(
-      `Isso fará um teste em todos os sites e preencherá automaticamente o dia ${diaHoje}. Deseja iniciar?`
+      `Isso fará um teste em todos os sites e preencherá automaticamente o dia ${diaHoje}. Deseja iniciar?`,
     );
+
     if (!confirmacao) return;
 
     setCheckingSites(true);
@@ -321,49 +420,62 @@ const PlanilhaSitesView = () => {
 
     for (let i = 0; i < novosDados.length; i++) {
       const c = novosDados[i];
+
       let link = c.link?.trim();
 
       if (!link) continue;
 
       try {
         // Chama a própria API em PHP para checar o status real do HTTP
+
         const res = await fetch(
-          `${API_URL}action=check_site&url=${encodeURIComponent(link)}`
+          `${API_URL}action=check_site&url=${encodeURIComponent(link)}`,
         );
+
         const result = await res.json();
 
         // Se o PHP retornar status OK (ex: HTTP 200), grava OK. Se der 403, 404, etc., grava X.
+
         novosDados[i][`d${diaHoje}`] = result.status === "OK" ? "OK" : "X";
       } catch (error) {
         console.warn(`Erro ao verificar o site ${link}:`, error);
+
         novosDados[i][`d${diaHoje}`] = "X";
       }
 
       // Salva a alteração no banco de dados
+
       try {
         const formData = new FormData();
+
         formData.append("action", "update");
+
         Object.entries(novosDados[i]).forEach(([key, val]) =>
-          formData.append(key, val as string)
+          formData.append(key, val as string),
         );
+
         await fetch(API_URL, { method: "POST", body: formData });
       } catch (e) {
         console.error("Erro ao salvar no banco de dados.", e);
       }
 
       setDados([...novosDados]);
+
       await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     setCheckingSites(false);
+
     alert("Verificação de sites concluída com sucesso!");
   };
 
   const lista = dados.filter((d) => {
     const matchEmpresa = filtroEmpresa === "" || d.empresa === filtroEmpresa;
+
     const matchLink =
       filtroLink === "" ||
       (d.link && d.link.toLowerCase().includes(filtroLink.toLowerCase()));
+
     return matchEmpresa && matchLink;
   });
 
@@ -374,6 +486,7 @@ const PlanilhaSitesView = () => {
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
             Controle de Sites
           </h1>
+
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Valide o status diariamente. Salva ao alterar.
           </p>
@@ -382,6 +495,7 @@ const PlanilhaSitesView = () => {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
           <div className="relative w-full sm:w-48">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+
             <input
               type="text"
               placeholder="Buscar link..."
@@ -397,6 +511,7 @@ const PlanilhaSitesView = () => {
             className="cursor-pointer w-full sm:w-48 px-3 py-2 text-black bg-white border border-slate-300 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm"
           >
             <option value="">Todas as Empresas</option>
+
             {empresasUnicas.map((emp, index) => (
               <option key={index} value={emp}>
                 {emp}
@@ -408,6 +523,7 @@ const PlanilhaSitesView = () => {
             <span className="text-sm font-bold text-slate-700 dark:text-white hidden sm:block">
               Mês:
             </span>
+
             <input
               type="month"
               value={mesAno}
@@ -433,9 +549,13 @@ const PlanilhaSitesView = () => {
       ) : (
         <div className="bg-slate-50 dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-8">
           <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
-            <h2 className="font-bold text-slate-800 dark:text-slate-100">Sites Monitorados</h2>
+            <h2 className="font-bold text-slate-800 dark:text-slate-100">
+              Sites Monitorados
+            </h2>
+
             <div className="flex gap-2">
               {/* NOVO BOTÃO DE VERIFICAÇÃO */}
+
               <button
                 onClick={handleVerificarHoje}
                 disabled={checkingSites}
@@ -447,6 +567,7 @@ const PlanilhaSitesView = () => {
                 ) : (
                   <Activity className="w-4 h-4" />
                 )}
+
                 {checkingSites ? "Verificando..." : "Verificar Hoje"}
               </button>
 
@@ -464,16 +585,21 @@ const PlanilhaSitesView = () => {
               <thead className="bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-bold text-[10px]">
                 <tr>
                   <th className="px-2 py-3 w-10 text-center"></th>
+
                   <th className="px-3 py-3 w-40 min-w-[150px]">Empresa</th>
+
                   <th className="px-3 py-3 w-48 min-w-[200px]">Link do Site</th>
+
                   {diasDoMes.map((dia) => (
                     <th key={dia} className="px-1 py-3 w-12 text-center">
                       {dia}
                     </th>
                   ))}
+
                   <th className="px-3 py-3 text-center">Ações</th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
                 {lista.length === 0 ? (
                   <tr>
@@ -489,7 +615,9 @@ const PlanilhaSitesView = () => {
                     <tr
                       key={c.id}
                       className={`bg-slate-50/70 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors ${
-                        draggedIndex === index ? "opacity-50 bg-slate-200 dark:bg-slate-800" : ""
+                        draggedIndex === index
+                          ? "opacity-50 bg-slate-200 dark:bg-slate-800"
+                          : ""
                       }`}
                       draggable={!isFiltered}
                       onDragStart={(e) =>
@@ -528,6 +656,7 @@ const PlanilhaSitesView = () => {
                           placeholder="Empresa"
                         />
                       </td>
+
                       <td className="p-1">
                         <div className="flex items-center gap-1">
                           <input
@@ -540,6 +669,7 @@ const PlanilhaSitesView = () => {
                             className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded outline-none transition-all text-slate-600 dark:text-slate-300"
                             placeholder="https://..."
                           />
+
                           {c.link && c.link.trim() !== "" && (
                             <a
                               href={
@@ -560,12 +690,13 @@ const PlanilhaSitesView = () => {
 
                       {diasDoMes.map((dia) => {
                         const valor = safeValue(c[`d${dia}`]);
+
                         const colorClass =
                           valor === "OK"
                             ? "text-emerald-700 bg-emerald-100 font-bold"
                             : valor === "X" || valor === "x"
-                            ? "text-rose-700 bg-rose-100 font-bold"
-                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800";
+                              ? "text-rose-700 bg-rose-100 font-bold"
+                              : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800";
 
                         return (
                           <td
@@ -584,7 +715,9 @@ const PlanilhaSitesView = () => {
                                 title="Selecione o status"
                               >
                                 <option value="">-</option>
+
                                 <option value="OK">OK</option>
+
                                 <option value="X">X</option>
                               </select>
                             </div>
@@ -613,43 +746,66 @@ const PlanilhaSitesView = () => {
 };
 
 // ==========================================
+
 // 3. COMPONENTE DA PLANILHA DE CUSTOS/LEADS
+
 // ==========================================
+
 const PlanilhaMensalView = ({
   tipo,
+
   titulo,
 }: {
   tipo: "custos" | "leads";
+
   titulo: string;
 }) => {
   const [dados, setDados] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(false);
+
   const [dragInfo, setDragInfo] = useState<{
     index: number | null;
+
     plataforma: string | null;
   }>({ index: null, plataforma: null });
+
   const [mesAno, setMesAno] = useState(() => {
     const hoje = new Date();
+
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(
       2,
-      "0"
+
+      "0",
     )}`;
   });
+
   const [filtroEmpresa, setFiltroEmpresa] = useState("");
+
   const [filtroCampanha, setFiltroCampanha] = useState("");
+
   const [filtroStatus, setFiltroStatus] = useState(""); // <-- NOVO AQUI
 
   // Confirmações preenchidas pelo cliente no Portal do Cliente.
+
   // Ficam separadas dos dados oficiais da agência.
-  const [mostrarConfirmacoesCliente, setMostrarConfirmacoesCliente] = useState(false);
-  const [carregandoConfirmacoesCliente, setCarregandoConfirmacoesCliente] = useState(false);
+
+  const [mostrarConfirmacoesCliente, setMostrarConfirmacoesCliente] =
+    useState(false);
+
+  const [carregandoConfirmacoesCliente, setCarregandoConfirmacoesCliente] =
+    useState(false);
+
   const [confirmacoesCliente, setConfirmacoesCliente] = useState<
     Record<
       string,
       Array<{
         cliente_id: string;
+
         cliente_nome: string;
+
         check: any;
+
         possui_dados_salvos: boolean;
       }>
     >
@@ -663,15 +819,18 @@ const PlanilhaMensalView = ({
     filtroEmpresa.trim() !== "" ||
     filtroCampanha.trim() !== "" ||
     filtroStatus.trim() !== "";
-  
+
   const isCusto = tipo === "custos";
 
   const fetchDados = async () => {
     setLoading(true);
+
     try {
       const res = await fetch(`${API_URL}&action=read&mes_ano=${mesAno}`);
+
       const data = await res.json();
-      setDados(Array.isArray(data) ? data : []);
+
+      setDados(Array.isArray(data) ? data.map(sanitizeApiRow) : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -681,16 +840,20 @@ const PlanilhaMensalView = ({
 
   useEffect(() => {
     fetchDados();
+
     setFiltroEmpresa("");
+
     setFiltroCampanha("");
 
     // Ao trocar o mês, força uma nova leitura das confirmações do cliente.
+
     setMostrarConfirmacoesCliente(false);
+
     setConfirmacoesCliente({});
   }, [mesAno]);
 
   const empresasUnicas = Array.from(
-    new Set(dados.map((d) => d.empresa).filter((e) => e && e.trim() !== ""))
+    new Set(dados.map((d) => d.empresa).filter((e) => e && e.trim() !== "")),
   ).sort();
 
   const carregarConfirmacoesCliente = async () => {
@@ -700,18 +863,25 @@ const PlanilhaMensalView = ({
 
     try {
       // A API read_client precisa saber qual cliente consultar.
+
       // Como estamos no painel da agência, buscamos os clientes cadastrados
+
       // e consultamos a confirmação de cada um somente quando o botão é acionado.
+
       const clientesResponse = await fetch(
         "https://sothink.com.br/app/api/listar?tabela=clientes",
-        { cache: "no-store" }
+
+        { cache: "no-store" },
       );
 
       if (!clientesResponse.ok) {
-        throw new Error(`Erro HTTP ${clientesResponse.status} ao carregar clientes.`);
+        throw new Error(
+          `Erro HTTP ${clientesResponse.status} ao carregar clientes.`,
+        );
       }
 
       const clientesData = await clientesResponse.json();
+
       const clientesLista = Array.isArray(clientesData) ? clientesData : [];
 
       const resultados = await Promise.all(
@@ -721,22 +891,26 @@ const PlanilhaMensalView = ({
           try {
             const response = await fetch(
               `https://sothink.com.br/app/api/api_diario?tipo=leads&action=read_client&mes_ano=${encodeURIComponent(
-                mesAno
+                mesAno,
               )}&cliente_id=${encodeURIComponent(String(cliente.id))}`,
-              { cache: "no-store" }
+
+              { cache: "no-store" },
             );
 
             if (!response.ok) return [];
 
             const data = await response.json();
+
             if (!Array.isArray(data)) return [];
 
             return data.map((lead: any) => {
               const check = lead?.cliente_check || {};
+
               const possuiDadosSalvos =
                 Boolean(check?.id) ||
                 diasDoMes.some((dia) => {
                   const valor = check?.[`d${dia}`];
+
                   return (
                     valor !== null &&
                     valor !== undefined &&
@@ -746,31 +920,40 @@ const PlanilhaMensalView = ({
 
               return {
                 lead_id: String(lead.id),
+
                 cliente_id: String(cliente.id),
+
                 cliente_nome:
                   cliente.nome_fantasia ||
                   cliente.razao_social ||
                   `Cliente ${cliente.id}`,
+
                 check,
+
                 possui_dados_salvos: possuiDadosSalvos,
               };
             });
           } catch (error) {
             console.error(
               `Erro ao carregar confirmação do cliente ${cliente.id}:`,
-              error
+
+              error,
             );
+
             return [];
           }
-        })
+        }),
       );
 
       const mapa: Record<
         string,
         Array<{
           cliente_id: string;
+
           cliente_nome: string;
+
           check: any;
+
           possui_dados_salvos: boolean;
         }>
       > = {};
@@ -783,27 +966,33 @@ const PlanilhaMensalView = ({
         }
 
         // Evita duplicar o mesmo cliente na mesma campanha.
+
         const jaExiste = mapa[item.lead_id].some(
-          (existente) => existente.cliente_id === item.cliente_id
+          (existente) => existente.cliente_id === item.cliente_id,
         );
 
         if (!jaExiste) {
           mapa[item.lead_id].push({
             cliente_id: item.cliente_id,
+
             cliente_nome: item.cliente_nome,
+
             check: item.check,
+
             possui_dados_salvos: item.possui_dados_salvos,
           });
         }
       });
 
       setConfirmacoesCliente(mapa);
+
       setMostrarConfirmacoesCliente(true);
     } catch (error: any) {
       console.error("Erro ao carregar confirmações dos clientes:", error);
+
       alert(
         error?.message ||
-          "Não foi possível carregar as confirmações preenchidas pelos clientes."
+          "Não foi possível carregar as confirmações preenchidas pelos clientes.",
       );
     } finally {
       setCarregandoConfirmacoesCliente(false);
@@ -815,12 +1004,15 @@ const PlanilhaMensalView = ({
 
     if (mostrarConfirmacoesCliente) {
       setMostrarConfirmacoesCliente(false);
+
       return;
     }
 
     // Se já carregou neste mês, apenas exibe novamente.
+
     if (Object.keys(confirmacoesCliente).length > 0) {
       setMostrarConfirmacoesCliente(true);
+
       return;
     }
 
@@ -829,44 +1021,59 @@ const PlanilhaMensalView = ({
 
   const handleAddRow = async (plataforma: "Google" | "Meta") => {
     const formData = new FormData();
+
     formData.append("action", "create");
+
     formData.append("plataforma", plataforma);
+
     formData.append("mes_ano", mesAno);
 
     await fetch(API_URL, { method: "POST", body: formData });
+
     fetchDados();
   };
 
   const handleChange = (id: string, field: string, value: string) => {
     setDados((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
     );
   };
 
   const handleBlur = async (item: any) => {
     const formData = new FormData();
+
     formData.append("action", "update");
+
     Object.entries(item).forEach(([key, val]) =>
-      formData.append(key, val as string)
+      formData.append(key, val as string),
     );
+
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Remover esta linha?")) return;
+
     const formData = new FormData();
+
     formData.append("action", "delete");
+
     formData.append("id", id);
+
     await fetch(API_URL, { method: "POST", body: formData });
+
     setDados((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleDragStart = (
     e: React.DragEvent,
+
     index: number,
-    plataforma: string
+
+    plataforma: string,
   ) => {
     setDragInfo({ index, plataforma });
+
     e.dataTransfer.effectAllowed = "move";
   };
 
@@ -876,66 +1083,85 @@ const PlanilhaMensalView = ({
 
   const handleDrop = async (
     e: React.DragEvent,
+
     targetIndex: number,
+
     targetPlataforma: string,
-    listaFiltrada: any[]
+
+    listaFiltrada: any[],
   ) => {
     e.preventDefault();
+
     if (
       dragInfo.plataforma !== targetPlataforma ||
       dragInfo.index === null ||
       dragInfo.index === targetIndex
     ) {
       setDragInfo({ index: null, plataforma: null });
+
       return;
     }
 
     const novaLista = [...listaFiltrada];
+
     const itemMovido = novaLista[dragInfo.index];
 
     novaLista.splice(dragInfo.index, 1);
+
     novaLista.splice(targetIndex, 0, itemMovido);
 
     const idsOrdenados = novaLista.map((item) => item.id);
 
     setDados((prev) => {
       const outros = prev.filter((p) => p.plataforma !== targetPlataforma);
+
       return [...outros, ...novaLista];
     });
 
     setDragInfo({ index: null, plataforma: null });
 
     const formData = new FormData();
+
     formData.append("action", "update_order");
+
     formData.append("ids", JSON.stringify(idsOrdenados));
+
     await fetch(API_URL, { method: "POST", body: formData });
   };
 
   const calcularTotal = (item: any) => {
     let total = 0;
+
     for (let i = 1; i <= 31; i++) {
       const val = item[`d${i}`];
+
       // Se for X não tenta somar
+
       if (val !== "X" && val !== "x") {
         total += Number(val) || 0;
       }
     }
+
     return total;
   };
 
   const renderTable = (plataforma: "Google" | "Meta") => {
     const lista = dados.filter((d) => {
       const matchPlataforma = d.plataforma === plataforma;
+
       const matchEmpresa = filtroEmpresa === "" || d.empresa === filtroEmpresa;
+
       const matchCampanha =
         filtroCampanha === "" ||
         (d.campanha &&
           d.campanha.toLowerCase().includes(filtroCampanha.toLowerCase()));
 
       // <-- NOVO: Verifica se o status bate
+
       const matchStatus = filtroStatus === "" || d.status_obs === filtroStatus;
 
       // <-- ATUALIZADO: Inclui matchStatus no retorno
+
       return matchPlataforma && matchEmpresa && matchCampanha && matchStatus;
     });
 
@@ -958,6 +1184,7 @@ const PlanilhaMensalView = ({
             )}
             {plataforma} Ads
           </h2>
+
           <div className="flex items-center gap-2">
             {tipo === "leads" && (
               <button
@@ -975,11 +1202,12 @@ const PlanilhaMensalView = ({
                 ) : (
                   <Users className="w-4 h-4" />
                 )}
+
                 {carregandoConfirmacoesCliente
                   ? "Carregando..."
                   : mostrarConfirmacoesCliente
-                  ? "Ocultar confirmação cliente"
-                  : "Ver confirmação cliente"}
+                    ? "Ocultar confirmação cliente"
+                    : "Ver confirmação cliente"}
               </button>
             )}
 
@@ -997,22 +1225,29 @@ const PlanilhaMensalView = ({
             <thead className="bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase font-bold text-[10px]">
               <tr>
                 <th className="px-2 py-3 w-10 text-center"></th>
+
                 <th className="px-3 py-3 w-40 min-w-[150px]">Empresa</th>
+
                 <th className="px-3 py-3 w-48 min-w-[200px]">Campanha</th>
+
                 <th className="px-3 py-3 w-32 min-w-[120px]">Status</th>
+
                 {diasDoMes.map((dia) => (
                   <th key={dia} className="px-2 py-3 w-16 text-center">
                     {dia}
                   </th>
                 ))}
+
                 {tipo === "leads" && (
                   <th className="px-3 py-3 text-center bg-indigo-50 text-indigo-700">
                     Total
                   </th>
                 )}
+
                 <th className="px-3 py-3 text-center">Ações</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
               {lista.length === 0 ? (
                 <tr>
@@ -1023,15 +1258,19 @@ const PlanilhaMensalView = ({
               ) : (
                 lista.map((c, index) => {
                   // STATUS COLORIDO
+
                   const statusVal = safeValue(c.status_obs);
+
                   const statusColor =
                     statusVal === "OK"
                       ? "text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-950/40"
-                      : statusVal === "PAUSADA"
-                      ? "text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40"
-                      : statusVal === "FINALIZADA"
-                      ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40"
-                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent";
+                      : statusVal === "REPROVADO"
+                        ? "text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-950/50"
+                        : statusVal === "PAUSADA"
+                          ? "text-rose-700 bg-rose-100 dark:text-rose-300 dark:bg-rose-950/40"
+                          : statusVal === "FINALIZADA"
+                            ? "text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-950/40"
+                            : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 bg-transparent";
 
                   const confirmacoesDaCampanha =
                     tipo === "leads"
@@ -1040,257 +1279,288 @@ const PlanilhaMensalView = ({
 
                   return (
                     <React.Fragment key={c.id}>
-                    <tr
-                      className={`bg-slate-50/70 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors group ${
-                        dragInfo.index === index &&
-                        dragInfo.plataforma === plataforma
-                          ? "opacity-50 bg-slate-200 dark:bg-slate-800"
-                          : ""
-                      }`}
-                      draggable={!isFiltered}
-                      onDragStart={(e) =>
-                        !isFiltered && handleDragStart(e, index, plataforma)
-                      }
-                      onDragOver={(e) => !isFiltered && handleDragOver(e)}
-                      onDrop={(e) =>
-                        !isFiltered && handleDrop(e, index, plataforma, lista)
-                      }
-                    >
-                      {/* ÍCONE DE ARRASTAR */}
-                      <td className="p-1 text-center text-slate-400">
-                        {!isFiltered ? (
-                          <div
-                            className="cursor-grab hover:text-indigo-600 flex justify-center w-full transition-colors"
-                            title="Arraste para reordenar"
-                          >
-                            <GripVertical className="w-4 h-4" />
-                          </div>
-                        ) : (
-                          <span
-                            className="text-[10px] text-slate-300"
-                            title="Remova os filtros para ordenar"
-                          >
-                            -
-                          </span>
-                        )}
-                      </td>
+                      <tr
+                        className={`bg-slate-50/70 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors group ${
+                          dragInfo.index === index &&
+                          dragInfo.plataforma === plataforma
+                            ? "opacity-50 bg-slate-200 dark:bg-slate-800"
+                            : ""
+                        }`}
+                        draggable={!isFiltered}
+                        onDragStart={(e) =>
+                          !isFiltered && handleDragStart(e, index, plataforma)
+                        }
+                        onDragOver={(e) => !isFiltered && handleDragOver(e)}
+                        onDrop={(e) =>
+                          !isFiltered && handleDrop(e, index, plataforma, lista)
+                        }
+                      >
+                        {/* ÍCONE DE ARRASTAR */}
 
-                      <td className="p-1">
-                        <input
-                          type="text"
-                          value={safeValue(c.empresa)}
-                          onChange={(e) =>
-                            handleChange(c.id, "empresa", e.target.value)
-                          }
-                          onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none font-bold transition-all text-slate-800 dark:text-slate-100"
-                          placeholder="Empresa"
-                        />
-                      </td>
-                      <td className="p-1">
-                        <input
-                          type="text"
-                          value={safeValue(c.campanha)}
-                          onChange={(e) =>
-                            handleChange(c.id, "campanha", e.target.value)
-                          }
-                          onBlur={() => handleBlur(c)}
-                          className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition-all text-slate-600 dark:text-slate-300"
-                          placeholder="Nome da Campanha"
-                        />
-                      </td>
-                      <td className="p-1">
-                        <select
-                          value={statusVal}
-                          onChange={(e) =>
-                            handleChange(c.id, "status_obs", e.target.value)
-                          }
-                          onBlur={() => handleBlur(c)}
-                          className={`w-full px-1 py-1.5 rounded outline-none font-semibold cursor-pointer transition-colors ${statusColor}`}
-                        >
-                          <option value="" className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900">
-                            Selecione...
-                          </option>
-                          <option
-                            value="OK"
-                            className="text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900"
-                          >
-                            OK
-                          </option>
-                          <option
-                            value="PAUSADA"
-                            className="text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-900"
-                          >
-                            PAUSADA
-                          </option>
-                          <option
-                            value="FINALIZADA"
-                            className="text-amber-700 dark:text-amber-300 bg-white dark:bg-slate-900"
-                          >
-                            FINALIZADA
-                          </option>
-                        </select>
-                      </td>
-
-                      {diasDoMes.map((dia) => {
-                        const val = safeValue(c[`d${dia}`]);
-                        const isX = val.toString().toUpperCase() === "X"; // Verifica se o valor é um X
-
-                        return (
-                          <td
-                            key={dia}
-                            className="p-1 border-l border-slate-200 dark:border-slate-800"
-                          >
+                        <td className="p-1 text-center text-slate-400">
+                          {!isFiltered ? (
                             <div
-                              className={`flex items-center justify-center rounded px-1 transition-colors ${
-                                isX
-                                  ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" // AQUI: Se for X, fundo amarelo e texto amarelo escuro
-                                  : isCusto
-                                  ? "hover:bg-emerald-50 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-50 dark:focus-within:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
-                                  : "hover:bg-indigo-50 dark:hover:bg-indigo-950/30 focus-within:bg-indigo-50 dark:focus-within:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
-                              }`}
+                              className="cursor-grab hover:text-indigo-600 flex justify-center w-full transition-colors"
+                              title="Arraste para reordenar"
                             >
-                              {/* Só mostra o R$ se for Custo E não for "X" */}
-                              {isCusto && !isX && val !== "" && (
-                                <span className="text-[10px] font-bold mr-0.5 opacity-60">
-                                  R$
-                                </span>
-                              )}
-
-                              <input
-                                type="text"
-                                value={val}
-                                onChange={(e) =>
-                                  handleChange(c.id, `d${dia}`, e.target.value)
-                                }
-                                onBlur={() => handleBlur(c)}
-                                className={`w-10 py-1 text-center bg-transparent rounded outline-none transition-colors ${
-                                  isX
-                                    ? "text-amber-800 font-bold" // AQUI: Negrito no texto do X
-                                    : isCusto
-                                    ? "focus:text-emerald-700 font-medium"
-                                    : "focus:text-indigo-700 font-medium"
-                                }`}
-                              />
+                              <GripVertical className="w-4 h-4" />
                             </div>
-                          </td>
-                        );
-                      })}
-
-                      {tipo === "leads" && (
-                        <td className="p-1 text-center font-bold bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-l border-indigo-100 dark:border-indigo-900">
-                          {calcularTotal(c)}
+                          ) : (
+                            <span
+                              className="text-[10px] text-slate-300"
+                              title="Remova os filtros para ordenar"
+                            >
+                              -
+                            </span>
+                          )}
                         </td>
-                      )}
 
-                      <td className="p-1 text-center">
-                        <button
-                          onClick={() => handleDelete(c.id)}
-                          className="text-slate-400 p-1.5 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
+                        <td className="p-1">
+                          <input
+                            type="text"
+                            value={safeValue(c.empresa)}
+                            onChange={(e) =>
+                              handleChange(c.id, "empresa", e.target.value)
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none font-bold transition-all text-slate-800 dark:text-slate-100"
+                            placeholder="Empresa"
+                          />
+                        </td>
 
-                    {tipo === "leads" &&
-                      mostrarConfirmacoesCliente &&
-                      (confirmacoesDaCampanha.length > 0 ? (
-                        confirmacoesDaCampanha.map((confirmacao) => {
-                          const check = confirmacao.check || {};
-                          const possuiDados = confirmacao.possui_dados_salvos;
+                        <td className="p-1">
+                          <input
+                            type="text"
+                            value={safeValue(c.campanha)}
+                            onChange={(e) =>
+                              handleChange(c.id, "campanha", e.target.value)
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className="w-full px-2 py-1.5 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-950 border-transparent focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded outline-none transition-all text-slate-600 dark:text-slate-300"
+                            placeholder="Nome da Campanha"
+                          />
+                        </td>
+
+                        <td className="p-1">
+                          <select
+                            value={statusVal}
+                            onChange={(e) =>
+                              handleChange(c.id, "status_obs", e.target.value)
+                            }
+                            onBlur={() => handleBlur(c)}
+                            className={`w-full px-1 py-1.5 rounded outline-none font-semibold cursor-pointer transition-colors ${statusColor}`}
+                          >
+                            <option
+                              value=""
+                              className="text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900"
+                            >
+                              Selecione...
+                            </option>
+
+                            <option
+                              value="OK"
+                              className="text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900"
+                            >
+                              OK
+                            </option>
+
+                            <option
+                              value="REPROVADO"
+                              className="text-red-700 dark:text-red-300 bg-white dark:bg-slate-900"
+                            >
+                              REPROVADO
+                            </option>
+
+                            <option
+                              value="PAUSADA"
+                              className="text-rose-700 dark:text-rose-300 bg-white dark:bg-slate-900"
+                            >
+                              PAUSADA
+                            </option>
+
+                            <option
+                              value="FINALIZADA"
+                              className="text-amber-700 dark:text-amber-300 bg-white dark:bg-slate-900"
+                            >
+                              FINALIZADA
+                            </option>
+                          </select>
+                        </td>
+
+                        {diasDoMes.map((dia) => {
+                          const val = safeValue(c[`d${dia}`]);
+
+                          const isX = val.toString().toUpperCase() === "X"; // Verifica se o valor é um X
 
                           return (
-                            <tr
-                              key={`${c.id}-cliente-${confirmacao.cliente_id}`}
-                              className="bg-emerald-50/70 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900/60"
+                            <td
+                              key={dia}
+                              className="p-1 border-l border-slate-200 dark:border-slate-800"
                             >
-                              <td className="p-1 text-center">
-                                <Users
-                                  className="w-4 h-4 text-emerald-600 mx-auto"
-                                  aria-label="Confirmação do cliente"
-                                />
-                              </td>
+                              <div
+                                className={`flex items-center justify-center rounded px-1 transition-colors ${
+                                  isX
+                                    ? "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300" // AQUI: Se for X, fundo amarelo e texto amarelo escuro
+                                    : isCusto
+                                      ? "hover:bg-emerald-50 dark:hover:bg-emerald-950/30 focus-within:bg-emerald-50 dark:focus-within:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300"
+                                      : "hover:bg-indigo-50 dark:hover:bg-indigo-950/30 focus-within:bg-indigo-50 dark:focus-within:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300"
+                                }`}
+                              >
+                                {/* Só mostra o R$ se for Custo E não for "X" */}
 
-                              <td className="px-3 py-2">
-                                <div className="flex flex-col">
-                                  <span className="text-[9px] uppercase tracking-wide font-black text-emerald-700">
-                                    Confirmação do cliente
+                                {isCusto && !isX && val !== "" && (
+                                  <span className="text-[10px] font-bold mr-0.5 opacity-60">
+                                    R$
                                   </span>
-                                  <span
-                                    className="font-bold text-slate-800 dark:text-slate-100 max-w-[150px] truncate"
-                                    title={confirmacao.cliente_nome}
-                                  >
-                                    {confirmacao.cliente_nome}
-                                  </span>
-                                </div>
-                              </td>
+                                )}
 
-                              <td className="px-3 py-2 text-slate-500 dark:text-slate-400 italic">
-                                Leads informados pelo cliente
-                              </td>
-
-                              <td className="px-2 py-2 text-center">
-                                <span
-                                  className={`inline-flex px-2 py-1 rounded-md text-[9px] font-black ${
-                                    possuiDados
-                                      ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                      : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
+                                <input
+                                  type="text"
+                                  value={val}
+                                  onChange={(e) =>
+                                    handleChange(
+                                      c.id,
+                                      `d${dia}`,
+                                      e.target.value,
+                                    )
+                                  }
+                                  onBlur={() => handleBlur(c)}
+                                  className={`w-10 py-1 text-center bg-transparent rounded outline-none transition-colors ${
+                                    isX
+                                      ? "text-amber-800 font-bold" // AQUI: Negrito no texto do X
+                                      : isCusto
+                                        ? "focus:text-emerald-700 font-medium"
+                                        : "focus:text-indigo-700 font-medium"
                                   }`}
-                                >
-                                  {possuiDados ? "CLIENTE CONFIRMOU" : "SEM DADOS"}
-                                </span>
-                              </td>
+                                />
+                              </div>
+                            </td>
+                          );
+                        })}
 
-                              {diasDoMes.map((dia) => {
-                                const valor = safeValue(check[`d${dia}`]);
-                                const preenchido =
-                                  valor !== null &&
-                                  valor !== undefined &&
-                                  String(valor).trim() !== "";
+                        {tipo === "leads" && (
+                          <td className="p-1 text-center font-bold bg-indigo-50/70 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-l border-indigo-100 dark:border-indigo-900">
+                            {calcularTotal(c)}
+                          </td>
+                        )}
 
-                                return (
-                                  <td
-                                    key={dia}
-                                    className={`p-1 text-center border-l ${
-                                      preenchido
-                                        ? "border-emerald-100 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300"
-                                        : "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-600"
+                        <td className="p-1 text-center">
+                          <button
+                            onClick={() => handleDelete(c.id)}
+                            className="text-slate-400 p-1.5 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+
+                      {tipo === "leads" &&
+                        mostrarConfirmacoesCliente &&
+                        (confirmacoesDaCampanha.length > 0 ? (
+                          confirmacoesDaCampanha.map((confirmacao) => {
+                            const check = confirmacao.check || {};
+
+                            const possuiDados = confirmacao.possui_dados_salvos;
+
+                            return (
+                              <tr
+                                key={`${c.id}-cliente-${confirmacao.cliente_id}`}
+                                className="bg-emerald-50/70 dark:bg-emerald-950/20 border-t border-emerald-100 dark:border-emerald-900/60"
+                              >
+                                <td className="p-1 text-center">
+                                  <Users
+                                    className="w-4 h-4 text-emerald-600 mx-auto"
+                                    aria-label="Confirmação do cliente"
+                                  />
+                                </td>
+
+                                <td className="px-3 py-2">
+                                  <div className="flex flex-col">
+                                    <span className="text-[9px] uppercase tracking-wide font-black text-emerald-700">
+                                      Confirmação do cliente
+                                    </span>
+
+                                    <span
+                                      className="font-bold text-slate-800 dark:text-slate-100 max-w-[150px] truncate"
+                                      title={confirmacao.cliente_nome}
+                                    >
+                                      {confirmacao.cliente_nome}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                <td className="px-3 py-2 text-slate-500 dark:text-slate-400 italic">
+                                  Leads informados pelo cliente
+                                </td>
+
+                                <td className="px-2 py-2 text-center">
+                                  <span
+                                    className={`inline-flex px-2 py-1 rounded-md text-[9px] font-black ${
+                                      possuiDados
+                                        ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                        : "bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
                                     }`}
                                   >
-                                    <span
-                                      className={`inline-flex min-w-[40px] h-7 items-center justify-center rounded font-bold ${
+                                    {possuiDados
+                                      ? "CLIENTE CONFIRMOU"
+                                      : "SEM DADOS"}
+                                  </span>
+                                </td>
+
+                                {diasDoMes.map((dia) => {
+                                  const valor = safeValue(check[`d${dia}`]);
+
+                                  const preenchido =
+                                    valor !== null &&
+                                    valor !== undefined &&
+                                    String(valor).trim() !== "";
+
+                                  return (
+                                    <td
+                                      key={dia}
+                                      className={`p-1 text-center border-l ${
                                         preenchido
-                                          ? "bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 shadow-sm"
-                                          : ""
+                                          ? "border-emerald-100 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300"
+                                          : "border-slate-200 dark:border-slate-800 text-slate-300 dark:text-slate-600"
                                       }`}
                                     >
-                                      {preenchido ? valor : "-"}
-                                    </span>
-                                  </td>
-                                );
-                              })}
+                                      <span
+                                        className={`inline-flex min-w-[40px] h-7 items-center justify-center rounded font-bold ${
+                                          preenchido
+                                            ? "bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 shadow-sm"
+                                            : ""
+                                        }`}
+                                      >
+                                        {preenchido ? valor : "-"}
+                                      </span>
+                                    </td>
+                                  );
+                                })}
 
-                              <td className="p-1 text-center font-black bg-emerald-100/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-l border-emerald-200 dark:border-emerald-900">
-                                {calcularTotal(check)}
-                              </td>
+                                <td className="p-1 text-center font-black bg-emerald-100/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-l border-emerald-200 dark:border-emerald-900">
+                                  {calcularTotal(check)}
+                                </td>
 
-                              <td className="p-1 text-center text-emerald-600 font-bold">
-                                Visualização
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr
-                          key={`${c.id}-sem-confirmacao`}
-                          className="bg-slate-100/70 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800"
-                        >
-                          <td colSpan={37} className="px-4 py-2 text-[10px] text-slate-400 italic">
-                            ↳ Nenhuma confirmação de cliente vinculada a esta campanha.
-                          </td>
-                        </tr>
-                      ))}
+                                <td className="p-1 text-center text-emerald-600 font-bold">
+                                  Visualização
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr
+                            key={`${c.id}-sem-confirmacao`}
+                            className="bg-slate-100/70 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800"
+                          >
+                            <td
+                              colSpan={37}
+                              className="px-4 py-2 text-[10px] text-slate-400 italic"
+                            >
+                              ↳ Nenhuma confirmação de cliente vinculada a esta
+                              campanha.
+                            </td>
+                          </tr>
+                        ))}
                     </React.Fragment>
                   );
                 })
@@ -1309,16 +1579,20 @@ const PlanilhaMensalView = ({
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
             {titulo}
           </h1>
+
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Separado por plataforma e mês. Salva ao digitar.
           </p>
         </div>
 
         {/* ÁREA DE FILTROS SUPERIORES */}
+
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
           {/* BUSCA POR CAMPANHA */}
+
           <div className="relative w-full sm:w-48">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+
             <input
               type="text"
               placeholder="Buscar campanha..."
@@ -1329,35 +1603,46 @@ const PlanilhaMensalView = ({
           </div>
 
           {/* SELETOR DE CLIENTE / EMPRESA */}
+
           <select
             value={filtroEmpresa}
             onChange={(e) => setFiltroEmpresa(e.target.value)}
             className="cursor-pointer w-full sm:w-48 px-3 py-2 text-black bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"
           >
             <option value="">Todas as Empresas</option>
+
             {empresasUnicas.map((emp, index) => (
               <option key={index} value={emp}>
                 {emp}
               </option>
             ))}
           </select>
+
           {/* NOVO: SELETOR DE STATUS */}
+
           <select
             value={filtroStatus}
             onChange={(e) => setFiltroStatus(e.target.value)}
             className="cursor-pointer w-full sm:w-auto px-3 py-2 text-black bg-white border border-slate-300 rounded-lg outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-sm"
           >
             <option value="">Todos os Status</option>
+
             <option value="OK">OK</option>
+
+            <option value="REPROVADO">REPROVADO</option>
+
             <option value="PAUSADA">PAUSADA</option>
+
             <option value="FINALIZADA">FINALIZADA</option>
           </select>
 
           {/* SELETOR DE MÊS */}
+
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <span className="text-sm font-bold text-slate-700 dark:text-white hidden sm:block">
               Mês:
             </span>
+
             <input
               type="month"
               value={mesAno}
@@ -1367,6 +1652,7 @@ const PlanilhaMensalView = ({
           </div>
 
           {/* NOVO BOTÃO DE EXPORTAR CSV */}
+
           <button
             onClick={() => exportToCSV(dados, `${tipo}_${mesAno}`)}
             className="cursor-pointer w-full sm:w-auto bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-all text-sm px-3 py-2 rounded-lg flex items-center justify-center gap-2 font-bold"
@@ -1384,6 +1670,7 @@ const PlanilhaMensalView = ({
       ) : (
         <>
           {renderTable("Google")}
+
           {renderTable("Meta")}
         </>
       )}

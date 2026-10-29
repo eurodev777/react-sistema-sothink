@@ -832,7 +832,7 @@ export const AtasView: React.FC<AtasViewProps> = ({
       {/* Modal Nova/Editar Ata */}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 py-20 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 pt-20 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-4xl w-full p-6 shadow-2xl space-y-6 my-8 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">

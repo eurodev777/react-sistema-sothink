@@ -1410,7 +1410,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       {commentJob && selectedClient && (
         <div
           className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-sm flex items-start justify-center p-4 pt-10 overflow-y-auto"
-          onClick={() => setCommentJob(null)}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setCommentJob(null);
+            }
+          }}
         >
           <div
             className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-5xl w-full p-6 sm:p-8 shadow-2xl animate-in zoom-in-95"
@@ -1590,7 +1594,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !saving) {
+              setModalOpen(false);
+            }
+          }}
+        >
           <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800">
             <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div>

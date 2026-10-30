@@ -718,6 +718,7 @@ export function App() {
 
       form.append(
         "status",
+
         String(newJobData.status || "Novos Jobs (Análise)"),
       );
 
@@ -735,6 +736,7 @@ export function App() {
 
       form.append(
         "etiquetas",
+
         JSON.stringify(
           Array.isArray(newJobData.etiquetas)
             ? newJobData.etiquetas
@@ -865,14 +867,17 @@ export function App() {
   const handleNavigateNotification = async (notification: any) => {
     const quadro = String(notification?.quadro || "")
       .trim()
+
       .toLowerCase();
 
     const tipo = String(notification?.tipo || "")
       .trim()
+
       .toLowerCase();
 
     const referenciaTipo = String(notification?.referencia_tipo || "")
       .trim()
+
       .toLowerCase();
 
     const referenciaId = String(notification?.referencia_id || "").trim();
@@ -947,9 +952,12 @@ export function App() {
     if (destino !== "dashboard" && !podeAcessarAba(destino)) {
       showToast(
         "info",
+
         "Sem permissão",
+
         "Você não possui permissão para abrir o quadro desta notificação.",
       );
+
       return;
     }
 
@@ -965,6 +973,7 @@ export function App() {
           try {
             const response = await fetch(
               "https://sothink.com.br/app/api/listar?tabela=jobs",
+
               { cache: "no-store" },
             );
 
@@ -991,6 +1000,7 @@ export function App() {
     }
 
     setSelectedJobForKanbanModal(null);
+
     setActiveTab(destino);
   };
 
@@ -1208,7 +1218,14 @@ export function App() {
       </div>
 
       {newJobModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 pt-40 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 pt-60 overflow-y-auto"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setNewJobModalOpen(false);
+            }
+          }}
+        >
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">

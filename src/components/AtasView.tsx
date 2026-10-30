@@ -334,22 +334,29 @@ export const AtasView: React.FC<AtasViewProps> = ({
     if (!cliente) {
       showToast(
         "error",
+
         "Cliente não encontrado",
+
         "Não foi possível identificar o cliente vinculado a esta ata.",
       );
+
       return;
     }
 
     if (!onOpenNewJobForClient) {
       showToast(
         "error",
+
         "Ação indisponível",
+
         "A criação de Job a partir da ata não está configurada no App.",
       );
+
       return;
     }
 
     setViewAtaModal(null);
+
     onOpenNewJobForClient(cliente, ata);
   };
 
@@ -832,7 +839,14 @@ export const AtasView: React.FC<AtasViewProps> = ({
       {/* Modal Nova/Editar Ata */}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 pt-20 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 pt-60 overflow-y-auto"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSubmitting) {
+              setModalOpen(false);
+            }
+          }}
+        >
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-4xl w-full p-6 shadow-2xl space-y-6 my-8 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-lg flex items-center gap-2">
@@ -1188,7 +1202,14 @@ export const AtasView: React.FC<AtasViewProps> = ({
       {/* View Printable Ata Modal (Com todos os campos aparecendo) */}
 
       {viewAtaModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 py-20 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 pt-70 overflow-y-auto"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setViewAtaModal(null);
+            }
+          }}
+        >
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-3xl w-full p-8 shadow-2xl space-y-6 my-8 animate-in zoom-in-95 print:p-0 print:border-none">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 print:hidden">
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">

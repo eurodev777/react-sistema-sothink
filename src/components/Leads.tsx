@@ -248,16 +248,16 @@ const KANBAN_COLUMNS: {
   },
   {
     id: "NEGOCIACAO",
-    title: "5. Negociação",
-    description: "Proposta, objeções e condições",
+    title: "5. Oportunidades / Negociação",
+    description: "Oportunidades em proposta, objeções e condições",
     color: "border-violet-500",
     badge:
       "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
   },
   {
     id: "FECHAMENTO",
-    title: "6. Fechamento",
-    description: "Decisão final e conversão",
+    title: "6. Fechado",
+    description: "Lead fechado / convertido",
     color: "border-emerald-500",
     badge:
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
@@ -282,6 +282,7 @@ const STATUS_OPTIONS = [
   "RETORNOU",
   "INTERESSADO",
   "REUNIÃO AGENDADA",
+  "OPORTUNIDADE",
   "SEM INTERESSE",
   "SEM RETORNO",
   "CONVERTIDO",
@@ -467,6 +468,48 @@ const todayForInput = () => {
   return local.toISOString().slice(0, 10);
 };
 
+const leadMonthKey = (lead: Pick<LeadProspeccao, "data_criacao">) =>
+  safe(lead.data_criacao).slice(0, 7);
+
+const formatLeadMonthLabel = (monthKey: string) => {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return monthKey || "Sem mês";
+
+  const [year, month] = monthKey.split("-").map(Number);
+  const date = new Date(year, month - 1, 1);
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+};
+
+const statusForKanbanStage = (
+  stage: EtapaFunil,
+  currentStatus?: string | null,
+) => {
+  if (stage === "FECHAMENTO") return "CONVERTIDO";
+  if (stage === "NEGOCIACAO") return "OPORTUNIDADE";
+  return safe(currentStatus) || "NOVO";
+};
+
+const calculateLeadKpis = (items: LeadProspeccao[]) => {
+  const total = items.length;
+  const novos = items.filter((lead) => lead.status === "NOVO").length;
+  const contatados = items.filter((lead) => Boolean(lead.ultimo_contato)).length;
+
+  // Oportunidade é definida pela coluna do funil.
+  const oportunidades = items.filter(
+    (lead) => normalizeEtapa(lead.etapa_funil) === "NEGOCIACAO",
+  ).length;
+
+  // Fechado é definido pela coluna do funil.
+  const fechados = items.filter(
+    (lead) => normalizeEtapa(lead.etapa_funil) === "FECHAMENTO",
+  ).length;
+
+  return { total, novos, contatados, oportunidades, fechados };
+};
+
 const formatCalendarDate = (year: number, monthIndex: number, day: number) =>
   `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
@@ -530,6 +573,7 @@ const statusClass = (status: string) => {
       return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300";
     case "INTERESSADO":
     case "REUNIÃO AGENDADA":
+    case "OPORTUNIDADE":
       return "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300";
     case "AGUARDANDO RETORNO":
     case "CONTATO ENVIADO":
@@ -570,6 +614,7 @@ export const ControleLeadsView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [interestFilter, setInterestFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
+  const [kpiMonth, setKpiMonth] = useState(todayForInput().slice(0, 7));
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [draggedLeadId, setDraggedLeadId] = useState<number | null>(null);
   const [dragOverLeadId, setDragOverLeadId] = useState<number | null>(null);
@@ -745,21 +790,46 @@ export const ControleLeadsView: React.FC = () => {
     });
   }, [leads, searchTerm, statusFilter, interestFilter, cityFilter]);
 
-  const kpis = useMemo(() => {
-    const total = leads.length;
-    const novos = leads.filter((lead) => lead.status === "NOVO").length;
-    const contatados = leads.filter((lead) =>
-      Boolean(lead.ultimo_contato),
-    ).length;
-    const interessados = leads.filter((lead) =>
-      ["INTERESSADO", "REUNIÃO AGENDADA", "CONVERTIDO"].includes(lead.status),
-    ).length;
-    const convertidos = leads.filter(
-      (lead) => lead.status === "CONVERTIDO",
-    ).length;
-
-    return { total, novos, contatados, interessados, convertidos };
+  const availableKpiMonths = useMemo(() => {
+    return Array.from(
+      new Set(
+        leads
+          .map((lead) => leadMonthKey(lead))
+          .filter((month): month is string => Boolean(month)),
+      ),
+    ).sort((a, b) => b.localeCompare(a));
   }, [leads]);
+
+  useEffect(() => {
+    if (
+      availableKpiMonths.length > 0 &&
+      !availableKpiMonths.includes(kpiMonth)
+    ) {
+      setKpiMonth(availableKpiMonths[0]);
+    }
+  }, [availableKpiMonths, kpiMonth]);
+
+  const monthLeads = useMemo(
+    () => leads.filter((lead) => leadMonthKey(lead) === kpiMonth),
+    [leads, kpiMonth],
+  );
+
+  const kpis = useMemo(() => calculateLeadKpis(monthLeads), [monthLeads]);
+
+  const monthlySummary = useMemo(
+    () =>
+      availableKpiMonths.map((month) => {
+        const monthItems = leads.filter(
+          (lead) => leadMonthKey(lead) === month,
+        );
+
+        return {
+          month,
+          ...calculateLeadKpis(monthItems),
+        };
+      }),
+    [availableKpiMonths, leads],
+  );
 
   const patchLocalLead = (
     id: number,
@@ -2131,6 +2201,7 @@ export const ControleLeadsView: React.FC = () => {
     const movedLead: LeadProspeccao = {
       ...sourceLead,
       etapa_funil: targetStage,
+      status: statusForKanbanStage(targetStage, sourceLead.status),
     };
 
     targetColumn.splice(
@@ -2142,6 +2213,7 @@ export const ControleLeadsView: React.FC = () => {
     const targetUpdates = targetColumn.map((lead, index) => ({
       ...lead,
       etapa_funil: targetStage,
+      status: statusForKanbanStage(targetStage, lead.status),
       ordem: index + 1,
     }));
 
@@ -2199,11 +2271,13 @@ export const ControleLeadsView: React.FC = () => {
     targetColumn.push({
       ...sourceLead,
       etapa_funil: targetStage,
+      status: statusForKanbanStage(targetStage, sourceLead.status),
     });
 
     const targetUpdates = targetColumn.map((lead, index) => ({
       ...lead,
       etapa_funil: targetStage,
+      status: statusForKanbanStage(targetStage, lead.status),
       ordem: index + 1,
     }));
 
@@ -2258,11 +2332,16 @@ export const ControleLeadsView: React.FC = () => {
     const targetColumn = getAllSortedStageLeads(targetStage).filter(
       (item) => Number(item.id) !== Number(lead.id),
     );
-    targetColumn.push({ ...lead, etapa_funil: targetStage });
+    targetColumn.push({
+      ...lead,
+      etapa_funil: targetStage,
+      status: statusForKanbanStage(targetStage, lead.status),
+    });
 
     const targetUpdates = targetColumn.map((item, index) => ({
       ...item,
       etapa_funil: targetStage,
+      status: statusForKanbanStage(targetStage, item.status),
       ordem: index + 1,
     }));
 
@@ -2335,7 +2414,12 @@ export const ControleLeadsView: React.FC = () => {
       form.append("site", leadCardForm.site.trim());
       form.append("whatsapp", leadCardForm.whatsapp.trim());
       form.append("email", leadCardForm.email.trim());
-      form.append("status", leadCardForm.status);
+      const statusFinal =
+        originalStage !== targetStage
+          ? statusForKanbanStage(targetStage, leadCardForm.status)
+          : leadCardForm.status;
+
+      form.append("status", statusFinal);
       form.append("retorno", leadCardForm.retorno);
       form.append("interesse", leadCardForm.interesse);
       form.append("responsavel_nome", leadCardForm.responsavel_nome.trim());
@@ -2361,7 +2445,7 @@ export const ControleLeadsView: React.FC = () => {
           site: leadCardForm.site.trim(),
           whatsapp: leadCardForm.whatsapp.trim(),
           email: leadCardForm.email.trim(),
-          status: leadCardForm.status,
+          status: statusFinal,
           retorno: leadCardForm.retorno,
           interesse: leadCardForm.interesse,
           responsavel_nome: leadCardForm.responsavel_nome.trim(),
@@ -2515,6 +2599,34 @@ export const ControleLeadsView: React.FC = () => {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
+              Indicadores por mês
+            </div>
+            <div className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+              Mês de entrada do lead no CRM (data de criação).
+            </div>
+          </div>
+
+          <select
+            value={kpiMonth}
+            onChange={(event) => setKpiMonth(event.target.value)}
+            className="cursor-pointer rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500/40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          >
+            {availableKpiMonths.length === 0 && (
+              <option value={kpiMonth}>Sem dados mensais</option>
+            )}
+            {availableKpiMonths.map((month) => (
+              <option key={month} value={month}>
+                {formatLeadMonthLabel(month)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiCard
           icon={<Users className="h-4 w-4" />}
@@ -2533,15 +2645,68 @@ export const ControleLeadsView: React.FC = () => {
         />
         <KpiCard
           icon={<Target className="h-4 w-4" />}
-          label="Oportunidades"
-          value={kpis.interessados}
+          label="Oportunidades / Negociação"
+          value={kpis.oportunidades}
         />
         <KpiCard
           icon={<CheckCircle2 className="h-4 w-4" />}
-          label="Convertidos"
-          value={kpis.convertidos}
+          label="Fechados"
+          value={kpis.fechados}
         />
       </div>
+
+      {monthlySummary.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
+              Resumo mês a mês
+            </div>
+          </div>
+
+          <table className="min-w-[760px] w-full text-xs">
+            <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500 dark:bg-slate-950/50 dark:text-slate-400">
+              <tr>
+                <th className="px-4 py-2.5 text-left">Mês</th>
+                <th className="px-4 py-2.5 text-center">Total</th>
+                <th className="px-4 py-2.5 text-center">Novos</th>
+                <th className="px-4 py-2.5 text-center">Contatados</th>
+                <th className="px-4 py-2.5 text-center">
+                  Oportunidades / Negociação
+                </th>
+                <th className="px-4 py-2.5 text-center">Fechados</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlySummary.map((row) => (
+                <tr
+                  key={row.month}
+                  onClick={() => setKpiMonth(row.month)}
+                  className={`cursor-pointer border-t border-slate-100 transition hover:bg-indigo-50/60 dark:border-slate-800 dark:hover:bg-indigo-950/20 ${
+                    row.month === kpiMonth
+                      ? "bg-indigo-50/70 dark:bg-indigo-950/25"
+                      : ""
+                  }`}
+                >
+                  <td className="px-4 py-3 font-extrabold text-slate-800 dark:text-slate-100">
+                    {formatLeadMonthLabel(row.month)}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold">{row.total}</td>
+                  <td className="px-4 py-3 text-center font-bold">{row.novos}</td>
+                  <td className="px-4 py-3 text-center font-bold">
+                    {row.contatados}
+                  </td>
+                  <td className="px-4 py-3 text-center font-bold">
+                    {row.oportunidades}
+                  </td>
+                  <td className="px-4 py-3 text-center font-black text-emerald-600 dark:text-emerald-400">
+                    {row.fechados}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-[1fr_180px_160px_180px]">
         <div className="relative">
